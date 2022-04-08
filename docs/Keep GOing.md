@@ -46,3 +46,23 @@
 1. [A Tour of Go](https://go.dev/tour/generics/1) generics page 1 - 3
 2. [A Tour of Go](https://go.dev/tour/concurrency/1) concurrency page 1 - 11
 
+### Day 7 - 4 / 7
+
+1. [Git base](https://www.atlassian.com/git/tutorials/syncing) 
+
+2. [Develop workflow](https://www.atlassian.com/git/tutorials/comparing-workflows/gitflow-workflow) 
+
+   我们的开发流程详见这个文档，一定要看看Using branches 和 Comparing workflows/Gitflow Workflow 前者是规范使用branches 后者就是我们的具体工作流程
+
+### Day 8 - 4 / 8
+
+1. 初步了解k8s架构
+
+   [A few things I've learned about Kubernetes (jvns.ca)](https://jvns.ca/blog/2017/06/04/learning-about-kubernetes/)  - 适合入门
+
+   [A tour of the Kubernetes source code - IBM Developer](https://developer.ibm.com/articles/a-tour-of-the-kubernetes-source-code/) - 感觉没啥用
+   
+   [A container networking overview (jvns.ca)](https://jvns.ca/blog/2016/12/22/container-networking/) - 网络介绍
+   
+   [目录 · Kubernetes 学习笔记 (huweihuang.com)](https://www.huweihuang.com/kubernetes-notes/) - 比较全面的架构介绍和细节介绍
+
