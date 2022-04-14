@@ -5,5 +5,5 @@ import (
 )
 
 func main() {
-	apiserver.TestEtcd()
+	apiserver.TestHttp()
 }

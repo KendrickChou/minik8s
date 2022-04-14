@@ -29,6 +29,6 @@ func handleWatchResult(wch chan KV) {
 	}
 }
 
-func RegisterPodWatcher() {
-
+func TestHttp() {
+	runHttpServer()
 }

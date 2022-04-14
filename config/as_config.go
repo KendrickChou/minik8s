@@ -1,8 +1,15 @@
 package config
 
-type EtcdConfigType struct {
+type ASConfigType struct {
 	EtcdAddr string
 	EtcdPort int
+
+	HttpListenPort int
 }
 
-var EtcdConfig = EtcdConfigType{EtcdPort: 2379, EtcdAddr: "127.0.0.1"}
+var ASConfig = ASConfigType{
+	EtcdAddr: "127.0.0.1",
+	EtcdPort: 2379,
+
+	HttpListenPort: 8080,
+}

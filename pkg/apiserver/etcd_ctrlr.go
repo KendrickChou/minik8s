@@ -16,11 +16,11 @@ type KV struct {
 }
 
 var etcdClient *clientv3.Client
-var err error
 
 func initEtcd() {
+	var err error
 	etcdClient, err = clientv3.New(clientv3.Config{
-		Endpoints:   []string{config.EtcdConfig.EtcdAddr + ":" + strconv.Itoa(config.EtcdConfig.EtcdPort)},
+		Endpoints:   []string{config.ASConfig.EtcdAddr + ":" + strconv.Itoa(config.ASConfig.EtcdPort)},
 		DialTimeout: 10 * time.Second,
 	})
 	if err != nil {
@@ -29,7 +29,7 @@ func initEtcd() {
 }
 
 func closeEtcd() {
-	err = etcdClient.Close()
+	err := etcdClient.Close()
 	if err != nil {
 		klog.Error("close etcd client failed, err:%v\n", err)
 	}
@@ -37,7 +37,7 @@ func closeEtcd() {
 
 func etcdPut(key, val string) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	_, err = etcdClient.Put(ctx, key, val)
+	_, err := etcdClient.Put(ctx, key, val)
 	cancel()
 	if err != nil {
 		klog.Errorf("etcd put failed, err: %v", err)
