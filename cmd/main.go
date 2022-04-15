@@ -5,5 +5,5 @@ import (
 )
 
 func main() {
-	apiserver.TestHttp()
+	apiserver.Init()
 }
