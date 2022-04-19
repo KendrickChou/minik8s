@@ -25,6 +25,8 @@ func initEtcd() {
 	})
 	if err != nil {
 		klog.Error("create etcd client failed, err:%v\n", err)
+	} else {
+		klog.Info("successfully started etcd client\n\n")
 	}
 }
 
@@ -32,6 +34,8 @@ func closeEtcd() {
 	err := etcdClient.Close()
 	if err != nil {
 		klog.Error("close etcd client failed, err:%v\n", err)
+	} else {
+		klog.Info("etcd client closed\n")
 	}
 }
 
@@ -103,6 +107,13 @@ func etcdWatch(key string) chan KV {
 	rch := etcdClient.Watch(context.Background(), key)
 	go startWatch(ch, rch)
 	klog.Infof("etcd watch start key: %v\n", key)
+	return ch
+}
+func etcdWatchPrefix(key string) chan KV {
+	ch := make(chan KV)
+	rch := etcdClient.Watch(context.Background(), key, clientv3.WithPrefix())
+	go startWatch(ch, rch)
+	klog.Infof("etcd watch start prefix: %v\n", key)
 	return ch
 }
 

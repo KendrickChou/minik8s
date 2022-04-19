@@ -7,7 +7,7 @@ import (
 	"strconv"
 )
 
-var serviceCount int = 0
+var objCount int = 0
 
 func runHttpServer() {
 	gin.SetMode(gin.ReleaseMode)
@@ -36,6 +36,9 @@ func runHttpServer() {
 	//Watch
 	r.GET("/watch/services", handleWatchServices)
 	r.GET("/watch/service/:name", handleWatchService)
+
+	r.GET("/watch/pods", handleWatchPods)
+	r.GET("/watch/pod/:name", handleWatchPod)
 
 	err := r.Run(":" + strconv.Itoa(config.AS_HttpListenPort))
 	if err != nil {

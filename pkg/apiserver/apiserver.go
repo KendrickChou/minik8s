@@ -10,6 +10,7 @@ func CreateNewApiServer() *ApiServer {
 
 func Init() {
 	initEtcd()
+	defer closeEtcd()
 	runHttpServer()
 }
 
