@@ -4,10 +4,10 @@ go 1.18
 
 replace minik8s.com/minik8s/pkg/kubelet => ./pkg/kubelet
 
-replace minik8s.com/minik8s/pkg/client => ./pkg/client
-
 require (
 	github.com/containerd/containerd v1.6.2
+	github.com/emicklei/go-restful/v3 v3.7.4
+	k8s.io/apimachinery v0.22.5
 	k8s.io/klog/v2 v2.30.0
 )
 
@@ -26,10 +26,13 @@ require (
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/google/uuid v1.2.0 // indirect
+	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/klauspost/compress v1.11.13 // indirect
 	github.com/moby/locker v1.0.1 // indirect
 	github.com/moby/sys/mountinfo v0.5.0 // indirect
 	github.com/moby/sys/signal v0.6.0 // indirect
+	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
+	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.0.2 // indirect
 	github.com/opencontainers/runc v1.1.0 // indirect
@@ -47,3 +50,5 @@ require (
 	google.golang.org/protobuf v1.27.1 // indirect
 	gotest.tools/v3 v3.1.0 // indirect
 )
+
+replace minik8s.com/minik8s/pkg/kubelet/container => ./pkg/kubelet/container

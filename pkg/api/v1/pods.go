@@ -39,11 +39,9 @@ type Pod struct {
 }
 
 type PodSpec struct {
-	Containers []Container
+	Containers []*Container
 
 	RestartPolicy RestartPolicy
-
-
 }
 
 type PodStauts struct {

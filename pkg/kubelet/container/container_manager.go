@@ -10,27 +10,31 @@ import (
 )
 
 type ContainerManager interface {
-	CreateContainer(ctx context.Context, container v1.Container) error
-	StartContainer(ctx context.Context, container v1.Container) error
-	StopContainer(ctx context.Context, container v1.Container) error
-	PauseContainer(ctx context.Context, container v1.Container) error
-	ResumeContainer(ctx context.Context, container v1.Container) error
-	RemoveContainer(ctx context.Context, container v1.Container) error
-	ListContainers(ctx context.Context) ([]v1.Container, error)
-	ContainerStatus(ctx context.Context, containerID string) (containerd.ProcessStatus, error)
+	CreateContainer(ctx context.Context, container *v1.Container) error
+	StartContainer(ctx context.Context, container *v1.Container) error
+	StopContainer(ctx context.Context, container *v1.Container) error
+	PauseContainer(ctx context.Context, container *v1.Container) error
+	ResumeContainer(ctx context.Context, container *v1.Container) error
+	RemoveContainer(ctx context.Context, container *v1.Container) error
+	ListContainers(ctx context.Context) ([]*v1.Container, error)
+	ContainerStatus(ctx context.Context, containerID string) (containerd.Status, error)
 }
 
 type containerManager struct {
 	client *containerd.Client
 }
 
-func NewContainerManager(client *containerd.Client) (containerManager, error) {
-	containerManager := containerManager{client: client}
+func NewContainerManager(address string) (ContainerManager, error) {
+	client, err := containerd.New(address)
 
-	return containerManager, nil
+	containerManager := &containerManager{
+		client: client,
+	}
+
+	return containerManager, err
 }
 
-func (manager *containerManager) CreateContainer(ctx context.Context, container v1.Container) error {
+func (manager *containerManager) CreateContainer(ctx context.Context, container *v1.Container) error {
 
 	var opts []containerd.NewContainerOpts
 
@@ -45,7 +49,7 @@ func (manager *containerManager) CreateContainer(ctx context.Context, container 
 	return err
 }
 
-func (manager *containerManager) StartContainer(ctx context.Context, container v1.Container) error {
+func (manager *containerManager) StartContainer(ctx context.Context, container *v1.Container) error {
 	baseContainer, err := manager.client.LoadContainer(ctx, container.ID)
 
 	if err != nil {
@@ -69,7 +73,7 @@ func (manager *containerManager) StartContainer(ctx context.Context, container v
 	return err
 }
 
-func (manager *containerManager) StopContainer(ctx context.Context, container v1.Container) error {
+func (manager *containerManager) StopContainer(ctx context.Context, container *v1.Container) error {
 	baseContainer, err := manager.client.LoadContainer(ctx, container.ID)
 
 	if err != nil {
@@ -90,7 +94,7 @@ func (manager *containerManager) StopContainer(ctx context.Context, container v1
 	return nil
 }
 
-func (manager *containerManager) PauseContainer(ctx context.Context, container v1.Container) error {
+func (manager *containerManager) PauseContainer(ctx context.Context, container *v1.Container) error {
 	baseContainer, err := manager.client.LoadContainer(ctx, container.ID)
 
 	if err != nil {
@@ -106,7 +110,7 @@ func (manager *containerManager) PauseContainer(ctx context.Context, container v
 	return task.Pause(ctx)
 }
 
-func (manager *containerManager) ResumeContainer(ctx context.Context, container v1.Container) error {
+func (manager *containerManager) ResumeContainer(ctx context.Context, container *v1.Container) error {
 	baseContainer, err := manager.client.LoadContainer(ctx, container.ID)
 
 	if err != nil {
@@ -121,7 +125,7 @@ func (manager *containerManager) ResumeContainer(ctx context.Context, container 
 	return task.Resume(ctx)
 }
 
-func (manager *containerManager) RemoveContainer(ctx context.Context, container v1.Container) error {
+func (manager *containerManager) RemoveContainer(ctx context.Context, container *v1.Container) error {
 	manager.StopContainer(ctx, container)
 
 	err := manager.client.ContainerService().Delete(ctx, container.ID)
@@ -133,8 +137,10 @@ func (manager *containerManager) RemoveContainer(ctx context.Context, container 
 	return nil
 }
 
-func (manager *containerManager) ListContainers(ctx context.Context) ([]containerd.Container, error) {
-	return manager.client.Containers(ctx)
+func (manager *containerManager) ListContainers(ctx context.Context) ([]*v1.Container, error) {
+	// do we really need this?
+
+	return nil, nil
 }
 
 func (manager *containerManager) ContainerStatus(ctx context.Context, containerID string) (containerd.Status, error) {

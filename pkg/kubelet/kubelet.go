@@ -1,20 +1,37 @@
 package kubelet
 
 import (
-	clientset "minik8s.com/minik8s/pkg/client"
-	"minik8s.com/minik8s/pkg/kubelet/container"
-	pod "minik8s.com/minik8s/pkg/kubelet/pod"
-	kubetypes "minik8s.com/minik8s/pkg/kubelet/types"
+	"net"
+	"net/http"
+	"os"
+
+	"k8s.io/klog/v2"
+	"minik8s.com/minik8s/pkg/kubelet/pod"
+
+	kubeconfig "minik8s.com/minik8s/pkg/kubelet/apis/config"
+
+	"minik8s.com/minik8s/pkg/kubelet/server"
 )
 
-type kuberlet struct {
-	hostname string
+type Kubelet struct {
+	nodeName string
 
-	nodeName kubetypes.NodeName
+	podManager pod.PodManager
+}
 
-	kubeClient      clientset.Interface
-	heartbeatClient clientset.Interface
+func (kl *Kubelet) ListenAndServe(kubeCfg *kubeconfig.KubeletConfiguration) {
+	address  := kubeCfg.Address
+	port := kubeCfg.Port
 
-	podManager       pod.Manager
-	containerManager container.Manager
+	handler := server.NewServer()
+
+	s := &http.Server{
+		Addr: net.JoinHostPort(address, port),
+		Handler: &handler,
+	}
+
+	if err := s.ListenAndServe(); err != nil {
+		klog.Errorln(err, "Failed to listen and serve")
+		os.Exit(1)
+	}
 }

@@ -1,8 +1,14 @@
 package pod
 
-import v1 "minik8s.com/minik8s/pkg/api/v1"
+import (
+	"context"
 
-type Manager interface {
+	"k8s.io/klog/v2"
+	v1 "minik8s.com/minik8s/pkg/api/v1"
+	"minik8s.com/minik8s/pkg/kubelet/container"
+)
+
+type PodManager interface {
 	GetPods() []*v1.Pod
 
 	GetPodByName(podFullName string) (*v1.Pod, bool)
@@ -23,13 +29,22 @@ type podManager struct {
 
 	podByName map[string]*v1.Pod
 
+	containerManager container.ContainerManager
+
 }
 
-func NewPodManager() Manager {
+func NewPodManager() PodManager {
 	pm := &podManager{}
 	pm.podByUID = make(map[v1.UID]*v1.Pod)
 	pm.podByName = make(map[string]*v1.Pod)
 
+	newContainerManager,err := container.NewContainerManager("")
+
+	if err != nil {
+		klog.Errorln(err)
+	}
+
+	pm.containerManager = newContainerManager
 	return pm
 }
 
@@ -55,15 +70,78 @@ func (pm *podManager) GetPodByUID(UID v1.UID) (*v1.Pod, bool) {
 	return pod, ok
 }
 
+// there is only one namespace named "default"
 func (pm *podManager) AddPod(pod *v1.Pod) {
-	
+	if pod.UID == "" {
+		klog.Errorln("pod UID is empty")
+		return
+	}
+
+	if _, ok := pm.podByUID[pod.UID]; ok {
+		klog.Errorln("duplicated pod UID: %s", pod.UID)
+		return
+	}
+
+	if dupPod, ok := pm.podByName[pod.Name]; ok && dupPod.Namespace == pod.Namespace {
+		klog.Errorln("duplicated pod name: %s in namespace: %s", pod.Name, pod.Namespace)
+		return
+	}
+
+	pm.podByUID[pod.UID] = pod
+	pm.podByName[pod.Name] = pod
+
+	for _, container := range pod.Spec.Containers {
+		err := pm.containerManager.CreateContainer(context.TODO(), container)
+
+		if err != nil {
+			klog.Errorln(err)
+			return
+		}
+	}
 }
 
 func (pm *podManager) UpdatePod(pod *v1.Pod) {
+	if pod.UID == "" {
+		klog.Errorln("pod UID is empty")
+		return
+	}
 
+	oldPod, ok := pm.podByUID[pod.UID]
+
+	if !ok {
+		klog.Errorln("Pod doesn't exist, UID: %s", pod.UID)
+		return
+	}
+
+	delete(pm.podByName, oldPod.Name)
+	pm.podByName[pod.Name] = pod
+	pm.podByUID[pod.UID] = pod
+
+	for _, container := range oldPod.Spec.Containers {
+		pm.containerManager.RemoveContainer(context.TODO(), container)
+	}
+
+	for _, container := range pod.Spec.Containers {
+		err := pm.containerManager.CreateContainer(context.TODO(), container)
+
+		if err != nil {
+			klog.Errorln(err)
+			return
+		}
+	}
 }
 
 func (pm *podManager) DeletePod(pod *v1.Pod) {
+	if pod.UID == "" {
+		klog.Errorln("pod UID is empty")
+		return
+	}
 
+	for _, container := range pod.Spec.Containers {
+		pm.containerManager.RemoveContainer(context.TODO(), container)
+	}
+
+	delete(pm.podByName, pod.Name)
+	delete(pm.podByUID, pod.UID)
 }
 
