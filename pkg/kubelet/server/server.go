@@ -3,50 +3,67 @@ package server
 import (
 	"net/http"
 
-	restful "github.com/emicklei/go-restful/v3"
-	"k8s.io/apimachinery/pkg/util/sets"
+	"github.com/gin-gonic/gin"
 	"minik8s.com/minik8s/pkg/api/v1"
 )
 
-// some kubelet interfaces for Restful service
-type HostInterface interface {
-	GetPods() []*v1.Pod
-	GetPodByName(namespaces, name string) (*v1.Pod, bool)
+type HandlerInterface interface {
+	GetPods() ([]*v1.Pod, error)
+	GetPodByUID(UID v1.UID) (v1.Pod, error)
 
+	CreatePod(pod v1.Pod) (v1.Pod, error)
 }
 
-type Server struct {
-	host HostInterface
-	metricsMethodBuckets sets.String
-	restfulContainer restful.Container
+func InstallDefaultHandlers(server *gin.Engine, handler HandlerInterface) {
+	server.GET("/pods", func(ctx *gin.Context) {
+		getAllPods(ctx, handler)
+	})
+
+	server.GET("/pods/:UID", func(ctx *gin.Context) {
+		getPodByUID(ctx, handler)
+	})
+
+	server.PUT("/pods", func(ctx *gin.Context) {
+		createPod(ctx, handler)
+	})
 }
 
-func NewServer() Server  {
-	server := Server{restfulContainer: *restful.NewContainer()}
+func getAllPods(ctx *gin.Context, handler HandlerInterface) {
+	pods, err := handler.GetPods()
 
-	server.InstallDefaultHandlers()
+	if err != nil {
+		ctx.IndentedJSON(http.StatusNotFound, gin.H{"message": err})
+		return
+	}
 
-	return server
+	ctx.IndentedJSON(http.StatusOK, pods)
 }
 
-// to encode/decode 
-func (s *Server) getPods(request *restful.Request, response *restful.Response) {
-	s.host.GetPods()
+func getPodByUID(ctx *gin.Context, handler HandlerInterface) {
+	pod, err := handler.GetPodByUID(v1.UID(ctx.Param("UID")))
+
+	if err != nil {
+		ctx.IndentedJSON(http.StatusNotFound, gin.H{"message": err})
+		return
+	}
+
+	ctx.IndentedJSON(http.StatusOK, pod)
 }
 
-func (s *Server) InstallDefaultHandlers() {
-	s.metricsMethodBuckets.Insert("pods")
-	ws := new(restful.WebService)
+func createPod(ctx *gin.Context, handler HandlerInterface){
+	var pod v1.Pod
 
-	ws.Path("/pods")
-	ws.Produces(restful.MIME_JSON)
+	if err := ctx.BindJSON(&pod); err != nil {
+		ctx.IndentedJSON(http.StatusBadRequest, gin.H{"message": "illegal request body"})
+		return
+	}
 
-	ws.Route(ws.GET("").To(s.getPods).Operation("getPods"))
+	pod, err := handler.CreatePod(pod)
 
-	s.restfulContainer.Add(ws)
+	if (err != nil) {
+		ctx.IndentedJSON(http.StatusBadRequest, gin.H{"message": err})
+		return
+	}
 
-}
-
-func (s *Server) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-
+	ctx.IndentedJSON(http.StatusCreated, pod)
 }
