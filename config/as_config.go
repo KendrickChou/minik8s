@@ -12,3 +12,10 @@ const (
 	AS_OP_WATCH_String  = "POST"
 	AS_OP_ERROR_String  = "ERROR"
 )
+
+const (
+	AC_ServerAddr = "http://127.0.0.1"
+	AC_ServerPort = 8080
+
+	AC_WatchServices_Path = "/watch/services"
+)

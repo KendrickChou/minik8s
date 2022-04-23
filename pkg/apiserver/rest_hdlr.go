@@ -47,7 +47,7 @@ func handlePostService(c *gin.Context) {
 	if err != nil {
 		c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
 	} else {
-		c.JSON(200, gin.H{"status": "OK"})
+		c.JSON(200, gin.H{"status": "OK", "id": name})
 	}
 }
 
@@ -120,13 +120,21 @@ func handleWatchService(c *gin.Context) {
 	} else {
 		wch, cancel := etcdWatch("/minik8s/service")
 		flusher, _ := c.Writer.(http.Flusher)
-		for kv := range wch {
-			_, err := fmt.Fprintf(c.Writer, "watch result key: %v, value: %v\n", kv.Key, kv.Value)
-			if err != nil {
+		for {
+			select {
+			case <-c.Request.Context().Done():
+				klog.Infof("connection closed, cancel watch task...\n")
 				cancel()
 				return
+			case kv := <-wch:
+				_, err := fmt.Fprintf(c.Writer, "watch result key: %v, value: %v\n", kv.Key, kv.Value)
+				if err != nil {
+					klog.Infof("fail to write to client, cancel watch task...\n")
+					cancel()
+					return
+				}
+				flusher.Flush()
 			}
-			flusher.Flush()
 		}
 	}
 }
@@ -160,7 +168,7 @@ func handlePostPod(c *gin.Context) {
 	if err != nil {
 		c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
 	} else {
-		c.JSON(200, gin.H{"status": "OK"})
+		c.JSON(200, gin.H{"status": "OK", "id": name})
 	}
 }
 
@@ -203,13 +211,21 @@ func handleDeletePod(c *gin.Context) {
 func handleWatchPods(c *gin.Context) {
 	wch, cancel := etcdWatchPrefix("/minik8s/pod")
 	flusher, _ := c.Writer.(http.Flusher)
-	for kv := range wch {
-		_, err := fmt.Fprintf(c.Writer, "watch result key: %v, value: %v\n", kv.Key, kv.Value)
-		if err != nil {
+	for {
+		select {
+		case <-c.Request.Context().Done():
+			klog.Infof("connection closed, cancel watch task...\n")
 			cancel()
 			return
+		case kv := <-wch:
+			_, err := fmt.Fprintf(c.Writer, "watch result key: %v, value: %v\n", kv.Key, kv.Value)
+			if err != nil {
+				klog.Infof("fail to write to client, cancel watch task...\n")
+				cancel()
+				return
+			}
+			flusher.Flush()
 		}
-		flusher.Flush()
 	}
 }
 
@@ -223,13 +239,21 @@ func handleWatchPod(c *gin.Context) {
 	} else {
 		wch, cancel := etcdWatch("/minik8s/pod")
 		flusher, _ := c.Writer.(http.Flusher)
-		for kv := range wch {
-			_, err := fmt.Fprintf(c.Writer, "watch result key: %v, value: %v\n", kv.Key, kv.Value)
-			if err != nil {
+		for {
+			select {
+			case <-c.Request.Context().Done():
+				klog.Infof("connection closed, cancel watch task...\n")
 				cancel()
 				return
+			case kv := <-wch:
+				_, err := fmt.Fprintf(c.Writer, "watch result key: %v, value: %v\n", kv.Key, kv.Value)
+				if err != nil {
+					klog.Infof("fail to write to client, cancel watch task...\n")
+					cancel()
+					return
+				}
+				flusher.Flush()
 			}
-			flusher.Flush()
 		}
 	}
 }
