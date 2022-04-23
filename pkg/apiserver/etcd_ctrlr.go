@@ -102,19 +102,21 @@ func etcdDel(key string) error {
 	return err
 }
 
-func etcdWatch(key string) chan KV {
+func etcdWatch(key string) (chan KV, context.CancelFunc) {
 	ch := make(chan KV)
-	rch := etcdClient.Watch(context.Background(), key)
+	ctx, cancel := context.WithCancel(context.Background())
+	rch := etcdClient.Watch(ctx, key)
 	go startWatch(ch, rch)
 	klog.Infof("etcd watch start key: %v\n", key)
-	return ch
+	return ch, cancel
 }
-func etcdWatchPrefix(key string) chan KV {
+func etcdWatchPrefix(key string) (chan KV, context.CancelFunc) {
 	ch := make(chan KV)
-	rch := etcdClient.Watch(context.Background(), key, clientv3.WithPrefix())
+	ctx, cancel := context.WithCancel(context.Background())
+	rch := etcdClient.Watch(ctx, key, clientv3.WithPrefix())
 	go startWatch(ch, rch)
 	klog.Infof("etcd watch start prefix: %v\n", key)
-	return ch
+	return ch, cancel
 }
 
 func startWatch(ch chan KV, rch clientv3.WatchChan) {

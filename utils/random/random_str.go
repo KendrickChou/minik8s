@@ -5,8 +5,8 @@ import (
 	"time"
 )
 
-//generate random string with a-zA-Z0-9
-func RandomString(n int) string {
+// String : generate random string with a-zA-Z0-9
+func String(n int) string {
 	rand.Seed(time.Now().Unix())
 	var str []byte
 	i := 0

@@ -11,12 +11,14 @@ package apiserver
 import (
 	"fmt"
 	"github.com/gin-gonic/gin"
+	"k8s.io/klog"
 	"minik8s.com/minik8s/config"
 	"minik8s.com/minik8s/utils/random"
 	"net/http"
 	"strconv"
 )
 
+//------------ Service Rest API -----------
 func handleGetServices(c *gin.Context) {
 	services, _ := etcdGetPrefix("/minik8s/service")
 	c.JSON(200, gin.H{
@@ -39,7 +41,7 @@ func handleGetService(c *gin.Context) {
 func handlePostService(c *gin.Context) {
 	buf := make([]byte, c.Request.ContentLength)
 	_, err := c.Request.Body.Read(buf)
-	name := "S" + strconv.Itoa(objCount) + "-" + random.RandomString(8)
+	name := "S" + strconv.Itoa(objCount) + "-" + random.String(8)
 	objCount++
 	err = etcdPut("/minik8s/service/"+name, string(buf))
 	if err != nil {
@@ -88,14 +90,23 @@ func handleDeleteService(c *gin.Context) {
 }
 
 func handleWatchServices(c *gin.Context) {
-	wch := etcdWatchPrefix("/minik8s/service")
+	wch, cancel := etcdWatchPrefix("/minik8s/service")
 	flusher, _ := c.Writer.(http.Flusher)
-	for kv := range wch {
-		_, err := fmt.Fprintf(c.Writer, "watch result key: %v, value: %v\n", kv.Key, kv.Value)
-		if err != nil {
+	for {
+		select {
+		case <-c.Request.Context().Done():
+			klog.Infof("connection closed, cancel watch task...\n")
+			cancel()
 			return
+		case kv := <-wch:
+			_, err := fmt.Fprintf(c.Writer, "watch result key: %v, value: %v\n", kv.Key, kv.Value)
+			if err != nil {
+				klog.Infof("fail to write to client, cancel watch task...\n")
+				cancel()
+				return
+			}
+			flusher.Flush()
 		}
-		flusher.Flush()
 	}
 }
 
@@ -107,11 +118,12 @@ func handleWatchService(c *gin.Context) {
 	} else if kv.ty == config.AS_OP_ERROR_String {
 		c.JSON(404, gin.H{"status": "ERR", "error": "No such service"})
 	} else {
-		wch := etcdWatch("/minik8s/service")
+		wch, cancel := etcdWatch("/minik8s/service")
 		flusher, _ := c.Writer.(http.Flusher)
 		for kv := range wch {
 			_, err := fmt.Fprintf(c.Writer, "watch result key: %v, value: %v\n", kv.Key, kv.Value)
 			if err != nil {
+				cancel()
 				return
 			}
 			flusher.Flush()
@@ -119,7 +131,7 @@ func handleWatchService(c *gin.Context) {
 	}
 }
 
-//下面的还没写完
+//------------ Pod Rest API -----------
 func handleGetPods(c *gin.Context) {
 	services, _ := etcdGetPrefix("/minik8s/pod")
 	c.JSON(200, gin.H{
@@ -142,7 +154,7 @@ func handleGetPod(c *gin.Context) {
 func handlePostPod(c *gin.Context) {
 	buf := make([]byte, c.Request.ContentLength)
 	_, err := c.Request.Body.Read(buf)
-	name := "P" + strconv.Itoa(objCount) + "-" + random.RandomString(8)
+	name := "P" + strconv.Itoa(objCount) + "-" + random.String(8)
 	objCount++
 	err = etcdPut("/minik8s/service/"+name, string(buf))
 	if err != nil {
@@ -189,11 +201,12 @@ func handleDeletePod(c *gin.Context) {
 }
 
 func handleWatchPods(c *gin.Context) {
-	wch := etcdWatchPrefix("/minik8s/pod")
+	wch, cancel := etcdWatchPrefix("/minik8s/pod")
 	flusher, _ := c.Writer.(http.Flusher)
 	for kv := range wch {
 		_, err := fmt.Fprintf(c.Writer, "watch result key: %v, value: %v\n", kv.Key, kv.Value)
 		if err != nil {
+			cancel()
 			return
 		}
 		flusher.Flush()
@@ -208,11 +221,12 @@ func handleWatchPod(c *gin.Context) {
 	} else if kv.ty == config.AS_OP_ERROR_String {
 		c.JSON(404, gin.H{"status": "ERR", "error": "No such service"})
 	} else {
-		wch := etcdWatch("/minik8s/pod")
+		wch, cancel := etcdWatch("/minik8s/pod")
 		flusher, _ := c.Writer.(http.Flusher)
 		for kv := range wch {
 			_, err := fmt.Fprintf(c.Writer, "watch result key: %v, value: %v\n", kv.Key, kv.Value)
 			if err != nil {
+				cancel()
 				return
 			}
 			flusher.Flush()
