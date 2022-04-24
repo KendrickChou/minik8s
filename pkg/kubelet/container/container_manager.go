@@ -3,178 +3,169 @@ package container
 import (
 	"context"
 	"errors"
-	"fmt"
-	"syscall"
+	"io"
+	"io/ioutil"
+	"os"
 	"time"
 
-	"github.com/containerd/containerd"
-	"github.com/containerd/containerd/cio"
-	"github.com/containerd/containerd/namespaces"
-	"github.com/containerd/containerd/oci"
-	"github.com/containerd/containerd/pkg/cri"
+	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/mount"
+	dockerctnr "github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/client"
 	"k8s.io/klog/v2"
+
 	v1 "minik8s.com/minik8s/pkg/api/v1"
 )
 
 type ContainerManager interface {
-	CreateContainer(ctx context.Context, container *v1.Container) error
+	CreateContainer(ctx context.Context, container *v1.Container) (string, error)
 	StartContainer(ctx context.Context, container *v1.Container) error
+	RestartContainer(ctx context.Context, container *v1.Container) error
 	StopContainer(ctx context.Context, container *v1.Container) error
 	PauseContainer(ctx context.Context, container *v1.Container) error
 	ResumeContainer(ctx context.Context, container *v1.Container) error
 	RemoveContainer(ctx context.Context, container *v1.Container) error
 	ListContainers(ctx context.Context) ([]*v1.Container, error)
-	ContainerStatus(ctx context.Context, containerID string) (containerd.Status, error)
+	ContainerStatus(ctx context.Context, containerID string) (string, error)
 }
 
 type containerManager struct {
-	client *containerd.Client
+	dockerClient *client.Client
 }
 
-func NewContainerManager(address string) (ContainerManager, error) {
-	client, err := containerd.New(address)
+const (
+	restartTimeout time.Duration = time.Duration(time.Second * 3)
+)
 
-	containerManager := &containerManager{
-		client: client,
-	}
+func NewContainerManager() (ContainerManager, error) {
 
-	return containerManager, err
+	cli, err := client.NewClientWithOpts(client.FromEnv)
+
+	cm := &containerManager{dockerClient: cli}
+
+	return cm, err
 }
 
-func (manager *containerManager) CreateContainer(ctx context.Context, container *v1.Container) error {
+func (manager *containerManager) CreateContainer(ctx context.Context, container *v1.Container) (string, error) {
+	klog.Infof("Create Container %v", container.Name)
 
-	var opts []containerd.NewContainerOpts
-
-	fmt.Println("container: ", container)
+	containerConfig := &dockerctnr.Config{}
+	hostConfig := &dockerctnr.HostConfig{}
 
 	switch {
-	case container.Namespace != "":
-		ctx = namespaces.WithNamespace(ctx, container.Namespace)
-		fallthrough
 	case container.Image != "":
-		image, err := manager.client.Pull(ctx, container.Image, containerd.WithPullUnpack)
-		if err != nil {
-			return err
+		containerConfig.Image = container.Image
+		
+		switch container.ImagePullPolicy {
+		case v1.AlwaysImagePullPolicy:
+			out, err := manager.dockerClient.ImagePull(ctx, containerConfig.Image, types.ImagePullOptions{})
+				
+			if err != nil {
+				return "", err
+			}
+			
+			defer out.Close()
+			io.Copy(os.Stdout, out)
+
+		case v1.IfNotPresentImagePullPolicy:
+			var isExist bool = false
+			imageList, _ := manager.dockerClient.ImageList(ctx, types.ImageListOptions{})
+			for _, i := range imageList {
+				for _, tag := range i.RepoTags {
+					if tag == containerConfig.Image {
+						isExist = true
+						break
+					}
+				}
+
+				if isExist {
+					break
+				}
+			}
+			if !isExist {
+				out, err := manager.dockerClient.ImagePull(ctx, containerConfig.Image, types.ImagePullOptions{})
+				
+				if err != nil {
+					return "", err
+				}
+				
+				defer out.Close()
+
+				io.Copy(os.Stdout, out)
+			}
+		case v1.NeverPullPolicy:
+			// do nothing
+		default:
+			return "", errors.New("Unknown Image Pull Policy")
 		}
-		opts = append(opts, containerd.WithImage(image))
-		opts = append(opts, containerd.WithNewSnapshot("hello-world-snapshot", image))
-		opts = append(opts, containerd.WithNewSpec(oci.WithImageConfig(image)))
+
+		fallthrough
+	case len(container.Command) != 0:
+		containerConfig.Cmd = append(containerConfig.Cmd, container.Command...)
+		fallthrough
+	case len(container.Entrypoint) != 0:
+		containerConfig.Entrypoint = append(containerConfig.Entrypoint, container.Entrypoint...)
+		fallthrough
+	case len(container.Env) != 0:
+		containerConfig.Env = append(containerConfig.Env, container.Env...)
+		fallthrough
+	case len(container.Mounts) != 0:
+		for _, m := range container.Mounts {
+			hostConfig.Mounts = append(hostConfig.Mounts, mount.Mount{
+				Type: mount.Type(m.Type),
+				Source: m.Source,
+				Target: m.Target,
+				Consistency: mount.Consistency(m.Consistency),
+			})
+		}
+		fallthrough
 	default:
 	}
 
-	cont, err := manager.client.NewContainer(ctx, container.Name, opts...)
+	body, err := manager.dockerClient.ContainerCreate(ctx, containerConfig, hostConfig, nil, nil, container.Name)
 
-	if err != nil {
-		klog.Error(err)
-		return err
-	}
-
-	task, err := cont.NewTask(ctx, cio.NewCreator(cio.WithStdio))
-
-	exitStatus, err := task.Wait(ctx)
-
-	err = task.Start(ctx)
-
-	if err != nil {
-		klog.Error(err)
-		return err
-	}
-
-	time.Sleep(3 * time.Second)
-
-	task.Kill(ctx, syscall.SIGTERM)
-
-	staus := <-exitStatus
-
-	klog.Info(staus)
-	return err
+	return body.ID, err
 }
 
 func (manager *containerManager) StartContainer(ctx context.Context, container *v1.Container) error {
-	baseContainer, err := manager.client.LoadContainer(ctx, container.ID)
+	err := manager.dockerClient.ContainerStart(ctx, container.ID, types.ContainerStartOptions{})
 
-	if err != nil {
-		return err
-	}
+	out, err := manager.dockerClient.ContainerLogs(ctx, container.ID, types.ContainerLogsOptions{
+																			ShowStdout: true,
+																			ShowStderr: true,})
+	defer out.Close()
 
-	// we can only run a single task at a container
-	if task, _ := baseContainer.Task(ctx, nil); task != nil {
-		return errors.New("Task " + container.ID + " already started")
-	}
+	io.Copy(os.Stdout, out)
 
-	// if opts is empty, use standard in/out
+	return err
+}
 
-	// if len(opts) == 0 {
-	// 	opts = append(opts, cio.WithStdio)
-	// }
-
-	// we can start a user defined binary when a new task is created
-	_, err = baseContainer.NewTask(ctx, cio.NewCreator(cio.WithStdio))
-
+func (manager *containerManager) RestartContainer(ctx context.Context, container *v1.Container) error {
+	err := manager.dockerClient.ContainerRestart(ctx, container.ID, nil)
 	return err
 }
 
 func (manager *containerManager) StopContainer(ctx context.Context, container *v1.Container) error {
-	baseContainer, err := manager.client.LoadContainer(ctx, container.ID)
-
-	if err != nil {
-		return err
-	}
-
-	task, _ := baseContainer.Task(ctx, nil)
-	if task == nil {
-		return errors.New("Task " + container.ID + " does not exist")
-	}
-
-	err = task.Kill(ctx, 9, containerd.WithKillAll)
-
-	if err != nil {
-		return err
-	}
-
-	return nil
+	klog.Infof("Stop Container %s", container.Name)
+	err := manager.dockerClient.ContainerStop(ctx, container.ID, nil)
+	return err
 }
 
 func (manager *containerManager) PauseContainer(ctx context.Context, container *v1.Container) error {
-	baseContainer, err := manager.client.LoadContainer(ctx, container.ID)
-
-	if err != nil {
-		return err
-	}
-
-	task, _ := baseContainer.Task(ctx, nil)
-	if task == nil {
-		return errors.New("Task " + container.ID + " does not exist")
-	}
-
-	return task.Pause(ctx)
+	err := manager.dockerClient.ContainerPause(ctx, container.ID)
+	return err
 }
 
 func (manager *containerManager) ResumeContainer(ctx context.Context, container *v1.Container) error {
-	baseContainer, err := manager.client.LoadContainer(ctx, container.ID)
-
-	if err != nil {
-		return err
-	}
-
-	task, _ := baseContainer.Task(ctx, nil)
-	if task == nil {
-		return errors.New("Task " + container.ID + " does not exist")
-	}
-
-	return task.Resume(ctx)
+	err := manager.dockerClient.ContainerUnpause(ctx, container.ID)
+	return err
 }
 
 func (manager *containerManager) RemoveContainer(ctx context.Context, container *v1.Container) error {
-	manager.StopContainer(ctx, container)
+	klog.Infof("Remove Container %s", container.Name)
 
-	err := manager.client.ContainerService().Delete(ctx, container.ID)
-
-	if err != nil {
-		return err
-	}
-
-	return nil
+	err := manager.dockerClient.ContainerRemove(ctx, container.ID, types.ContainerRemoveOptions{})
+	return err
 }
 
 func (manager *containerManager) ListContainers(ctx context.Context) ([]*v1.Container, error) {
@@ -183,18 +174,10 @@ func (manager *containerManager) ListContainers(ctx context.Context) ([]*v1.Cont
 	return nil, nil
 }
 
-func (manager *containerManager) ContainerStatus(ctx context.Context, containerID string) (containerd.Status, error) {
-	baseContainer, err := manager.client.LoadContainer(ctx, containerID)
+func (manager *containerManager) ContainerStatus(ctx context.Context, containerID string) (string, error) {
+	resp, err := manager.dockerClient.ContainerStats(ctx, containerID, true)
+	defer resp.Body.Close()
 
-	if err != nil {
-		return containerd.Status{}, err
-	}
-
-	task, err := baseContainer.Task(ctx, nil)
-
-	if err != nil {
-		return containerd.Status{}, err
-	}
-
-	return task.Status(ctx)
+	stats, err := ioutil.ReadAll(resp.Body)
+	return string(stats), err
 }

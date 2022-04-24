@@ -1,15 +1,12 @@
 package main
 
 import (
-	"k8s.io/klog/v2"
 	v1 "minik8s.com/minik8s/pkg/api/v1"
 	"minik8s.com/minik8s/pkg/kubelet/pod"
 )
 
 func main() {
 	podManager := pod.NewPodManager()
-
-	klog.Infoln("create pod manager ", podManager)
 
 	pod := &v1.Pod{
 		TypeMeta: v1.TypeMeta{
@@ -24,10 +21,25 @@ func main() {
 		Spec: v1.PodSpec{
 			Containers: []*v1.Container{
 				{
-					Name:      "myFirstContainer",
-					Namespace: "example",
-					ID:        "123456789",
-					Image:     "docker.io/library/hello-world:latest",
+					Name:            "myFirstContainer",
+					Namespace:       "example",
+					Image:           "alpine:latest",
+					ImagePullPolicy: "IfNotPresent",
+					Entrypoint:      []string{"/bin/sh", "-c", "cat /home/mountdir/hello.txt"},
+					Mounts: []v1.Mount{
+						{
+							Type:   v1.TypeBind,
+							Source: "/home/kendrick/mountdir",
+							Target: "/home/mountdir",
+						},
+					},
+				},
+				{
+					Name:            "mySecondContainer",
+					Namespace:       "example",
+					Image:           "alpine:latest",
+					ImagePullPolicy: "IfNotPresent",
+					Entrypoint:      []string{"echo", "hello world 2"},
 				},
 			},
 		},
@@ -35,4 +47,6 @@ func main() {
 	}
 
 	podManager.AddPod(pod)
+
+	podManager.DeletePod(pod)
 }

@@ -39,7 +39,7 @@ func NewPodManager() PodManager {
 	pm.podByUID = make(map[v1.UID]*v1.Pod)
 	pm.podByName = make(map[string]*v1.Pod)
 
-	newContainerManager,err := container.NewContainerManager("/run/containerd/containerd.sock")
+	newContainerManager,err := container.NewContainerManager()
 
 	if err != nil {
 		klog.Errorln(err)
@@ -73,6 +73,8 @@ func (pm *podManager) GetPodByUID(UID v1.UID) (v1.Pod, bool) {
 
 // there is only one namespace named "default"
 func (pm *podManager) AddPod(pod *v1.Pod) error {
+	klog.Infof("Add Pod %s", pod.Name)
+
 	if pod.UID == "" {
 		err := "pod UID is empty"
 
@@ -98,11 +100,21 @@ func (pm *podManager) AddPod(pod *v1.Pod) error {
 	pm.podByName[pod.Name] = pod
 
 	for _, container := range pod.Spec.Containers {
-		err := pm.containerManager.CreateContainer(context.TODO(), container)
+		container.Name = pod.Name + "-" + container.Name
+		id, err := pm.containerManager.CreateContainer(context.TODO(), container)
 
 		if err != nil {
 			klog.Errorln(err)
-			return err
+			continue
+		}
+
+		container.ID = id
+
+		err = pm.containerManager.StartContainer(context.TODO(), container)
+
+		
+		if err != nil {
+			klog.Errorln(err)
 		}
 	}
 
@@ -131,23 +143,43 @@ func (pm *podManager) UpdatePod(pod *v1.Pod) {
 	}
 
 	for _, container := range pod.Spec.Containers {
-		err := pm.containerManager.CreateContainer(context.TODO(), container)
+		id, err := pm.containerManager.CreateContainer(context.TODO(), container)
 
 		if err != nil {
 			klog.Errorln(err)
-			return
+			continue
+		}
+
+		container.ID = id
+
+		err = pm.containerManager.StartContainer(context.TODO(), container)
+
+		if err != nil {
+			klog.Errorln(err)
 		}
 	}
 }
 
 func (pm *podManager) DeletePod(pod *v1.Pod) {
+	klog.Infof("Delete Pod %s", pod.Name)
+
 	if pod.UID == "" {
 		klog.Errorln("pod UID is empty")
 		return
 	}
 
 	for _, container := range pod.Spec.Containers {
-		pm.containerManager.RemoveContainer(context.TODO(), container)
+		err := pm.containerManager.StopContainer(context.TODO(), container)
+
+		if err != nil {
+			klog.Errorf("Remove Container %s: %s", container.Name, err)
+		}
+
+		err = pm.containerManager.RemoveContainer(context.TODO(), container)
+
+		if err != nil {
+			klog.Errorf("Remove Container %s: %s", container.Name, err)
+		}
 	}
 
 	delete(pm.podByName, pod.Name)

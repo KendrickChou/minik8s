@@ -58,18 +58,26 @@ type Container struct {
 
 	Image string `json:"Image,omitempty"`
 
-	// Entrypoint array. Not executed within a shell.
-	// The container image's ENTRYPOINT is used if this is not provided.
+	//"Always" means that kubelet always attempts to pull the latest image. Container will fail If the pull fails.
+	//"IfNotPresent" means that kubelet pulls if the image isn't present on disk. Container will fail if the image isn't present and the pull fails.
+	//"Never" means that kubelet never pulls an image, but only uses a local image. Container will fail if the image isn't present
+	//default: IfNotPresent
+	ImagePullPolicy string `json:"ImagePolicy,omitempty" default:"IfNotPresent"`
+
+	// Command to run when starting the container
 	Command []string `json:"Command,omitempty"`
 
-	// Arguments to the entrypoint.
-	// The container image's CMD is used if this is not provided.
-	Args []string `json:"Args,omitempty"`
+	Entrypoint []string `json:"Entrypoint,omitempty"`
 
 	// Container's working directory.
 	// If not specified, the container runtime's default will be used, which
 	// might be configured in the container image.
 	WorkingDir string `json:"WorkingDir,omitempty"`
+
+	Env []string `json:"Env,omitempty"`
+
+	// mount volumes
+	Mounts []Mount `json:"Mounts,omitempty"`
 }
 
 type ContainerStatus struct {
@@ -77,3 +85,30 @@ type ContainerStatus struct {
 
 	State ContainerState `json:"State,omitempty"`
 }
+
+type Mount struct {
+	Type        string `json:"MountType,omitempty"`
+	Source      string `json:"MountSource,omitempty"`
+	Target      string `json:"MountTarget,omitempty"`
+	Consistency string `json:"MountConsistency,omitempty"`
+}
+
+const (
+	AlwaysImagePullPolicy       string = "Always"
+	IfNotPresentImagePullPolicy string = "IfNotPresent"
+	NeverPullPolicy             string = "Never"
+
+	// TypeBind is the type for mounting host dir
+	TypeBind string = "bind"
+	// TypeVolume is the type for remote storage volumes
+	TypeVolume string = "volume"
+
+	// ConsistencyFull guarantees bind mount-like consistency
+	ConsistencyFull string = "consistent"
+	// ConsistencyCached mounts can cache read data and FS structure
+	ConsistencyCached string = "cached"
+	// ConsistencyDelegated mounts can cache read and written data and structure
+	ConsistencyDelegated string = "delegated"
+	// ConsistencyDefault provides "consistent" behavior unless overridden
+	ConsistencyDefault string = "default"
+)
