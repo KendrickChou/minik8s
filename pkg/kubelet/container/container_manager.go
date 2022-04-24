@@ -3,9 +3,16 @@ package container
 import (
 	"context"
 	"errors"
+	"fmt"
+	"syscall"
+	"time"
 
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/cio"
+	"github.com/containerd/containerd/namespaces"
+	"github.com/containerd/containerd/oci"
+	"github.com/containerd/containerd/pkg/cri"
+	"k8s.io/klog/v2"
 	v1 "minik8s.com/minik8s/pkg/api/v1"
 )
 
@@ -38,14 +45,48 @@ func (manager *containerManager) CreateContainer(ctx context.Context, container 
 
 	var opts []containerd.NewContainerOpts
 
+	fmt.Println("container: ", container)
+
 	switch {
+	case container.Namespace != "":
+		ctx = namespaces.WithNamespace(ctx, container.Namespace)
+		fallthrough
 	case container.Image != "":
-		opts = append(opts, containerd.WithImageName(container.Image))
+		image, err := manager.client.Pull(ctx, container.Image, containerd.WithPullUnpack)
+		if err != nil {
+			return err
+		}
+		opts = append(opts, containerd.WithImage(image))
+		opts = append(opts, containerd.WithNewSnapshot("hello-world-snapshot", image))
+		opts = append(opts, containerd.WithNewSpec(oci.WithImageConfig(image)))
 	default:
 	}
 
-	_, err := manager.client.NewContainer(ctx, container.ID, opts...)
+	cont, err := manager.client.NewContainer(ctx, container.Name, opts...)
 
+	if err != nil {
+		klog.Error(err)
+		return err
+	}
+
+	task, err := cont.NewTask(ctx, cio.NewCreator(cio.WithStdio))
+
+	exitStatus, err := task.Wait(ctx)
+
+	err = task.Start(ctx)
+
+	if err != nil {
+		klog.Error(err)
+		return err
+	}
+
+	time.Sleep(3 * time.Second)
+
+	task.Kill(ctx, syscall.SIGTERM)
+
+	staus := <-exitStatus
+
+	klog.Info(staus)
 	return err
 }
 
@@ -69,7 +110,7 @@ func (manager *containerManager) StartContainer(ctx context.Context, container *
 
 	// we can start a user defined binary when a new task is created
 	_, err = baseContainer.NewTask(ctx, cio.NewCreator(cio.WithStdio))
-	
+
 	return err
 }
 
@@ -100,7 +141,6 @@ func (manager *containerManager) PauseContainer(ctx context.Context, container *
 	if err != nil {
 		return err
 	}
-
 
 	task, _ := baseContainer.Task(ctx, nil)
 	if task == nil {
@@ -158,5 +198,3 @@ func (manager *containerManager) ContainerStatus(ctx context.Context, containerI
 
 	return task.Status(ctx)
 }
-
-

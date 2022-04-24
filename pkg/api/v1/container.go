@@ -52,6 +52,8 @@ type ContainerState struct {
 type Container struct {
 	Name string `json:"Name,omitempty"`
 
+	Namespace string `json:"Namespace,omitempty"`
+
 	ID string `json:"ID,omitempty"`
 
 	Image string `json:"Image,omitempty"`
@@ -68,7 +70,6 @@ type Container struct {
 	// If not specified, the container runtime's default will be used, which
 	// might be configured in the container image.
 	WorkingDir string `json:"WorkingDir,omitempty"`
-
 }
 
 type ContainerStatus struct {

@@ -1,4 +1,4 @@
-package pods_test
+package main
 
 import (
 	"k8s.io/klog/v2"
@@ -8,29 +8,30 @@ import (
 
 func main() {
 	podManager := pod.NewPodManager()
-	
+
+	klog.Infoln("create pod manager ", podManager)
+
 	pod := &v1.Pod{
-		v1.TypeMeta{
-			Kind: "pod",
+		TypeMeta: v1.TypeMeta{
+			Kind:       "pod",
 			APIVersion: "v1",
 		},
-		v1.ObjectMeta{
-			Name: "myFirstPod",
+		ObjectMeta: v1.ObjectMeta{
+			Name:      "myFirstPod",
 			Namespace: "default",
-			UID: "123456789",
+			UID:       "123456789",
 		},
-		v1.PodSpec{
+		Spec: v1.PodSpec{
 			Containers: []*v1.Container{
-				&v1.Container{
-					Name: "myFirstContainer",
-					ID: "123456789",
-					Image: "docker.io/library/hello-world",
+				{
+					Name:      "myFirstContainer",
+					Namespace: "example",
+					ID:        "123456789",
+					Image:     "docker.io/library/hello-world:latest",
 				},
 			},
 		},
-		v1.PodStauts{
-
-		},
+		Status: v1.PodStauts{},
 	}
 
 	podManager.AddPod(pod)

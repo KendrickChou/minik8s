@@ -39,7 +39,7 @@ func NewPodManager() PodManager {
 	pm.podByUID = make(map[v1.UID]*v1.Pod)
 	pm.podByName = make(map[string]*v1.Pod)
 
-	newContainerManager,err := container.NewContainerManager("")
+	newContainerManager,err := container.NewContainerManager("/run/containerd/containerd.sock")
 
 	if err != nil {
 		klog.Errorln(err)
