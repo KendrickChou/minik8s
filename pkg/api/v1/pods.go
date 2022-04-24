@@ -35,7 +35,7 @@ type Pod struct {
 
 	Spec PodSpec `json:"Spec,omitempty"`
 
-	Status PodStauts `json:"Status,omitempty"`
+	Status PodStatus `json:"Status,omitempty"`
 }
 
 type PodSpec struct {
@@ -44,7 +44,7 @@ type PodSpec struct {
 	RestartPolicy RestartPolicy `json:"RestartPolicy,omitempty"`
 }
 
-type PodStauts struct {
+type PodStatus struct {
 	Phase PodPhase `json:"Phase,omitempty"`
 
 	PodIP string `json:"PodIP,omitempty"`

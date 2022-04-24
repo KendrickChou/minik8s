@@ -1,6 +1,7 @@
 package main
 
 import (
+	"k8s.io/klog/v2"
 	v1 "minik8s.com/minik8s/pkg/api/v1"
 	"minik8s.com/minik8s/pkg/kubelet/pod"
 )
@@ -43,10 +44,14 @@ func main() {
 				},
 			},
 		},
-		Status: v1.PodStauts{},
+		Status: v1.PodStatus{},
 	}
 
 	podManager.AddPod(pod)
 
-	podManager.DeletePod(pod)
+	status, _ := podManager.PodStatus(pod.UID)
+
+	klog.Info(status)
+
+	podManager.DeletePod(pod.UID)
 }

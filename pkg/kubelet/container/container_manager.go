@@ -4,13 +4,12 @@ import (
 	"context"
 	"errors"
 	"io"
-	"io/ioutil"
 	"os"
 	"time"
 
 	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/api/types/mount"
 	dockerctnr "github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/client"
 	"k8s.io/klog/v2"
 
@@ -26,7 +25,7 @@ type ContainerManager interface {
 	ResumeContainer(ctx context.Context, container *v1.Container) error
 	RemoveContainer(ctx context.Context, container *v1.Container) error
 	ListContainers(ctx context.Context) ([]*v1.Container, error)
-	ContainerStatus(ctx context.Context, containerID string) (string, error)
+	ContainerStatus(ctx context.Context, containerID string) (*types.ContainerState, error)
 }
 
 type containerManager struct {
@@ -55,15 +54,15 @@ func (manager *containerManager) CreateContainer(ctx context.Context, container 
 	switch {
 	case container.Image != "":
 		containerConfig.Image = container.Image
-		
+
 		switch container.ImagePullPolicy {
 		case v1.AlwaysImagePullPolicy:
 			out, err := manager.dockerClient.ImagePull(ctx, containerConfig.Image, types.ImagePullOptions{})
-				
+
 			if err != nil {
 				return "", err
 			}
-			
+
 			defer out.Close()
 			io.Copy(os.Stdout, out)
 
@@ -84,11 +83,11 @@ func (manager *containerManager) CreateContainer(ctx context.Context, container 
 			}
 			if !isExist {
 				out, err := manager.dockerClient.ImagePull(ctx, containerConfig.Image, types.ImagePullOptions{})
-				
+
 				if err != nil {
 					return "", err
 				}
-				
+
 				defer out.Close()
 
 				io.Copy(os.Stdout, out)
@@ -112,9 +111,9 @@ func (manager *containerManager) CreateContainer(ctx context.Context, container 
 	case len(container.Mounts) != 0:
 		for _, m := range container.Mounts {
 			hostConfig.Mounts = append(hostConfig.Mounts, mount.Mount{
-				Type: mount.Type(m.Type),
-				Source: m.Source,
-				Target: m.Target,
+				Type:        mount.Type(m.Type),
+				Source:      m.Source,
+				Target:      m.Target,
 				Consistency: mount.Consistency(m.Consistency),
 			})
 		}
@@ -131,8 +130,8 @@ func (manager *containerManager) StartContainer(ctx context.Context, container *
 	err := manager.dockerClient.ContainerStart(ctx, container.ID, types.ContainerStartOptions{})
 
 	out, err := manager.dockerClient.ContainerLogs(ctx, container.ID, types.ContainerLogsOptions{
-																			ShowStdout: true,
-																			ShowStderr: true,})
+		ShowStdout: true,
+		ShowStderr: true})
 	defer out.Close()
 
 	io.Copy(os.Stdout, out)
@@ -174,10 +173,8 @@ func (manager *containerManager) ListContainers(ctx context.Context) ([]*v1.Cont
 	return nil, nil
 }
 
-func (manager *containerManager) ContainerStatus(ctx context.Context, containerID string) (string, error) {
-	resp, err := manager.dockerClient.ContainerStats(ctx, containerID, true)
-	defer resp.Body.Close()
+func (manager *containerManager) ContainerStatus(ctx context.Context, containerID string) (*types.ContainerState, error) {
+	cntr, err := manager.dockerClient.ContainerInspect(ctx, containerID)
 
-	stats, err := ioutil.ReadAll(resp.Body)
-	return string(stats), err
+	return cntr.State, err
 }
