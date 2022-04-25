@@ -29,7 +29,7 @@ type Container struct {
 	//"IfNotPresent" means that kubelet pulls if the image isn't present on disk. Container will fail if the image isn't present and the pull fails.
 	//"Never" means that kubelet never pulls an image, but only uses a local image. Container will fail if the image isn't present
 	//default: IfNotPresent
-	ImagePullPolicy string `json:"ImagePolicy,omitempty" default:"IfNotPresent"`
+	ImagePullPolicy string `json:"ImagePullPolicy,omitempty" default:"IfNotPresent"`
 
 	// Command to run when starting the container
 	Command []string `json:"Command,omitempty"`

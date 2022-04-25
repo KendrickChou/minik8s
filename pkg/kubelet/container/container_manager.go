@@ -25,7 +25,7 @@ type ContainerManager interface {
 	ResumeContainer(ctx context.Context, container *v1.Container) error
 	RemoveContainer(ctx context.Context, container *v1.Container) error
 	ListContainers(ctx context.Context) ([]*v1.Container, error)
-	ContainerStatus(ctx context.Context, containerID string) (*types.ContainerState, error)
+	ContainerStatus(ctx context.Context, containerID string) (types.ContainerState, error)
 }
 
 type containerManager struct {
@@ -173,8 +173,12 @@ func (manager *containerManager) ListContainers(ctx context.Context) ([]*v1.Cont
 	return nil, nil
 }
 
-func (manager *containerManager) ContainerStatus(ctx context.Context, containerID string) (*types.ContainerState, error) {
+func (manager *containerManager) ContainerStatus(ctx context.Context, containerID string) (types.ContainerState, error) {
 	cntr, err := manager.dockerClient.ContainerInspect(ctx, containerID)
 
-	return cntr.State, err
+	if err != nil {
+		return types.ContainerState{}, err
+	}
+
+	return *cntr.State, err
 }

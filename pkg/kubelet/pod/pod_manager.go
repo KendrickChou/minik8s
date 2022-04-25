@@ -3,6 +3,7 @@ package pod
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"k8s.io/klog/v2"
 	v1 "minik8s.com/minik8s/pkg/api/v1"
@@ -10,17 +11,17 @@ import (
 )
 
 type PodManager interface {
-	GetPods() []*v1.Pod
+	GetPods() []v1.Pod
 
-	GetPodByName(podFullName string) (*v1.Pod, bool)
+	GetPodByName(podFullName string) (v1.Pod, bool)
 
 	GetPodByUID(UID string) (v1.Pod, bool)
 
 	AddPod(pod *v1.Pod) error
 
-	UpdatePod(pod *v1.Pod)
+	UpdatePod(pod *v1.Pod) error
 
-	DeletePod(UID string)
+	DeletePod(UID string) error
 
 	PodStatus(UID string) (v1.PodStatus, error)
 }
@@ -49,26 +50,38 @@ func NewPodManager() PodManager {
 	return pm
 }
 
-func (pm *podManager) GetPods() []*v1.Pod {
-	pods := make([]*v1.Pod, len(pm.podByUID))
+func (pm *podManager) GetPods() []v1.Pod {
+	pods := make([]v1.Pod, len(pm.podByUID))
 
 	for _, value := range pm.podByUID {
-		pods = append(pods, value)
+		// refresh the pod status
+		pm.PodStatus(value.UID)
+		pods = append(pods, *value)
 	}
 
 	return pods
 }
 
-func (pm *podManager) GetPodByName(podFullName string) (*v1.Pod, bool) {
+func (pm *podManager) GetPodByName(podFullName string) (v1.Pod, bool) {
 	pod, ok := pm.podByName[podFullName]
 
-	return pod, ok
+	if ok {
+		pm.PodStatus(pod.UID)
+		return *pod, ok
+	}
+
+	return v1.Pod{}, ok
 }
 
 func (pm *podManager) GetPodByUID(UID string) (v1.Pod, bool) {
 	pod, ok := pm.podByUID[UID]
 
-	return *pod, ok
+	if ok {
+		pm.PodStatus(pod.UID)
+		return *pod, ok
+	}
+
+	return v1.Pod{}, ok
 }
 
 // there is only one namespace named "default"
@@ -120,25 +133,34 @@ func (pm *podManager) AddPod(pod *v1.Pod) error {
 	return nil
 }
 
-func (pm *podManager) UpdatePod(pod *v1.Pod) {
+func (pm *podManager) UpdatePod(pod *v1.Pod) error {
 	if pod.UID == "" {
-		klog.Errorln("pod UID is empty")
-		return
+		err := "pod UID is empty"
+		klog.Errorln(err)
+		return errors.New(err)
 	}
 
 	oldPod, ok := pm.podByUID[pod.UID]
 
 	if !ok {
-		klog.Errorln("Pod doesn't exist, UID: %s", pod.UID)
-		return
+		err := "Pod doesn't exist, UID: " + pod.UID
+		klog.Errorln(err)
+		return errors.New(err)
 	}
 
 	delete(pm.podByName, oldPod.Name)
 	pm.podByName[pod.Name] = pod
 	pm.podByUID[pod.UID] = pod
 
+	errs := []string{}
+
 	for _, container := range oldPod.Spec.Containers {
-		pm.containerManager.RemoveContainer(context.TODO(), container)
+		err := pm.containerManager.RemoveContainer(context.TODO(), container)
+
+		if err != nil {
+			klog.Errorln(err)
+			errs = append(errs, err.Error())
+		}
 	}
 
 	for _, container := range pod.Spec.Containers {
@@ -146,6 +168,7 @@ func (pm *podManager) UpdatePod(pod *v1.Pod) {
 
 		if err != nil {
 			klog.Errorln(err)
+			errs = append(errs, err.Error())
 			continue
 		}
 
@@ -155,36 +178,63 @@ func (pm *podManager) UpdatePod(pod *v1.Pod) {
 
 		if err != nil {
 			klog.Errorln(err)
+			errs = append(errs, err.Error())
 		}
 	}
+
+	if len(errs) == 0 {
+		return nil
+	}
+
+	var allErrs string
+	for _, e := range errs {
+		allErrs = fmt.Sprintf("%s\n%s", allErrs, e)
+	}
+
+	return errors.New(allErrs)
 }
 
-func (pm *podManager) DeletePod(UID string) {
+func (pm *podManager) DeletePod(UID string) error {
 	if UID == "" {
-		klog.Errorln("pod UID is empty")
-		return
+		err := "pod UID is empty"
+		klog.Errorln(err)
+		return errors.New(err)
 	}
 
 	pod := pm.podByUID[UID]
 
 	klog.Infof("Delete Pod %s", pod.Name)
 
+	var errs []string
 	for _, container := range pod.Spec.Containers {
 		err := pm.containerManager.StopContainer(context.TODO(), container)
 
 		if err != nil {
 			klog.Errorf("Remove Container %s: %s", container.Name, err)
+			errs = append(errs, err.Error())
 		}
 
 		err = pm.containerManager.RemoveContainer(context.TODO(), container)
 
 		if err != nil {
 			klog.Errorf("Remove Container %s: %s", container.Name, err)
+			errs = append(errs, err.Error())
 		}
 	}
 
 	delete(pm.podByName, pod.Name)
 	delete(pm.podByUID, pod.UID)
+
+	if len(errs) == 0 {
+		return nil
+	}
+
+	var allErrs string
+	for _, e := range errs {
+		allErrs = fmt.Sprintf("%s\n%s", allErrs, e)
+	}
+
+	return errors.New(allErrs)
 }
 
 func (pm *podManager) PodStatus(UID string) (v1.PodStatus, error) {
@@ -208,6 +258,8 @@ func (pm *podManager) PodStatus(UID string) (v1.PodStatus, error) {
 
 		if err != nil {
 			klog.Errorln(err)
+			pod.Status.ContainerStatuses = append(pod.Status.ContainerStatuses,
+				v1.ContainerStatus{Name: cntr.Name})
 			continue
 		}
 
@@ -262,6 +314,8 @@ func (pm *podManager) PodStatus(UID string) (v1.PodStatus, error) {
 	default:
 		pod.Status.Phase = v1.PodUnknown
 	}
+
+	// not need to update pm.podByName & pod.podByUID
 
 	return pod.Status, nil
 }

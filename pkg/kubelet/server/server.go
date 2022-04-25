@@ -4,14 +4,15 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"minik8s.com/minik8s/pkg/api/v1"
+	v1 "minik8s.com/minik8s/pkg/api/v1"
 )
 
 type HandlerInterface interface {
-	GetPods() ([]*v1.Pod, error)
-	GetPodByUID(UID v1.UID) (v1.Pod, error)
+	GetPods() ([]v1.Pod, error)
+	GetPodByUID(UID string) (v1.Pod, error)
 
 	CreatePod(pod v1.Pod) (v1.Pod, error)
+	DeletePod(UID string) error
 }
 
 func InstallDefaultHandlers(server *gin.Engine, handler HandlerInterface) {
@@ -26,13 +27,17 @@ func InstallDefaultHandlers(server *gin.Engine, handler HandlerInterface) {
 	server.PUT("/pods", func(ctx *gin.Context) {
 		createPod(ctx, handler)
 	})
+
+	server.DELETE("/pods/:UID", func(ctx *gin.Context) {
+		deletaPod(ctx, handler)
+	})
 }
 
 func getAllPods(ctx *gin.Context, handler HandlerInterface) {
 	pods, err := handler.GetPods()
 
 	if err != nil {
-		ctx.IndentedJSON(http.StatusNotFound, gin.H{"message": err})
+		ctx.IndentedJSON(http.StatusNotFound, gin.H{"message": err.Error()})
 		return
 	}
 
@@ -40,17 +45,17 @@ func getAllPods(ctx *gin.Context, handler HandlerInterface) {
 }
 
 func getPodByUID(ctx *gin.Context, handler HandlerInterface) {
-	pod, err := handler.GetPodByUID(v1.UID(ctx.Param("UID")))
+	pod, err := handler.GetPodByUID(ctx.Param("UID"))
 
 	if err != nil {
-		ctx.IndentedJSON(http.StatusNotFound, gin.H{"message": err})
+		ctx.IndentedJSON(http.StatusNotFound, gin.H{"message": err.Error()})
 		return
 	}
 
 	ctx.IndentedJSON(http.StatusOK, pod)
 }
 
-func createPod(ctx *gin.Context, handler HandlerInterface){
+func createPod(ctx *gin.Context, handler HandlerInterface) {
 	var pod v1.Pod
 
 	if err := ctx.BindJSON(&pod); err != nil {
@@ -60,10 +65,22 @@ func createPod(ctx *gin.Context, handler HandlerInterface){
 
 	pod, err := handler.CreatePod(pod)
 
-	if (err != nil) {
-		ctx.IndentedJSON(http.StatusBadRequest, gin.H{"message": err})
+	if err != nil {
+		ctx.IndentedJSON(http.StatusBadRequest, gin.H{"message": err.Error()})
 		return
 	}
 
 	ctx.IndentedJSON(http.StatusCreated, pod)
+}
+
+func deletaPod(ctx *gin.Context, handler HandlerInterface) {
+	uid := ctx.Param("UID")
+	err := handler.DeletePod(uid)
+
+	if err != nil {
+		ctx.IndentedJSON(http.StatusNotFound, gin.H{"message": err})
+		return
+	}
+
+	ctx.IndentedJSON(http.StatusOK, uid)
 }

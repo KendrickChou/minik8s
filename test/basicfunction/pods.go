@@ -53,5 +53,5 @@ func main() {
 
 	klog.Info(status)
 
-	podManager.DeletePod(pod.UID)
+	// podManager.DeletePod(pod.UID)
 }
