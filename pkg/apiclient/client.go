@@ -43,16 +43,9 @@ func ExampleWatch() {
 	}
 }
 func ExampleRestOperate() {
-	respStr := rest("", "test pod", OBJ_POD, OP_POST)
-
-	//TODO:
-	//get id from respStr ...
-	fmt.Println(respStr)
-
-	//replace xxxxx:
-	rest("xxxxx", "", OBJ_POD, OP_GET)
-	rest("xxxxx", "test pod2", OBJ_POD, OP_PUT)
-	rest("xxxxx", "", OBJ_POD, OP_DELETE)
+	rest("P0-49c4rcUe", "", OBJ_POD, OP_GET)
+	rest("P0-49c4rcUe", "test pod2", OBJ_POD, OP_PUT)
+	rest("P0-49c4rcUe", "", OBJ_POD, OP_DELETE)
 }
 
 /*
