@@ -23,4 +23,11 @@ const (
 	AC_WatchService_Path  = "/watch/service"
 	AC_WatchPod_Path      = "/watch/pod"
 	AC_WatchReplica_Path  = "/watch/replica"
+
+	AC_RestServices_Path = "/minik8s/services"
+	AC_RestPods_Path     = "/minik8s/pods"
+	AC_RestReplicas_Path = "/minik8s/replicas"
+	AC_RestService_Path  = "/minik8s/service"
+	AC_RestPod_Path      = "/minik8s/pod"
+	AC_RestReplica_Path  = "/minik8s/replica"
 )

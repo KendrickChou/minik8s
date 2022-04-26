@@ -122,17 +122,17 @@ func rest(id string, value string, objTy objType, opTy opType) string {
 	url := config.AC_ServerAddr + ":" + strconv.Itoa(config.AC_ServerPort)
 	switch objTy {
 	case OBJ_ALL_PODS:
-		url += config.AC_WatchPods_Path
+		url += config.AC_RestPods_Path
 	case OBJ_ALL_SERVICES:
-		url += config.AC_WatchServices_Path
+		url += config.AC_RestServices_Path
 	case OBJ_ALL_REPLICAS:
-		url += config.AC_WatchReplicas_Path
+		url += config.AC_RestReplicas_Path
 	case OBJ_POD:
-		url += config.AC_WatchPod_Path
+		url += config.AC_RestPod_Path
 	case OBJ_SERVICE:
-		url += config.AC_WatchService_Path
+		url += config.AC_RestService_Path
 	case OBJ_REPLICAS:
-		url += config.AC_WatchReplica_Path
+		url += config.AC_RestReplica_Path
 	default:
 		klog.Error("Invalid arguments!\n")
 		return ""
