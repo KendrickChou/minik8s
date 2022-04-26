@@ -33,12 +33,22 @@ func runHttpServer() {
 	r.PUT("/pod/:name", handlePutPod)
 	r.DELETE("/pod/:name", handleDeletePod)
 
+	// pod
+	r.GET("/replicas", handleGetReplicas)
+	r.GET("/replica/:name", handleGetReplica)
+	r.POST("/replica", handlePostReplica)
+	r.PUT("/replica/:name", handlePutReplica)
+	r.DELETE("/replica/:name", handleDeleteReplica)
+
 	//Watch
 	r.GET("/watch/services", handleWatchServices)
 	r.GET("/watch/service/:name", handleWatchService)
 
 	r.GET("/watch/pods", handleWatchPods)
 	r.GET("/watch/pod/:name", handleWatchPod)
+
+	r.GET("/watch/replicas", handleWatchReplicas)
+	r.GET("/watch/replica/:name", handleWatchReplica)
 
 	err := r.Run(":" + strconv.Itoa(config.AS_HttpListenPort))
 	if err != nil {

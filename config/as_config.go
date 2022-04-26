@@ -9,7 +9,7 @@ const (
 	AS_OP_PUT_String    = "PUT"
 	AS_OP_GET_String    = "GET"
 	AS_OP_DELETE_String = "DELETE"
-	AS_OP_WATCH_String  = "POST"
+	AS_OP_POST_String   = "POST"
 	AS_OP_ERROR_String  = "ERROR"
 )
 
@@ -18,4 +18,9 @@ const (
 	AC_ServerPort = 8080
 
 	AC_WatchServices_Path = "/watch/services"
+	AC_WatchPods_Path     = "/watch/pods"
+	AC_WatchReplicas_Path = "/watch/replicas"
+	AC_WatchService_Path  = "/watch/service"
+	AC_WatchPod_Path      = "/watch/pod"
+	AC_WatchReplica_Path  = "/watch/replica"
 )
