@@ -1,7 +1,5 @@
 package v1
 
-type UID string
-
 type TypeMeta struct {
 	// Kind is a string value representing the REST resource this object represents.
 	// Servers may infer this from the endpoint the client submits requests to.
@@ -33,11 +31,5 @@ type ObjectMeta struct {
 	// the server on successful creation of a resource and is not allowed to change on PUT
 	// operations.
 	// Read Only
-	UID UID `json:"UID,omitempty"`
-
-	// Map of string keys and values that can be used to organize and categorize
-	// (scope and select) objects. May match selectors of replication controllers
-	// and services.
-	// +optional
-	Labels map[string]string `json:"labels,omitempty"`
+	UID string `json:"UID,omitempty"`
 }
