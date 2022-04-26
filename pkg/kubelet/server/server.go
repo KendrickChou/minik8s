@@ -1,13 +1,10 @@
 package server
 
 import (
-	"bufio"
-	"io"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 	v1 "minik8s.com/minik8s/pkg/api/v1"
-	"minik8s.com/minik8s/pkg/kubelet/apis/config"
 )
 
 type HandlerInterface interface {
@@ -33,10 +30,6 @@ func InstallDefaultHandlers(server *gin.Engine, handler HandlerInterface) {
 
 	server.DELETE("/pods/:UID", func(ctx *gin.Context) {
 		deletePod(ctx, handler)
-	})
-
-	server.GET("/watch/:UID",func(ctx *gin.Context) {
-		watchPod(ctx, handler)
 	})
 }
 
@@ -90,28 +83,4 @@ func deletePod(ctx *gin.Context, handler HandlerInterface) {
 	}
 
 	ctx.IndentedJSON(http.StatusOK, uid)
-}
-
-func watchPod(ctx *gin.Context, handler HandlerInterface) {
-	uid := ctx.Param("UID")
-
-	resp, err := http.Get(config.ApiServerAddress + "/watch/pod/" + uid)
-
-	if err != nil {
-		ctx.IndentedJSON(http.StatusBadRequest, gin.H{"message": err.Error()})
-		return
-	}
-
-	go watchPodHandler(resp)
-
-	ctx.IndentedJSON(http.StatusOK, uid)
-}
-
-func watchPodHandler(resp *http.Response) {
-	defer resp.Body.Close()
-	io.PipeRea
-	reader := bufio.NewReader(resp.Body)
-	for {
-		pod, err := reader.ReadSt
-	}
 }

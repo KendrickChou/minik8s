@@ -49,7 +49,7 @@ func createAPod(kl *kubelet.Kubelet) {
 }
 
 func main() {
-	kubelet :=kubelet.NewKubelet()
+	kubelet := kubelet.NewKubelet("kubelet")
 
 	// createAPod(&kubelet)
 
