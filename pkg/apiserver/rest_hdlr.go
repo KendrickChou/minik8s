@@ -9,6 +9,7 @@
 package apiserver
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"k8s.io/klog"
@@ -31,7 +32,7 @@ func handleGetService(c *gin.Context) {
 	kv, err := etcdGet("/minik8s/service/" + c.Param("name"))
 	if err != nil {
 		c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
-	} else if kv.ty == config.AS_OP_ERROR_String {
+	} else if kv.Type == config.AS_OP_ERROR_String {
 		c.JSON(404, gin.H{"status": "ERR", "error": "No such service"})
 	} else {
 		c.JSON(200, kv)
@@ -59,7 +60,7 @@ func handlePutService(c *gin.Context) {
 	kv, err := etcdGet("/minik8s/service/" + name)
 	if err != nil {
 		c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
-	} else if kv.ty == config.AS_OP_ERROR_String {
+	} else if kv.Type == config.AS_OP_ERROR_String {
 		c.JSON(404, gin.H{"status": "ERR", "error": "No such service"})
 	} else {
 		err = etcdPut("/minik8s/service/"+name, string(buf))
@@ -77,7 +78,7 @@ func handleDeleteService(c *gin.Context) {
 	kv, err := etcdGet("/minik8s/service/" + name)
 	if err != nil {
 		c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
-	} else if kv.ty == config.AS_OP_ERROR_String {
+	} else if kv.Type == config.AS_OP_ERROR_String {
 		c.JSON(404, gin.H{"status": "ERR", "error": "No such service"})
 	} else {
 		err = etcdDel("/minik8s/service/" + name)
@@ -99,7 +100,13 @@ func handleWatchServices(c *gin.Context) {
 			cancel()
 			return
 		case kv := <-wch:
-			_, err := fmt.Fprintf(c.Writer, "watch result key: %v, value: %v\n", kv.Key, kv.Value)
+			info, err := json.Marshal(kv)
+			if err != nil {
+				klog.Infof("json parse error, cancel watch task...\n")
+				cancel()
+				return
+			}
+			_, err = fmt.Fprintf(c.Writer, string(info))
 			if err != nil {
 				klog.Infof("fail to write to client, cancel watch task...\n")
 				cancel()
@@ -115,7 +122,7 @@ func handleWatchService(c *gin.Context) {
 	kv, err := etcdGet("/minik8s/service/" + name)
 	if err != nil {
 		c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
-	} else if kv.ty == config.AS_OP_ERROR_String {
+	} else if kv.Type == config.AS_OP_ERROR_String {
 		c.JSON(404, gin.H{"status": "ERR", "error": "No such service"})
 	} else {
 		wch, cancel := etcdWatch("/minik8s/service")
@@ -127,7 +134,13 @@ func handleWatchService(c *gin.Context) {
 				cancel()
 				return
 			case kv := <-wch:
-				_, err := fmt.Fprintf(c.Writer, "watch result key: %v, value: %v\n", kv.Key, kv.Value)
+				info, err := json.Marshal(kv)
+				if err != nil {
+					klog.Infof("json parse error, cancel watch task...\n")
+					cancel()
+					return
+				}
+				_, err = fmt.Fprintf(c.Writer, string(info))
 				if err != nil {
 					klog.Infof("fail to write to client, cancel watch task...\n")
 					cancel()
@@ -152,7 +165,7 @@ func handleGetPod(c *gin.Context) {
 	kv, err := etcdGet("/minik8s/pod/" + c.Param("name"))
 	if err != nil {
 		c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
-	} else if kv.ty == config.AS_OP_ERROR_String {
+	} else if kv.Type == config.AS_OP_ERROR_String {
 		c.JSON(404, gin.H{"status": "ERR", "error": "No such service"})
 	} else {
 		c.JSON(200, kv)
@@ -179,7 +192,7 @@ func handlePutPod(c *gin.Context) {
 	kv, err := etcdGet("/minik8s/pod/" + name)
 	if err != nil {
 		c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
-	} else if kv.ty == config.AS_OP_ERROR_String {
+	} else if kv.Type == config.AS_OP_ERROR_String {
 		c.JSON(404, gin.H{"status": "ERR", "error": "No such pod"})
 	} else {
 		err = etcdPut("/minik8s/pod/"+name, string(buf))
@@ -196,7 +209,7 @@ func handleDeletePod(c *gin.Context) {
 	kv, err := etcdGet("/minik8s/pod/" + name)
 	if err != nil {
 		c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
-	} else if kv.ty == config.AS_OP_ERROR_String {
+	} else if kv.Type == config.AS_OP_ERROR_String {
 		c.JSON(404, gin.H{"status": "ERR", "error": "No such service"})
 	} else {
 		err = etcdDel("/minik8s/pod/" + name)
@@ -218,7 +231,13 @@ func handleWatchPods(c *gin.Context) {
 			cancel()
 			return
 		case kv := <-wch:
-			_, err := fmt.Fprintf(c.Writer, "watch result key: %v, value: %v\n", kv.Key, kv.Value)
+			info, err := json.Marshal(kv)
+			if err != nil {
+				klog.Infof("json parse error, cancel watch task...\n")
+				cancel()
+				return
+			}
+			_, err = fmt.Fprintf(c.Writer, string(info))
 			if err != nil {
 				klog.Infof("fail to write to client, cancel watch task...\n")
 				cancel()
@@ -234,7 +253,7 @@ func handleWatchPod(c *gin.Context) {
 	kv, err := etcdGet("/minik8s/pod/" + name)
 	if err != nil {
 		c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
-	} else if kv.ty == config.AS_OP_ERROR_String {
+	} else if kv.Type == config.AS_OP_ERROR_String {
 		c.JSON(404, gin.H{"status": "ERR", "error": "No such service"})
 	} else {
 		wch, cancel := etcdWatch("/minik8s/pod")
@@ -246,7 +265,13 @@ func handleWatchPod(c *gin.Context) {
 				cancel()
 				return
 			case kv := <-wch:
-				_, err := fmt.Fprintf(c.Writer, "watch result key: %v, value: %v\n", kv.Key, kv.Value)
+				info, err := json.Marshal(kv)
+				if err != nil {
+					klog.Infof("json parse error, cancel watch task...\n")
+					cancel()
+					return
+				}
+				_, err = fmt.Fprintf(c.Writer, string(info))
 				if err != nil {
 					klog.Infof("fail to write to client, cancel watch task...\n")
 					cancel()

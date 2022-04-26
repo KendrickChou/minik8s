@@ -12,7 +12,7 @@ import (
 type KV struct {
 	Key   string `json:"key"`
 	Value string `json:"value"`
-	ty    string
+	Type  string `json:"type"`
 }
 
 var etcdClient *clientv3.Client
@@ -60,7 +60,7 @@ func etcdGet(key string) (KV, error) {
 		return KV{
 			Key:   "",
 			Value: "",
-			ty:    config.AS_OP_ERROR_String,
+			Type:  config.AS_OP_ERROR_String,
 		}, err
 	} else {
 		val := string(resp.Kvs[0].Value)
@@ -68,7 +68,7 @@ func etcdGet(key string) (KV, error) {
 		return KV{
 			Key:   key,
 			Value: val,
-			ty:    config.AS_OP_GET_String,
+			Type:  config.AS_OP_GET_String,
 		}, err
 	}
 }
@@ -122,8 +122,8 @@ func etcdWatchPrefix(key string) (chan KV, context.CancelFunc) {
 func startWatch(ch chan KV, rch clientv3.WatchChan) {
 	for resp := range rch {
 		for _, ev := range resp.Events {
-			klog.Infof("etcd watch emitted type: %s key: %q val: %q\n", ev.Type, ev.Kv.Key, ev.Kv.Value)
-			ch <- KV{ty: ev.Type.String(), Key: string(ev.Kv.Key), Value: string(ev.Kv.Value)}
+			klog.Infof("etcd watch emitted -- type: %s key: %q val: %q\n", ev.Type, ev.Kv.Key, ev.Kv.Value)
+			ch <- KV{Type: ev.Type.String(), Key: string(ev.Kv.Key), Value: string(ev.Kv.Value)}
 		}
 	}
 }

@@ -3,6 +3,7 @@ package apiclient
 import (
 	"context"
 	"fmt"
+	"k8s.io/klog"
 	"minik8s.com/minik8s/config"
 	"net/http"
 	"strconv"
@@ -15,14 +16,15 @@ func getPodByName(name string) {
 
 func TestChunkedWatch() {
 	ctx, cl := context.WithCancel(context.Background())
-	go watchService(ctx)
+	watchChan := make(chan string)
+	go watchPod(ctx, watchChan)
 	select {
 	case <-time.After(time.Second * 5):
 		cl()
 	}
 }
 
-func watchService(ctx context.Context) {
+func watchPod(ctx context.Context, ch chan string) {
 	resp, err := http.Get(config.AC_ServerAddr + ":" + strconv.Itoa(config.AC_ServerPort) + config.AC_WatchServices_Path)
 	if err != nil {
 		fmt.Printf("error: %v", err)
@@ -30,6 +32,7 @@ func watchService(ctx context.Context) {
 	}
 
 	buf := make([]byte, 128)
+	podString := ""
 	for {
 		select {
 		case <-ctx.Done():
@@ -39,8 +42,12 @@ func watchService(ctx context.Context) {
 			if err != nil {
 				return
 			}
-			if readN > 0 {
-				println(string(buf))
+			if readN < 128 {
+				klog.Infof("read from server: %v\n", string(buf))
+				ch <- podString
+				podString = ""
+			} else {
+				podString += string(buf)
 			}
 		}
 	}
