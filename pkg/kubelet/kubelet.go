@@ -16,13 +16,12 @@ import (
 type Kubelet struct {
 	nodeName string
 
-	podManager pod.PodManager
-	
+	podManager pod.PodManager	
 	// same as podManager, just for test
 	PodManager *pod.PodManager
 }
 
-func NewKubelet() Kubelet {
+func NewKubelet(apiServerAddr string) Kubelet {
 	kubelet := Kubelet{
 		nodeName: "kubelet",
 		podManager: pod.NewPodManager(),
