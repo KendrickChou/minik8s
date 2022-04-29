@@ -7,6 +7,8 @@ import (
 	"encoding/json"
 	"net/http"
 	"os"
+	"strconv"
+	"time"
 
 	"k8s.io/klog/v2"
 	"minik8s.com/minik8s/pkg/kubelet"
@@ -40,9 +42,13 @@ func main() {
 	errChan := make(chan string)
 	go watching(ctx, kl.NodeName, podChangeRaw, errChan)
 
+	// start heartbeat
+	go sendHeartBeat(ctx, kl.NodeName, errChan)
+
 	for {
 		select {
-		case <-errChan:
+		case e := <-errChan:
+			klog.Fatalf("Node Failed: %s", e)
 			return
 		case rawBytes := <-podChangeRaw:
 			req := &podchangerequest.PodChangeRequest{}
@@ -96,5 +102,41 @@ func handlePodChangeRequest(kl *kubelet.Kubelet, req *podchangerequest.PodChange
 	default:
 		klog.Errorln("Unknown Pod Change Request Type: %s", req.Type)
 		return
+	}
+}
+
+func sendHeartBeat(ctx context.Context, nodeName string, errChan chan string) {
+	counter := 0
+	errorCounter := 0
+	lastReportTime := time.Now()
+
+	for {
+		if errorCounter >= constants.MaxErrorHeartBeat {
+			errChan <-"Send heartbeat failed successively for " + strconv.Itoa(constants.MaxErrorHeartBeat) + " times"
+			return
+		}
+
+		time.Sleep(time.Duration(constants.HeartBeatInterval) * time.Second)
+
+		counter++
+		lastReportTime = time.Now()
+
+		klog.Infof("Send Heartbeat %d, time: %s", counter, lastReportTime)
+
+		resp, err := http.Get(constants.HeartBeatRequest + nodeName + "/" + strconv.Itoa(counter))
+
+		if err != nil {
+			klog.Warningf("Send Heartbeat %d Failed: %s", counter, err.Error())
+			errorCounter++
+			continue
+		}
+
+		if resp.StatusCode != 200 {
+			klog.Warningf("Send Heartbeat %d Failed, response status %s", counter, resp.Status)
+			errorCounter++
+			continue
+		}
+
+		errorCounter = 0
 	}
 }

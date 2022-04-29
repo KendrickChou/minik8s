@@ -19,6 +19,8 @@ type Kubelet struct {
 	podManager pod.PodManager	
 	// same as podManager, just for test
 	PodManager *pod.PodManager
+
+	setNodeStatusFuncs []func(*v1.Node)
 }
 
 func NewKubelet(nodeName string) Kubelet {

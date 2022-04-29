@@ -7,4 +7,6 @@ type KubeletConfiguration struct {
 
 	Address string
 	Port string
+
+	HeartbeatInterval uint64
 }
