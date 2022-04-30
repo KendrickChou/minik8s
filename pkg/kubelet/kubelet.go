@@ -9,6 +9,7 @@ import (
 
 	"minik8s.com/minik8s/pkg/api/v1"
 	kubeconfig "minik8s.com/minik8s/pkg/kubelet/apis/config"
+	"minik8s.com/minik8s/pkg/kubelet/apis/constants"
 	"minik8s.com/minik8s/pkg/kubelet/pod"
 	"minik8s.com/minik8s/pkg/kubelet/server"
 )
@@ -55,7 +56,6 @@ func (kl *Kubelet) GetPods() ([]v1.Pod, error) {
 }
 
 func (kl *Kubelet) GetPodByUID(UID string) (v1.Pod, error) {
-
 	pod, ok := kl.podManager.GetPodByUID(UID)
 
 	if !ok {
@@ -66,6 +66,8 @@ func (kl *Kubelet) GetPodByUID(UID string) (v1.Pod, error) {
 }
 
 func (kl *Kubelet) CreatePod(pod v1.Pod) (v1.Pod, error) {
+	installInitialContainers(&pod)
+
 	err := kl.podManager.AddPod(&pod)
 
 	if err != nil {
@@ -77,4 +79,12 @@ func (kl *Kubelet) CreatePod(pod v1.Pod) (v1.Pod, error) {
 
 func (kl *Kubelet) DeletePod(UID string) error {
 	return kl.podManager.DeletePod(UID)
+}
+
+func installInitialContainers(pod *v1.Pod) error {
+	pod.Spec.InitialContainers = make(map[string]v1.Container)
+
+	pod.Spec.InitialContainers[constants.InitialPauseContainerKey] = constants.InitialPauseContainer
+
+	return nil
 }

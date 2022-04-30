@@ -4,9 +4,9 @@ type RestartPolicy string
 type PodPhase string
 
 const (
-	RestartPolicyAlways RestartPolicy = "Always"
+	RestartPolicyAlways    RestartPolicy = "Always"
 	RestartPolicyOnFailure RestartPolicy = "OnFailure"
-	RestartPolicyNever RestartPolicy = "Never"
+	RestartPolicyNever     RestartPolicy = "Never"
 )
 
 const (
@@ -39,6 +39,8 @@ type Pod struct {
 }
 
 type PodSpec struct {
+	InitialContainers map[string]Container
+
 	Containers []*Container `json:"Containers,omitempty"`
 
 	RestartPolicy RestartPolicy `json:"RestartPolicy,omitempty"`
@@ -48,6 +50,8 @@ type PodStatus struct {
 	Phase PodPhase `json:"Phase,omitempty"`
 
 	PodIP string `json:"PodIP,omitempty"`
+
+	PodNetworkID string `json:"-"`
 
 	ContainerStatuses []ContainerStatus `json:"ContainerStatuses,omitempty"`
 }

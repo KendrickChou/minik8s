@@ -45,6 +45,8 @@ type Container struct {
 
 	// mount volumes
 	Mounts []Mount `json:"Mounts,omitempty"`
+
+	NetworkMode string `json:"-"`
 }
 
 type ContainerStatus struct {

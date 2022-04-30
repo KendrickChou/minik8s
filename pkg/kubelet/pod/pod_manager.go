@@ -7,6 +7,7 @@ import (
 
 	"k8s.io/klog/v2"
 	v1 "minik8s.com/minik8s/pkg/api/v1"
+	"minik8s.com/minik8s/pkg/kubelet/apis/constants"
 	"minik8s.com/minik8s/pkg/kubelet/container"
 )
 
@@ -112,8 +113,36 @@ func (pm *podManager) AddPod(pod *v1.Pod) error {
 	pm.podByUID[pod.UID] = pod
 	pm.podByName[pod.Name] = pod
 
+	// start some pod initial containers
+	for k := range pod.Spec.InitialContainers {
+		container := pod.Spec.InitialContainers[k]
+
+		container.Name = pod.Name + "-" + container.Name
+
+		id, err := pm.containerManager.CreateContainer(context.TODO(), &container)
+
+		if err != nil {
+			klog.Errorf("Create pod %s Initial container %s failed: %s", pod.Name, container.Name, err.Error())
+			return err
+		}
+
+		container.ID = id
+
+		err = pm.containerManager.StartContainer(context.TODO(), &container)
+
+		if err != nil {
+			klog.Errorf("Start pod %s Initial container %s failed: %s", pod.Name, container.Name, err.Error())
+			klog.Errorln(err)
+			return err
+		}
+
+		pod.Spec.InitialContainers[k] = container
+	}
+
 	for _, container := range pod.Spec.Containers {
 		container.Name = pod.Name + "-" + container.Name
+		container.NetworkMode = constants.NetworkIDPrefix + pod.Spec.InitialContainers[constants.InitialPauseContainerKey].Name
+
 		id, err := pm.containerManager.CreateContainer(context.TODO(), container)
 
 		if err != nil {
@@ -206,6 +235,25 @@ func (pm *podManager) DeletePod(UID string) error {
 	klog.Infof("Delete Pod %s", pod.Name)
 
 	var errs []string
+
+	for k := range pod.Spec.InitialContainers {
+		container := pod.Spec.InitialContainers[k]
+
+		err := pm.containerManager.StopContainer(context.TODO(), &container)
+
+		if err != nil {
+			klog.Errorf("Remove Container %s: %s", container.Name, err)
+			errs = append(errs, err.Error())
+		}
+
+		err = pm.containerManager.RemoveContainer(context.TODO(), &container)
+
+		if err != nil {
+			klog.Errorf("Remove Container %s: %s", container.Name, err)
+			errs = append(errs, err.Error())
+		}
+	}
+
 	for _, container := range pod.Spec.Containers {
 		err := pm.containerManager.StopContainer(context.TODO(), container)
 

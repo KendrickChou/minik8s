@@ -1,13 +1,12 @@
 package main
 
 import (
-	"k8s.io/klog/v2"
 	v1 "minik8s.com/minik8s/pkg/api/v1"
-	"minik8s.com/minik8s/pkg/kubelet/pod"
+	"minik8s.com/minik8s/pkg/kubelet"
 )
 
 func main() {
-	podManager := pod.NewPodManager()
+	kubelet := kubelet.NewKubelet("name")
 
 	pod := &v1.Pod{
 		TypeMeta: v1.TypeMeta{
@@ -22,11 +21,17 @@ func main() {
 		Spec: v1.PodSpec{
 			Containers: []*v1.Container{
 				{
-					Name:            "myFirstContainer",
+					Name:            "nginx",
+					Namespace:       "example",
+					Image:           "nginx:latest",
+					ImagePullPolicy: "IfNotPresent",
+				},
+				{
+					Name:            "alpine",
 					Namespace:       "example",
 					Image:           "alpine:latest",
 					ImagePullPolicy: "IfNotPresent",
-					Entrypoint:      []string{"/bin/sh", "-c", "cat /home/mountdir/hello.txt"},
+					Entrypoint:      []string{"/bin/sh", "-c", "wget localhost:80"},
 					Mounts: []v1.Mount{
 						{
 							Type:   v1.TypeBind,
@@ -35,23 +40,12 @@ func main() {
 						},
 					},
 				},
-				{
-					Name:            "mySecondContainer",
-					Namespace:       "example",
-					Image:           "alpine:latest",
-					ImagePullPolicy: "IfNotPresent",
-					Entrypoint:      []string{"echo", "hello world 2"},
-				},
 			},
 		},
 		Status: v1.PodStatus{},
 	}
 
-	podManager.AddPod(pod)
+	kubelet.CreatePod(*pod)
 
-	status, _ := podManager.PodStatus(pod.UID)
-
-	klog.Info(status)
-
-	podManager.DeletePod(pod.UID)
+	kubelet.DeletePod(pod.UID)
 }

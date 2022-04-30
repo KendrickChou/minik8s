@@ -26,6 +26,8 @@ type ContainerManager interface {
 	RemoveContainer(ctx context.Context, container *v1.Container) error
 	ListContainers(ctx context.Context) ([]*v1.Container, error)
 	ContainerStatus(ctx context.Context, containerID string) (types.ContainerState, error)
+	CreateNetworkNamespace(ctx context.Context, name string) (string, error)
+	RemoveNetworkNamespace(ctx context.Context, networkID string) error
 }
 
 type containerManager struct {
@@ -51,8 +53,7 @@ func (manager *containerManager) CreateContainer(ctx context.Context, container 
 	containerConfig := &dockerctnr.Config{}
 	hostConfig := &dockerctnr.HostConfig{}
 
-	switch {
-	case container.Image != "":
+	if container.Image != "" {
 		containerConfig.Image = container.Image
 
 		switch container.ImagePullPolicy {
@@ -97,18 +98,20 @@ func (manager *containerManager) CreateContainer(ctx context.Context, container 
 		default:
 			return "", errors.New("Unknown Image Pull Policy")
 		}
-
-		fallthrough
-	case len(container.Command) != 0:
+	}
+	if container.NetworkMode != "" {
+		hostConfig.NetworkMode = dockerctnr.NetworkMode(container.NetworkMode)
+	}
+	if len(container.Command) != 0 {
 		containerConfig.Cmd = append(containerConfig.Cmd, container.Command...)
-		fallthrough
-	case len(container.Entrypoint) != 0:
+	}
+	if len(container.Entrypoint) != 0 {
 		containerConfig.Entrypoint = append(containerConfig.Entrypoint, container.Entrypoint...)
-		fallthrough
-	case len(container.Env) != 0:
+	}
+	if len(container.Env) != 0 {
 		containerConfig.Env = append(containerConfig.Env, container.Env...)
-		fallthrough
-	case len(container.Mounts) != 0:
+	}
+	if len(container.Mounts) != 0 {
 		for _, m := range container.Mounts {
 			hostConfig.Mounts = append(hostConfig.Mounts, mount.Mount{
 				Type:        mount.Type(m.Type),
@@ -117,8 +120,6 @@ func (manager *containerManager) CreateContainer(ctx context.Context, container 
 				Consistency: mount.Consistency(m.Consistency),
 			})
 		}
-		fallthrough
-	default:
 	}
 
 	body, err := manager.dockerClient.ContainerCreate(ctx, containerConfig, hostConfig, nil, nil, container.Name)
@@ -127,6 +128,7 @@ func (manager *containerManager) CreateContainer(ctx context.Context, container 
 }
 
 func (manager *containerManager) StartContainer(ctx context.Context, container *v1.Container) error {
+	klog.Infof("Start Container %v", container.Name)
 	err := manager.dockerClient.ContainerStart(ctx, container.ID, types.ContainerStartOptions{})
 
 	out, err := manager.dockerClient.ContainerLogs(ctx, container.ID, types.ContainerLogsOptions{
@@ -181,4 +183,19 @@ func (manager *containerManager) ContainerStatus(ctx context.Context, containerI
 	}
 
 	return *cntr.State, err
+}
+
+func (manager *containerManager) CreateNetworkNamespace(ctx context.Context, name string) (string, error) {
+	resp, err := manager.dockerClient.NetworkCreate(ctx, name, types.NetworkCreate{CheckDuplicate: true})
+
+	if err != nil {
+		return "", err
+	}
+
+	return resp.ID, nil
+}
+
+func (manager *containerManager) RemoveNetworkNamespace(ctx context.Context, networkID string) error {
+	err := manager.dockerClient.NetworkRemove(ctx, networkID)
+	return err
 }
