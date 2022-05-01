@@ -33,14 +33,28 @@ func runHttpServer() {
 	r.PUT("/pod/:name", handlePutPod)
 	r.DELETE("/pod/:name", handleDeletePod)
 
-	// pod
+	// pod in certain node
+	r.GET("/node/:nname/pods", handleGetPodsByNode)
+	r.GET("/node/:nname/pod/:pname", handleGetPodByNode)
+	r.POST("/node/:nname/pod", handlePostPodByNode)
+	r.PUT("/node/:nname/pod/:pname", handlePutPodByNode)
+	r.DELETE("/node/:nname/pod/:pname", handleDeletePodByNode)
+
+	// replica
 	r.GET("/replicas", handleGetReplicas)
 	r.GET("/replica/:name", handleGetReplica)
 	r.POST("/replica", handlePostReplica)
 	r.PUT("/replica/:name", handlePutReplica)
 	r.DELETE("/replica/:name", handleDeleteReplica)
 
-	//Watch
+	// node
+	r.GET("/nodes", handleGetNodes)
+	r.GET("/node/:name", handleGetNode)
+	r.POST("/node", handlePostNode)
+	r.PUT("/node/:name", handlePutNode)
+	r.DELETE("/node/:name", handleDeleteNode)
+
+	//------------------ WATCH API ----------------------
 	r.GET("/watch/services", handleWatchServices)
 	r.GET("/watch/service/:name", handleWatchService)
 

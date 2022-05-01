@@ -73,6 +73,19 @@ func etcdGet(key string) (KV, error) {
 	}
 }
 
+func etcdTest(key string) bool {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	resp, err := etcdClient.Get(ctx, key, clientv3.WithCountOnly())
+	cancel()
+	if err != nil || resp.Count == 0 {
+		klog.Errorf("etcd test failed, err: %v", err)
+		return false
+	} else {
+		klog.Infof("etcd test key: %v\n", key)
+		return true
+	}
+}
+
 func etcdGetPrefix(key string) ([]KV, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	resp, err := etcdClient.Get(ctx, key, clientv3.WithPrefix())
@@ -87,6 +100,19 @@ func etcdGetPrefix(key string) ([]KV, error) {
 			klog.Infof("etcd get with prefix: %s, key: %s, value: %s\n", key, kv.Key, kv.Value)
 		}
 		return kvList, err
+	}
+}
+
+func etcdTestPrefix(key string) bool {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	resp, err := etcdClient.Get(ctx, key, clientv3.WithCountOnly(), clientv3.WithPrefix())
+	cancel()
+	if err != nil || resp.Count == 0 {
+		klog.Errorf("etcd test failed, err: %v", err)
+		return false
+	} else {
+		klog.Infof("etcd test key: %v\n", key)
+		return true
 	}
 }
 
@@ -110,6 +136,7 @@ func etcdWatch(key string) (chan KV, context.CancelFunc) {
 	klog.Infof("etcd watch start key: %v\n", key)
 	return ch, cancel
 }
+
 func etcdWatchPrefix(key string) (chan KV, context.CancelFunc) {
 	ch := make(chan KV)
 	ctx, cancel := context.WithCancel(context.Background())

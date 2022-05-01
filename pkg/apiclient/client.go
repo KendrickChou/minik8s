@@ -1,6 +1,7 @@
 package apiclient
 
 import (
+	"bufio"
 	"context"
 	"fmt"
 	"k8s.io/klog"
@@ -31,10 +32,10 @@ const (
 func ExampleWatch() {
 	ctx, cl := context.WithCancel(context.Background())
 	watchChan := make(chan string)
-	go watch(ctx, watchChan, OBJ_ALL_PODS)
+	go watch(ctx, watchChan, OBJ_ALL_SERVICES)
 	for {
 		select {
-		case <-time.After(time.Second * 5):
+		case <-time.After(time.Second * 60):
 			cl()
 			return
 		case result := <-watchChan:
@@ -80,24 +81,23 @@ func watch(ctx context.Context, ch chan string, ty objType) {
 		return
 	}
 
-	buf := make([]byte, 128)
 	podString := ""
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		default:
-			readN, err := resp.Body.Read(buf)
+
+			reader := bufio.NewReader(resp.Body)
+			buf, err := reader.ReadBytes(26)
+
 			if err != nil {
 				return
 			}
-			if readN < 128 {
-				klog.Infof("read from server: %v\n", string(buf))
-				ch <- podString
-				podString = ""
-			} else {
-				podString += string(buf)
-			}
+			buf[len(buf)-1] = 0
+			podString = string(buf)
+			klog.Infof("bytes from server: %v\n", buf)
+			ch <- podString
 		}
 	}
 }
