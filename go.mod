@@ -6,6 +6,7 @@ replace minik8s.com/minik8s/pkg/kubelet => ./pkg/kubelet
 
 require (
 	github.com/containerd/containerd v1.6.2
+	github.com/containernetworking/cni v1.0.1
 	github.com/docker/docker v20.10.14+incompatible
 	github.com/gin-gonic/gin v1.7.7
 	k8s.io/klog/v2 v2.30.0
