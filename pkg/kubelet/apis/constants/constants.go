@@ -5,12 +5,12 @@ import v1 "minik8s.com/minik8s/pkg/api/v1"
 const EOF int = 26
 
 const (
-	ApiServerAddress string = "addr"
+	ApiServerAddress string = "http://127.0.0.1:8080"
 )
 
 const (
 	RegistNodeRequest string = ApiServerAddress + "/node"
-	WatchPodsRequest  string = ApiServerAddress + "/watch/pods/"
+	WatchPodsRequest  string = ApiServerAddress + "/watch/innode/"
 	HeartBeatRequest  string = ApiServerAddress + "/heartbeat/"
 )
 

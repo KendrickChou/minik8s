@@ -33,12 +33,12 @@ func runHttpServer() {
 	r.PUT("/pod/:name", handlePutPod)
 	r.DELETE("/pod/:name", handleDeletePod)
 
-	// pod in certain node
-	r.GET("/node/:nname/pods", handleGetPodsByNode)
-	r.GET("/node/:nname/pod/:pname", handleGetPodByNode)
-	r.POST("/node/:nname/pod", handlePostPodByNode)
-	r.PUT("/node/:nname/pod/:pname", handlePutPodByNode)
-	r.DELETE("/node/:nname/pod/:pname", handleDeletePodByNode)
+	// pod in certain namespace
+	r.GET("/innode/:nname/pods", handleGetPodsByNode)
+	r.GET("/innode/:nname/pod/:pname", handleGetPodByNode)
+	r.POST("/innode/:nname/pod", handlePostPodByNode)
+	r.PUT("/innode/:nname/pod/:pname", handlePutPodByNode)
+	r.DELETE("/innode/:nname/pod/:pname", handleDeletePodByNode)
 
 	// replica
 	r.GET("/replicas", handleGetReplicas)
@@ -49,7 +49,7 @@ func runHttpServer() {
 
 	// node
 	r.GET("/nodes", handleGetNodes)
-	r.GET("/node/:name", handleGetNode)
+	r.GET("/node/:name/", handleGetNode)
 	r.POST("/node", handlePostNode)
 	r.PUT("/node/:name", handlePutNode)
 	r.DELETE("/node/:name", handleDeleteNode)
@@ -61,8 +61,13 @@ func runHttpServer() {
 	r.GET("/watch/pods", handleWatchPods)
 	r.GET("/watch/pod/:name", handleWatchPod)
 
+	r.GET("/watch/innode/:nname/pods", handleWatchPodsByNode)
+
 	r.GET("/watch/replicas", handleWatchReplicas)
 	r.GET("/watch/replica/:name", handleWatchReplica)
+
+	//------------------ HEARTBEAT -----------------------
+	r.GET("/heartbeat/:name/:num", handleHeartbeat)
 
 	err := r.Run(":" + strconv.Itoa(config.AS_HttpListenPort))
 	if err != nil {
