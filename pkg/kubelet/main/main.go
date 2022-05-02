@@ -89,7 +89,7 @@ func watching(ctx context.Context, nodeId string, podChange chan []byte, errChan
 			return
 		default:
 			reader := bufio.NewReader(resp.Body)
-			buf, err := reader.ReadBytes(26)
+			buf, err := reader.ReadBytes(byte(constants.EOF))
 
 			if err != nil {
 				klog.Errorf("Watch Pods Error: %s", err)
