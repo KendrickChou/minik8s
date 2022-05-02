@@ -2,6 +2,7 @@ package apiserver
 
 import (
 	"context"
+	"encoding/json"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"k8s.io/klog"
 	"minik8s.com/minik8s/config"
@@ -10,9 +11,9 @@ import (
 )
 
 type KV struct {
-	Key   string `json:"key"`
-	Value string `json:"value"`
-	Type  string `json:"type"`
+	Key   string          `json:"key"`
+	Value json.RawMessage `json:"value"`
+	Type  string          `json:"type"`
 }
 
 var etcdClient *clientv3.Client
@@ -59,12 +60,12 @@ func etcdGet(key string) (KV, error) {
 		klog.Errorf("etcd get failed, err: %v", err)
 		return KV{
 			Key:   "",
-			Value: "",
+			Value: []byte{},
 			Type:  config.AS_OP_ERROR_String,
 		}, err
 	} else {
-		val := string(resp.Kvs[0].Value)
-		klog.Infof("etcd get key: %v, value: %v\n", key, val)
+		val := resp.Kvs[0].Value
+		klog.Infof("etcd get key: %v, value: %s\n", key, val)
 		return KV{
 			Key:   key,
 			Value: val,
@@ -78,7 +79,7 @@ func etcdTest(key string) bool {
 	resp, err := etcdClient.Get(ctx, key, clientv3.WithCountOnly())
 	cancel()
 	if err != nil || resp.Count == 0 {
-		klog.Errorf("etcd test failed, err: %v", err)
+		klog.Errorf("etcd test failed, key: %v err: %v", key, err)
 		return false
 	} else {
 		klog.Infof("etcd test key: %v\n", key)
@@ -96,7 +97,7 @@ func etcdGetPrefix(key string) ([]KV, error) {
 	} else {
 		var kvList []KV
 		for _, kv := range resp.Kvs {
-			kvList = append(kvList, KV{string(kv.Key), string(kv.Value), config.AS_OP_GET_String})
+			kvList = append(kvList, KV{string(kv.Key), kv.Value, config.AS_OP_GET_String})
 			klog.Infof("etcd get with prefix: %s, key: %s, value: %s\n", key, kv.Key, kv.Value)
 		}
 		return kvList, err
@@ -128,8 +129,8 @@ func etcdDel(key string) error {
 	return err
 }
 
-func etcdWatch(key string) (chan KV, context.CancelFunc) {
-	ch := make(chan KV)
+func etcdWatch(key string) (chan *KV, context.CancelFunc) {
+	ch := make(chan *KV)
 	ctx, cancel := context.WithCancel(context.Background())
 	rch := etcdClient.Watch(ctx, key)
 	go startWatch(ch, rch)
@@ -137,8 +138,8 @@ func etcdWatch(key string) (chan KV, context.CancelFunc) {
 	return ch, cancel
 }
 
-func etcdWatchPrefix(key string) (chan KV, context.CancelFunc) {
-	ch := make(chan KV)
+func etcdWatchPrefix(key string) (chan *KV, context.CancelFunc) {
+	ch := make(chan *KV)
 	ctx, cancel := context.WithCancel(context.Background())
 	rch := etcdClient.Watch(ctx, key, clientv3.WithPrefix())
 	go startWatch(ch, rch)
@@ -146,11 +147,11 @@ func etcdWatchPrefix(key string) (chan KV, context.CancelFunc) {
 	return ch, cancel
 }
 
-func startWatch(ch chan KV, rch clientv3.WatchChan) {
+func startWatch(ch chan *KV, rch clientv3.WatchChan) {
 	for resp := range rch {
 		for _, ev := range resp.Events {
-			klog.Infof("etcd watch emitted -- type: %s key: %q val: %q\n", ev.Type, ev.Kv.Key, ev.Kv.Value)
-			ch <- KV{Type: ev.Type.String(), Key: string(ev.Kv.Key), Value: string(ev.Kv.Value)}
+			klog.Infof("etcd watch emitted -- type: %s key: %s val: %s\n", ev.Type, ev.Kv.Key, ev.Kv.Value)
+			ch <- &KV{Type: ev.Type.String(), Key: string(ev.Kv.Key), Value: json.RawMessage(ev.Kv.Value)}
 		}
 	}
 }

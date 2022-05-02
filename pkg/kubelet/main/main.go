@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"io"
 	"net/http"
 	"os"
 	"strconv"
@@ -19,19 +20,28 @@ import (
 const JsonContentType string = "application/json"
 
 func main() {
-	kl := kubelet.NewKubelet("firstnode")
+	resp, err := http.Post(constants.ApiServerAddress+"/node", JsonContentType, bytes.NewBuffer([]byte{}))
 
 	// regist to apiserver
 
-	registBody, _ := json.Marshal(kl)
-	resp, _ := http.Post(constants.ApiServerAddress+"/node", JsonContentType, bytes.NewBuffer(registBody))
-
-	if resp.StatusCode != 200 {
-		klog.Errorf("Node %s failed regist to apiserver %s", kl.NodeName, constants.ApiServerAddress)
+	if err != nil {
+		klog.Errorf("Node failed register to apiserver %s", constants.ApiServerAddress)
+		os.Exit(-1)
+	}
+	if err != nil || resp.StatusCode != 200 {
+		klog.Errorf("Node failed register to apiserver %s", constants.ApiServerAddress)
 		resp.Body.Close()
 		os.Exit(0)
 	}
 
+	var m map[string]interface{}
+	buf, _ := io.ReadAll(resp.Body)
+	err = json.Unmarshal(buf, &m)
+	if err != nil {
+		klog.Errorf("Json parse failed")
+		os.Exit(0)
+	}
+	kl := kubelet.NewKubelet(m["id"].(string))
 	resp.Body.Close()
 
 	// watch pod
@@ -55,7 +65,7 @@ func main() {
 			err := json.Unmarshal(rawBytes, req)
 
 			if err != nil {
-				klog.Error("Unmarshal APIServer Data Failed: %s", err.Error())
+				klog.Error("Unmarshal APIServer Data Failed: %v", err)
 			} else {
 				handlePodChangeRequest(&kl, req)
 			}
@@ -64,11 +74,11 @@ func main() {
 
 }
 
-func watching(ctx context.Context, nodeName string, podChange chan []byte, errChan chan string) {
-	resp, err := http.Get(constants.WatchPodsRequest + nodeName)
+func watching(ctx context.Context, nodeId string, podChange chan []byte, errChan chan string) {
+	resp, err := http.Get(constants.WatchPodsRequest + nodeId + "/pods")
 
 	if err != nil {
-		klog.Errorf("Node %s Watch Pods Failed: %s", nodeName, err.Error())
+		klog.Errorf("Node %s Watch Pods Failed: %s", nodeId, err.Error())
 		errChan <- err.Error()
 		return
 	}
@@ -87,8 +97,10 @@ func watching(ctx context.Context, nodeName string, podChange chan []byte, errCh
 				return
 			}
 
-			podChange <- buf
+			buf[len(buf)-1] = '\n'
+			klog.Infof("Watch Info from server: %v", string(buf))
 
+			podChange <- buf
 		}
 	}
 }
@@ -112,7 +124,7 @@ func sendHeartBeat(ctx context.Context, nodeName string, errChan chan string) {
 
 	for {
 		if errorCounter >= constants.MaxErrorHeartBeat {
-			errChan <-"Send heartbeat failed successively for " + strconv.Itoa(constants.MaxErrorHeartBeat) + " times"
+			errChan <- "Send heartbeat failed successively for " + strconv.Itoa(constants.MaxErrorHeartBeat) + " times"
 			return
 		}
 

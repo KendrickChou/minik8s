@@ -228,6 +228,7 @@ func handleWatchPods(c *gin.Context) {
 				return
 			}
 			_, err = fmt.Fprintf(c.Writer, string(info))
+			_, err = c.Writer.Write([]byte{26})
 			if err != nil {
 				klog.Infof("fail to write to client, cancel watch task...\n")
 				cancel()
@@ -349,32 +350,35 @@ func handleDeletePodByNode(c *gin.Context) {
 	}
 }
 
-//func handleWatchPods(c *gin.Context) {
-//	wch, cancel := etcdWatchPrefix("/minik8s/pod")
-//	flusher, _ := c.Writer.(http.Flusher)
-//	for {
-//		select {
-//		case <-c.Request.Context().Done():
-//			klog.Infof("connection closed, cancel watch task...\n")
-//			cancel()
-//			return
-//		case kv := <-wch:
-//			info, err := json.Marshal(kv)
-//			if err != nil {
-//				klog.Infof("json parse error, cancel watch task...\n")
-//				cancel()
-//				return
-//			}
-//			_, err = fmt.Fprintf(c.Writer, string(info))
-//			if err != nil {
-//				klog.Infof("fail to write to client, cancel watch task...\n")
-//				cancel()
-//				return
-//			}
-//			flusher.Flush()
-//		}
-//	}
-//}
+func handleWatchPodsByNode(c *gin.Context) {
+	nname := c.Param("nname")
+	wch, cancel := etcdWatchPrefix("/minik8s/node/" + nname + "/pod")
+	flusher, _ := c.Writer.(http.Flusher)
+	for {
+		select {
+		case <-c.Request.Context().Done():
+			klog.Infof("connection closed, cancel watch task...\n")
+			cancel()
+			return
+		case kv := <-wch:
+			info, err := json.Marshal(kv)
+
+			if err != nil {
+				klog.Infof("json parse error, cancel watch task...\n")
+				cancel()
+				return
+			}
+			_, err = c.Writer.Write(append(info, 26))
+			if err != nil {
+				klog.Infof("fail to write to client, cancel watch task...\n")
+				cancel()
+				return
+			}
+			flusher.Flush()
+		}
+	}
+}
+
 //
 //func handleWatchPod(c *gin.Context) {
 //	name := c.Param("name")
@@ -606,4 +610,13 @@ func handleDeleteNode(c *gin.Context) {
 			c.JSON(200, gin.H{"status": "OK"})
 		}
 	}
+}
+
+//------------ Heartbeat API -----------
+
+func handleHeartbeat(c *gin.Context) {
+	//name := c.Param("name")
+	//num := c.Param("num")
+	//klog.Infof("heartbeat from %v, num %v\n", name, num)
+	c.JSON(200, gin.H{"status": "OK"})
 }
