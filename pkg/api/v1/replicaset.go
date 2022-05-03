@@ -1,4 +1,4 @@
-package replicaset
+package rs
 
 import (
 	"minik8s.com/minik8s/pkg/api/v1"
