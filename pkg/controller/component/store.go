@@ -1,10 +1,14 @@
-package utils
+package component
 
 import "sync"
 
 type ThreadSafeStore struct {
 	lock  sync.RWMutex
 	items map[string]any
+}
+
+func (store *ThreadSafeStore) Init() {
+	store.items = map[string]any{}
 }
 
 func (store *ThreadSafeStore) Add(key string, obj any) {

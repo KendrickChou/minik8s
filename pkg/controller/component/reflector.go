@@ -1,4 +1,4 @@
-package utils
+package component
 
 import (
 	"context"
@@ -10,7 +10,7 @@ import (
 type Reflector struct {
 	// object type the reflector list/watch
 	Kind       string
-	NotifyChan *chan Delta
+	NotifyChan chan Delta
 }
 
 // Run list and watch
@@ -44,7 +44,7 @@ func (r *Reflector) list() {
 
 		for _, podObj := range fmtObjs {
 			podObj.Type = "Put"
-			*r.NotifyChan <- &podObj
+			r.NotifyChan <- &podObj
 		}
 	case "ReplicaSet":
 		var fmtObjs []ReplicaSetObject
@@ -56,7 +56,7 @@ func (r *Reflector) list() {
 
 		for _, rsObj := range fmtObjs {
 			rsObj.Type = "Put"
-			*r.NotifyChan <- &rsObj
+			r.NotifyChan <- &rsObj
 		}
 	case "Service":
 		var fmtObjs []ServiceObject
@@ -68,7 +68,7 @@ func (r *Reflector) list() {
 
 		for _, serviceObj := range fmtObjs {
 			serviceObj.Type = "Put"
-			*r.NotifyChan <- &serviceObj
+			r.NotifyChan <- &serviceObj
 		}
 	}
 }
@@ -108,7 +108,7 @@ func (r *Reflector) parseJsonAndNotify(jsonObj []byte) {
 			klog.Error("Reflector parse error\n")
 		}
 
-		*r.NotifyChan <- obj
+		r.NotifyChan <- obj
 	case "ReplicaSet":
 		obj := &ReplicaSetObject{}
 		err := json.Unmarshal(jsonObj, obj)
@@ -116,7 +116,7 @@ func (r *Reflector) parseJsonAndNotify(jsonObj []byte) {
 			klog.Error("Reflector parse error\n")
 		}
 
-		*r.NotifyChan <- obj
+		r.NotifyChan <- obj
 	case "Service":
 		obj := &ServiceObject{}
 		err := json.Unmarshal(jsonObj, obj)
@@ -124,6 +124,6 @@ func (r *Reflector) parseJsonAndNotify(jsonObj []byte) {
 			klog.Error("Reflector parse error\n")
 		}
 
-		*r.NotifyChan <- obj
+		r.NotifyChan <- obj
 	}
 }

@@ -1,8 +1,7 @@
-package utils
+package component
 
 import (
 	v1 "minik8s.com/minik8s/pkg/api/v1"
-	"minik8s.com/minik8s/pkg/controller/replicaset"
 )
 
 type Delta interface {
@@ -23,7 +22,7 @@ type PodObject struct {
 
 type ReplicaSetObject struct {
 	DeltaPart
-	ReplicaSet replicaset.ReplicaSet `json:"value"`
+	ReplicaSet v1.ReplicaSet `json:"value"`
 }
 
 type ServiceObject struct {

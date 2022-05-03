@@ -14,7 +14,7 @@ const (
 )
 
 const (
-	AC_ServerAddr = "http://127.0.0.1"
+	AC_ServerAddr = "http://59.78.8.125"
 	AC_ServerPort = 8080
 
 	AC_WatchServices_Path = "/watch/services"
@@ -24,10 +24,12 @@ const (
 	AC_WatchPod_Path      = "/watch/pod"
 	AC_WatchReplica_Path  = "/watch/replica"
 
-	AC_RestServices_Path = "/minik8s/services"
-	AC_RestPods_Path     = "/minik8s/pods"
-	AC_RestReplicas_Path = "/minik8s/replicas"
-	AC_RestService_Path  = "/minik8s/service"
-	AC_RestPod_Path      = "/minik8s/pod"
-	AC_RestReplica_Path  = "/minik8s/replica"
+	AC_RestServices_Path = "/services"
+	AC_RestPods_Path     = "/pods"
+	AC_RestReplicas_Path = "/replicas"
+	AC_RestNodes_Path    = "/nodes"
+	AC_RestService_Path  = "/service"
+	AC_RestPod_Path      = "/pod"
+	AC_RestReplica_Path  = "/replica"
+	AC_RestNode_Path     = "/node"
 )

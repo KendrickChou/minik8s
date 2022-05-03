@@ -1,21 +1,20 @@
-package rs
+package v1
 
 import (
-	"minik8s.com/minik8s/pkg/api/v1"
 	"time"
 )
 
 type ReplicaSet struct {
-	v1.TypeMeta   `json:",inline"`
-	v1.ObjectMeta `json:"metadata,omitempty"`
-	Spec          ReplicaSetSpec   `json:"spec,omitempty"`
-	Status        ReplicaSetStatus `json:"status,omitempty"`
+	TypeMeta   `json:",inline"`
+	ObjectMeta `json:"metadata,omitempty"`
+	Spec       ReplicaSetSpec   `json:"spec,omitempty"`
+	Status     ReplicaSetStatus `json:"status,omitempty"`
 }
 
 type ReplicaSetSpec struct {
-	Replicas int32              `json:"replicas,omitempty"`
-	Selector v1.LabelSelector   `json:"selector"`
-	Template v1.PodTemplateSpec `json:"template,omitempty"`
+	Replicas int32           `json:"replicas,omitempty"`
+	Selector LabelSelector   `json:"selector"`
+	Template PodTemplateSpec `json:"template,omitempty"`
 }
 
 // ReplicaSetStatus represents the current status of a ReplicaSet.
@@ -51,7 +50,7 @@ type ReplicaSetCondition struct {
 	// Type of replica set condition.
 	Type ReplicaSetConditionType `json:"type"`
 	// Status of the condition, one of True, False, Unknown.
-	Status v1.ConditionStatus `json:"status"`
+	Status ConditionStatus `json:"status"`
 	// The last time the condition transitioned from one status to another.
 	// +optional
 	LastTransitionTime time.Time `json:"lastTransitionTime,omitempty"`

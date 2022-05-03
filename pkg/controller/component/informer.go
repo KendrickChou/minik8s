@@ -1,4 +1,9 @@
-package utils
+package component
+
+import (
+	"fmt"
+	"k8s.io/klog"
+)
 
 type EventHandler struct {
 	OnAdd    func(obj any)
@@ -12,39 +17,64 @@ type Informer struct {
 	store      ThreadSafeStore
 	reflector  Reflector
 	notifyChan chan Delta
+	synced     bool
 }
 
 func NewInformer(kind string) (inf *Informer) {
 	inf = &Informer{
-		Kind: kind,
+		Kind:   kind,
+		synced: false,
 	}
 
 	inf.notifyChan = make(chan Delta)
 	inf.Handlers = []EventHandler{}
 	inf.reflector.Kind = kind
-	inf.reflector.NotifyChan = &inf.notifyChan
+	inf.reflector.NotifyChan = inf.notifyChan
+	inf.store.Init()
 	return inf
 }
 
 func (inf *Informer) Run(stopChan chan bool) {
+	//inf.synced = true
+	//time.Sleep(time.Second)
+	//for _, handler := range inf.Handlers {
+	//	fmt.Println(handler)
+	//	handler.OnUpdate(inf.Kind, "1")
+	//}
+	//return
+
 	reflectorStopChan := make(chan bool)
 	syncChan := make(chan bool)
 	go inf.reflector.Run(reflectorStopChan, syncChan)
 
-	<-syncChan
+	for {
+		var loop = true
+		select {
+		case delta := <-inf.notifyChan:
+			inf.store.Add(delta.GetKey(), delta.GetValue())
+		case <-syncChan:
+			loop = false
+		}
 
+		if !loop {
+			break
+		}
+	}
+
+	inf.synced = true
 	for {
 		select {
 		case delta := <-inf.notifyChan:
 			{
 				switch delta.GetType() {
-				case "Put":
-				case "Post":
+				case "PUT":
+				case "POST":
 					oldObj, exist := inf.store.Get(delta.GetKey())
 					inf.store.Add(delta.GetKey(), delta.GetValue())
 
 					if exist {
 						for _, handler := range inf.Handlers {
+							fmt.Println(handler)
 							handler.OnUpdate(delta.GetValue(), oldObj)
 						}
 					} else {
@@ -52,12 +82,14 @@ func (inf *Informer) Run(stopChan chan bool) {
 							handler.OnAdd(delta.GetValue())
 						}
 					}
-				case "Delete":
+				case "DELETE":
 					inf.store.Delete(delta.GetKey())
 
 					for _, handler := range inf.Handlers {
 						handler.OnDelete(delta.GetValue())
 					}
+				default:
+					klog.Error("invalid delta type\n")
 				}
 			}
 		case <-stopChan:
@@ -70,4 +102,8 @@ func (inf *Informer) Run(stopChan chan bool) {
 
 func (inf *Informer) AddEventHandler(handler EventHandler) {
 	inf.Handlers = append(inf.Handlers, handler)
+}
+
+func (inf *Informer) HasSynced() bool {
+	return inf.synced
 }
