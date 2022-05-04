@@ -21,7 +21,7 @@ import (
 
 //------------ Service Rest API -----------
 func handleGetServices(c *gin.Context) {
-	services, _ := etcdGetPrefix("/minik8s/service")
+	services, _ := etcdGetPrefix("/service")
 	c.JSON(200, gin.H{
 		"status":      "OK",
 		"service_num": len(services),
@@ -29,7 +29,7 @@ func handleGetServices(c *gin.Context) {
 }
 
 func handleGetService(c *gin.Context) {
-	kv, err := etcdGet("/minik8s/service/" + c.Param("name"))
+	kv, err := etcdGet("/service/" + c.Param("name"))
 	if err != nil {
 		c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
 	} else if kv.Type == config.AS_OP_ERROR_String {
@@ -44,7 +44,7 @@ func handlePostService(c *gin.Context) {
 	_, err := c.Request.Body.Read(buf)
 	name := "S" + strconv.Itoa(objCount) + "-" + random.String(8)
 	objCount++
-	err = etcdPut("/minik8s/service/"+name, string(buf))
+	err = etcdPut("/service/"+name, string(buf))
 	if err != nil {
 		c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
 	} else {
@@ -57,10 +57,11 @@ func handlePutService(c *gin.Context) {
 	_, err := c.Request.Body.Read(buf)
 	name := c.Param("name")
 
-	if etcdTest("/minik8s/service/" + name) {
+	if !etcdTest("/service/" + name) {
 		c.JSON(404, gin.H{"status": "ERR", "error": "No such service"})
 	} else {
-		err = etcdPut("/minik8s/service/"+name, string(buf))
+		err = etcdPut(""+
+			"/service/"+name, string(buf))
 		if err != nil {
 			c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
 		} else {
@@ -72,10 +73,10 @@ func handlePutService(c *gin.Context) {
 func handleDeleteService(c *gin.Context) {
 	name := c.Param("name")
 
-	if etcdTest("/minik8s/service/" + name) {
+	if etcdTest("/service/" + name) {
 		c.JSON(404, gin.H{"status": "ERR", "error": "No such service"})
 	} else {
-		err := etcdDel("/minik8s/service/" + name)
+		err := etcdDel("/service/" + name)
 		if err != nil {
 			c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
 		} else {
@@ -85,7 +86,7 @@ func handleDeleteService(c *gin.Context) {
 }
 
 func handleWatchServices(c *gin.Context) {
-	wch, cancel := etcdWatchPrefix("/minik8s/service")
+	wch, cancel := etcdWatchPrefix("/service")
 	flusher, _ := c.Writer.(http.Flusher)
 	for {
 		select {
@@ -115,13 +116,10 @@ func handleWatchServices(c *gin.Context) {
 
 func handleWatchService(c *gin.Context) {
 	name := c.Param("name")
-	kv, err := etcdGet("/minik8s/service/" + name)
-	if err != nil {
-		c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
-	} else if kv.Type == config.AS_OP_ERROR_String {
+	if !etcdTest("/service/" + name) {
 		c.JSON(404, gin.H{"status": "ERR", "error": "No such service"})
 	} else {
-		wch, cancel := etcdWatch("/minik8s/service")
+		wch, cancel := etcdWatch("/service" + name)
 		flusher, _ := c.Writer.(http.Flusher)
 		for {
 			select {
@@ -150,15 +148,12 @@ func handleWatchService(c *gin.Context) {
 
 //------------ Pod Rest API -----------
 func handleGetPods(c *gin.Context) {
-	pods, _ := etcdGetPrefix("/minik8s/pod")
-	c.JSON(200, gin.H{
-		"status":   "OK",
-		"pod_num":  len(pods),
-		"services": pods})
+	pods, _ := etcdGetPrefix("/pod")
+	c.JSON(200, pods)
 }
 
 func handleGetPod(c *gin.Context) {
-	kv, err := etcdGet("/minik8s/pod/" + c.Param("name"))
+	kv, err := etcdGet("/pod/" + c.Param("name"))
 	if err != nil {
 		c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
 	} else if kv.Type == config.AS_OP_ERROR_String {
@@ -173,7 +168,7 @@ func handlePostPod(c *gin.Context) {
 	_, err := c.Request.Body.Read(buf)
 	name := "P" + strconv.Itoa(objCount) + "-" + random.String(8)
 	objCount++
-	err = etcdPut("/minik8s/pod/"+name, string(buf))
+	err = etcdPut("/pod/"+name, string(buf))
 	if err != nil {
 		c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
 	} else {
@@ -185,10 +180,10 @@ func handlePutPod(c *gin.Context) {
 	buf := make([]byte, c.Request.ContentLength)
 	_, err := c.Request.Body.Read(buf)
 	name := c.Param("name")
-	if !etcdTest("/minik8s/pod/" + name) {
+	if !etcdTest("/pod/" + name) {
 		c.JSON(404, gin.H{"status": "ERR", "error": "No such pod"})
 	} else {
-		err = etcdPut("/minik8s/pod/"+name, string(buf))
+		err = etcdPut("/pod/"+name, string(buf))
 		if err != nil {
 			c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
 		} else {
@@ -199,10 +194,10 @@ func handlePutPod(c *gin.Context) {
 
 func handleDeletePod(c *gin.Context) {
 	name := c.Param("name")
-	if !etcdTest("/minik8s/pod/" + name) {
+	if !etcdTest("/pod/" + name) {
 		c.JSON(404, gin.H{"status": "ERR", "error": "No such pod"})
 	} else {
-		err := etcdDel("/minik8s/pod/" + name)
+		err := etcdDel("/pod/" + name)
 		if err != nil {
 			c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
 		} else {
@@ -212,7 +207,7 @@ func handleDeletePod(c *gin.Context) {
 }
 
 func handleWatchPods(c *gin.Context) {
-	wch, cancel := etcdWatchPrefix("/minik8s/pod")
+	wch, cancel := etcdWatchPrefix("/pod")
 	flusher, _ := c.Writer.(http.Flusher)
 	for {
 		select {
@@ -241,10 +236,10 @@ func handleWatchPods(c *gin.Context) {
 
 func handleWatchPod(c *gin.Context) {
 	name := c.Param("name")
-	if !etcdTest("/minik8s/pod/" + name) {
+	if !etcdTest("/pod/" + name) {
 		c.JSON(404, gin.H{"status": "ERR", "error": "No such pod"})
 	} else {
-		wch, cancel := etcdWatch("/minik8s/pod")
+		wch, cancel := etcdWatch("/pod" + name)
 		flusher, _ := c.Writer.(http.Flusher)
 		for {
 			select {
@@ -273,24 +268,21 @@ func handleWatchPod(c *gin.Context) {
 
 func handleGetPodsByNode(c *gin.Context) {
 	nname := c.Param("nname")
-	if !etcdTest("/minik8s/node/" + nname) {
+	if !etcdTest("/node/" + nname) {
 		c.JSON(404, gin.H{"status": "ERR", "error": "No such node"})
 	} else {
-		pods, _ := etcdGetPrefix("/minik8s/node/" + nname + "/pod")
-		c.JSON(200, gin.H{
-			"status":  "OK",
-			"pod_num": len(pods),
-			"pods":    pods})
+		pods, _ := etcdGetPrefix("/node/" + nname + "/pod")
+		c.JSON(200, pods)
 	}
 }
 
 func handleGetPodByNode(c *gin.Context) {
 	nname := c.Param("nname")
-	if !etcdTest("/minik8s/node/" + nname) {
+	if !etcdTest("/node/" + nname) {
 		c.JSON(404, gin.H{"status": "ERR", "error": "No such node"})
 	} else {
 		pname := c.Param("pname")
-		kv, err := etcdGet("/minik8s/node/" + nname + "/pod/" + pname)
+		kv, err := etcdGet("/node/" + nname + "/pod/" + pname)
 		if err != nil {
 			c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
 		} else if kv.Type == config.AS_OP_ERROR_String {
@@ -305,15 +297,16 @@ func handlePostPodByNode(c *gin.Context) {
 	buf := make([]byte, c.Request.ContentLength)
 	_, err := c.Request.Body.Read(buf)
 	nname := c.Param("nname")
-	pname := c.Param("pname")
-	if !etcdTest("/minik8s/node/"+nname) || !etcdTest("/minik8s/pod/"+pname) {
+	pname := "P" + strconv.Itoa(objCount) + "-" + random.String(8)
+	objCount++
+	if !etcdTest("/node/" + nname) {
 		c.JSON(404, gin.H{"status": "ERR", "error": "No such pod"})
 	} else {
-		err = etcdPut("/minik8s/node/"+nname+"/pod/"+pname, string(buf))
+		err = etcdPut("/node/"+nname+"/pod/"+pname, string(buf))
 		if err != nil {
 			c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
 		} else {
-			c.JSON(200, gin.H{"status": "OK"})
+			c.JSON(200, gin.H{"status": "OK", "id": pname})
 		}
 	}
 }
@@ -323,10 +316,10 @@ func handlePutPodByNode(c *gin.Context) {
 	_, err := c.Request.Body.Read(buf)
 	nname := c.Param("nname")
 	pname := c.Param("pname")
-	if !etcdTest("/minik8s/node/"+nname) || !etcdTest("/minik8s/pod/"+pname) {
+	if !etcdTest("/node/"+nname) || !etcdTest("/pod/"+pname) {
 		c.JSON(404, gin.H{"status": "ERR", "error": "No such pod"})
 	} else {
-		err = etcdPut("/minik8s/node/"+nname+"/pod/"+pname, string(buf))
+		err = etcdPut("/node/"+nname+"/pod/"+pname, string(buf))
 		if err != nil {
 			c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
 		} else {
@@ -338,10 +331,10 @@ func handlePutPodByNode(c *gin.Context) {
 func handleDeletePodByNode(c *gin.Context) {
 	nname := c.Param("nname")
 	pname := c.Param("pname")
-	if !etcdTest("/minik8s/node/"+nname) || !etcdTest("/minik8s/node/"+nname+"/pod/"+pname) {
+	if !etcdTest("/node/"+nname) || !etcdTest("/node/"+nname+"/pod/"+pname) {
 		c.JSON(404, gin.H{"status": "ERR", "error": "No such pod"})
 	} else {
-		err := etcdDel("/minik8s/node/" + nname + "/pod/" + pname)
+		err := etcdDel("/node/" + nname + "/pod/" + pname)
 		if err != nil {
 			c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
 		} else {
@@ -352,7 +345,7 @@ func handleDeletePodByNode(c *gin.Context) {
 
 func handleWatchPodsByNode(c *gin.Context) {
 	nname := c.Param("nname")
-	wch, cancel := etcdWatchPrefix("/minik8s/node/" + nname + "/pod")
+	wch, cancel := etcdWatchPrefix("/node/" + nname + "/pod")
 	flusher, _ := c.Writer.(http.Flusher)
 	for {
 		select {
@@ -379,53 +372,73 @@ func handleWatchPodsByNode(c *gin.Context) {
 	}
 }
 
-//
-//func handleWatchPod(c *gin.Context) {
-//	name := c.Param("name")
-//	kv, err := etcdGet("/minik8s/pod/" + name)
-//	if err != nil {
-//		c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
-//	} else if kv.Type == config.AS_OP_ERROR_String {
-//		c.JSON(404, gin.H{"status": "ERR", "error": "No such pod"})
-//	} else {
-//		wch, cancel := etcdWatch("/minik8s/pod")
-//		flusher, _ := c.Writer.(http.Flusher)
-//		for {
-//			select {
-//			case <-c.Request.Context().Done():
-//				klog.Infof("connection closed, cancel watch task...\n")
-//				cancel()
-//				return
-//			case kv := <-wch:
-//				info, err := json.Marshal(kv)
-//				if err != nil {
-//					klog.Infof("json parse error, cancel watch task...\n")
-//					cancel()
-//					return
-//				}
-//				_, err = fmt.Fprintf(c.Writer, string(info))
-//				if err != nil {
-//					klog.Infof("fail to write to client, cancel watch task...\n")
-//					cancel()
-//					return
-//				}
-//				flusher.Flush()
-//			}
-//		}
-//	}
-//}
+func handleWatchNodes(c *gin.Context) {
+	wch, cancel := etcdWatchPrefix("/node")
+	flusher, _ := c.Writer.(http.Flusher)
+	for {
+		select {
+		case <-c.Request.Context().Done():
+			klog.Infof("connection closed, cancel watch task...\n")
+			cancel()
+			return
+		case kv := <-wch:
+			info, err := json.Marshal(kv)
+			if err != nil {
+				klog.Infof("json parse error, cancel watch task...\n")
+				cancel()
+				return
+			}
+			_, err = fmt.Fprintf(c.Writer, string(info))
+			_, err = c.Writer.Write([]byte{26})
+			if err != nil {
+				klog.Infof("fail to write to client, cancel watch task...\n")
+				cancel()
+				return
+			}
+			flusher.Flush()
+		}
+	}
+}
+func handleWatchNode(c *gin.Context) {
+	name := c.Param("name")
+	if !etcdTest("/node/" + name) {
+		c.JSON(404, gin.H{"status": "ERR", "error": "No such node"})
+	} else {
+		wch, cancel := etcdWatch("/node/" + name)
+		flusher, _ := c.Writer.(http.Flusher)
+		for {
+			select {
+			case <-c.Request.Context().Done():
+				klog.Infof("connection closed, cancel watch task...\n")
+				cancel()
+				return
+			case kv := <-wch:
+				info, err := json.Marshal(kv)
+				if err != nil {
+					klog.Infof("json parse error, cancel watch task...\n")
+					cancel()
+					return
+				}
+				_, err = fmt.Fprintf(c.Writer, string(info))
+				if err != nil {
+					klog.Infof("fail to write to client, cancel watch task...\n")
+					cancel()
+					return
+				}
+				flusher.Flush()
+			}
+		}
+	}
+}
 
 //------------ Replica Rest API -----------
 func handleGetReplicas(c *gin.Context) {
-	services, _ := etcdGetPrefix("/minik8s/replicas")
-	c.JSON(200, gin.H{
-		"status":      "OK",
-		"replica_num": len(services),
-		"replicas":    services})
+	replicas, _ := etcdGetPrefix("/replicas")
+	c.JSON(200, replicas)
 }
 
 func handleGetReplica(c *gin.Context) {
-	kv, err := etcdGet("/minik8s/replica/" + c.Param("name"))
+	kv, err := etcdGet("/replica/" + c.Param("name"))
 	if err != nil {
 		c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
 	} else if kv.Type == config.AS_OP_ERROR_String {
@@ -440,7 +453,7 @@ func handlePostReplica(c *gin.Context) {
 	_, err := c.Request.Body.Read(buf)
 	name := "R" + strconv.Itoa(objCount) + "-" + random.String(8)
 	objCount++
-	err = etcdPut("/minik8s/replica/"+name, string(buf))
+	err = etcdPut("/replica/"+name, string(buf))
 	if err != nil {
 		c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
 	} else {
@@ -452,10 +465,10 @@ func handlePutReplica(c *gin.Context) {
 	buf := make([]byte, c.Request.ContentLength)
 	_, err := c.Request.Body.Read(buf)
 	name := c.Param("name")
-	if etcdTest("/minik8s/replica/" + name) {
+	if etcdTest("/replica/" + name) {
 		c.JSON(404, gin.H{"status": "ERR", "error": "No such replica"})
 	} else {
-		err = etcdPut("/minik8s/replica/"+name, string(buf))
+		err = etcdPut("/replica/"+name, string(buf))
 		if err != nil {
 			c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
 		} else {
@@ -466,13 +479,10 @@ func handlePutReplica(c *gin.Context) {
 
 func handleDeleteReplica(c *gin.Context) {
 	name := c.Param("name")
-	kv, err := etcdGet("/minik8s/replica/" + name)
-	if err != nil {
-		c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
-	} else if kv.Type == config.AS_OP_ERROR_String {
+	if !etcdTest("/replica/" + name) {
 		c.JSON(404, gin.H{"status": "ERR", "error": "No such replica"})
 	} else {
-		err = etcdDel("/minik8s/replica/" + name)
+		err := etcdDel("/replica/" + name)
 		if err != nil {
 			c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
 		} else {
@@ -482,7 +492,7 @@ func handleDeleteReplica(c *gin.Context) {
 }
 
 func handleWatchReplicas(c *gin.Context) {
-	wch, cancel := etcdWatchPrefix("/minik8s/replica")
+	wch, cancel := etcdWatchPrefix("/replica")
 	flusher, _ := c.Writer.(http.Flusher)
 	for {
 		select {
@@ -510,13 +520,10 @@ func handleWatchReplicas(c *gin.Context) {
 
 func handleWatchReplica(c *gin.Context) {
 	name := c.Param("name")
-	kv, err := etcdGet("/minik8s/replica/" + name)
-	if err != nil {
-		c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
-	} else if kv.Type == config.AS_OP_ERROR_String {
+	if !etcdTest("/replica/" + name) {
 		c.JSON(404, gin.H{"status": "ERR", "error": "No such replica"})
 	} else {
-		wch, cancel := etcdWatch("/minik8s/replica")
+		wch, cancel := etcdWatch("/replica" + name)
 		flusher, _ := c.Writer.(http.Flusher)
 		for {
 			select {
@@ -545,15 +552,12 @@ func handleWatchReplica(c *gin.Context) {
 
 //------------ Node Rest API -----------
 func handleGetNodes(c *gin.Context) {
-	services, _ := etcdGetPrefix("/minik8s/nodes")
-	c.JSON(200, gin.H{
-		"status":   "OK",
-		"node_num": len(services),
-		"nodes":    services})
+	nodes, _ := etcdGetPrefix("/nodes")
+	c.JSON(200, nodes)
 }
 
 func handleGetNode(c *gin.Context) {
-	kv, err := etcdGet("/minik8s/node/" + c.Param("name"))
+	kv, err := etcdGet("/node/" + c.Param("name"))
 	if err != nil {
 		c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
 	} else if kv.Type == config.AS_OP_ERROR_String {
@@ -568,7 +572,7 @@ func handlePostNode(c *gin.Context) {
 	_, err := c.Request.Body.Read(buf)
 	name := "N" + strconv.Itoa(objCount) + "-" + random.String(8)
 	objCount++
-	err = etcdPut("/minik8s/node/"+name, string(buf))
+	err = etcdPut("/node/"+name, string(buf))
 	if err != nil {
 		c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
 	} else {
@@ -580,13 +584,13 @@ func handlePutNode(c *gin.Context) {
 	buf := make([]byte, c.Request.ContentLength)
 	_, err := c.Request.Body.Read(buf)
 	name := c.Param("name")
-	kv, err := etcdGet("/minik8s/node/" + name)
+	kv, err := etcdGet("/node/" + name)
 	if err != nil {
 		c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
 	} else if kv.Type == config.AS_OP_ERROR_String {
 		c.JSON(404, gin.H{"status": "ERR", "error": "No such node"})
 	} else {
-		err = etcdPut("/minik8s/node/"+name, string(buf))
+		err = etcdPut("/node/"+name, string(buf))
 		if err != nil {
 			c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
 		} else {
@@ -597,13 +601,13 @@ func handlePutNode(c *gin.Context) {
 
 func handleDeleteNode(c *gin.Context) {
 	name := c.Param("name")
-	kv, err := etcdGet("/minik8s/node/" + name)
+	kv, err := etcdGet("/node/" + name)
 	if err != nil {
 		c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
 	} else if kv.Type == config.AS_OP_ERROR_String {
 		c.JSON(404, gin.H{"status": "ERR", "error": "No such replica"})
 	} else {
-		err = etcdDel("/minik8s/node/" + name)
+		err = etcdDel("/node/" + name)
 		if err != nil {
 			c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
 		} else {
