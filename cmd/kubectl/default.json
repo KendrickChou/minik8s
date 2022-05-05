@@ -1,0 +1,47 @@
+{
+    "Kind": "pod",
+    "APIVersion": "v1",
+    "Name": "myFirstPod",
+    "Namespace": "default",
+    "UID": "123456789",
+    "Spec": {
+        "Containers": [
+            {
+                "Name": "myFirstPod-myFirstContainer",
+                "Namespace": "example",
+                "ID": "4a2e3b94e5b5d184001b4a3475e958619bddbe89702b6249336f952adc9c33e4",
+                "Image": "alpine:latest",
+                "ImagePullPolicy": "IfNotPresent",
+                "Entrypoint": [
+                    "/bin/sh",
+                    "-c",
+                    "cat /home/mountdir/hello.txt"
+                ],
+                "Mounts": [
+                    {
+                        "MountType": "bind",
+                        "MountSource": "/home/kendrick/mountdir",
+                        "MountTarget": "/home/mountdir"
+                    }
+                ]
+            },
+            {
+                "Name": "myFirstPod-mySecondContainer",
+                "Namespace": "example",
+                "ID": "97a932efb9a6a9cf263d9c7394cf48dd578553c7ec34770091257879a2864591",
+                "Image": "alpine:latest",
+                "ImagePullPolicy": "IfNotPresent",
+                "Entrypoint": [
+                    "echo",
+                    "hello world 2"
+                ]
+            }
+        ]
+    },
+    "Status": {
+        "Phase": "Succeeded",
+        "ContainerStatuses": [
+
+        ]
+    }
+}

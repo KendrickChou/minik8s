@@ -27,7 +27,9 @@ const (
 	AC_RestServices_Path = "/services"
 	AC_RestPods_Path     = "/pods"
 	AC_RestReplicas_Path = "/replicas"
+	AC_RestNodes_Path    = "/nodes"
 	AC_RestService_Path  = "/service"
 	AC_RestPod_Path      = "/pod"
 	AC_RestReplica_Path  = "/replica"
+	AC_RestNode_Path     = "/node"
 )

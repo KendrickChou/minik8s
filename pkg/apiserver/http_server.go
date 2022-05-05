@@ -61,6 +61,9 @@ func runHttpServer() {
 	r.GET("/watch/pods", handleWatchPods)
 	r.GET("/watch/pod/:name", handleWatchPod)
 
+	r.GET("/watch/nodes", handleWatchNodes)
+	r.GET("/watch/node/:name", handleWatchNode)
+
 	r.GET("/watch/innode/:nname/pods", handleWatchPodsByNode)
 
 	r.GET("/watch/replicas", handleWatchReplicas)
