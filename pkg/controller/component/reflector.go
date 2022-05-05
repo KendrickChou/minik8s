@@ -30,6 +30,8 @@ func (r *Reflector) list() {
 		objType = apiclient.OBJ_ALL_SERVICES
 	case "ReplicaSet":
 		objType = apiclient.OBJ_ALL_REPLICAS
+	case "Endpoint":
+		// TODO: handle Endpoint Object
 	}
 
 	objects := apiclient.Rest("", "", objType, apiclient.OP_GET)
@@ -43,7 +45,7 @@ func (r *Reflector) list() {
 		}
 
 		for _, podObj := range fmtObjs {
-			podObj.Type = "Put"
+			podObj.Type = "PUT"
 			r.NotifyChan <- &podObj
 		}
 	case "ReplicaSet":
@@ -55,7 +57,7 @@ func (r *Reflector) list() {
 		}
 
 		for _, rsObj := range fmtObjs {
-			rsObj.Type = "Put"
+			rsObj.Type = "PUT"
 			r.NotifyChan <- &rsObj
 		}
 	case "Service":
@@ -67,7 +69,7 @@ func (r *Reflector) list() {
 		}
 
 		for _, serviceObj := range fmtObjs {
-			serviceObj.Type = "Put"
+			serviceObj.Type = "PUT"
 			r.NotifyChan <- &serviceObj
 		}
 	}

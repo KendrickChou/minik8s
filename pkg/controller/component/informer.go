@@ -1,7 +1,6 @@
 package component
 
 import (
-	"fmt"
 	"k8s.io/klog"
 )
 
@@ -35,14 +34,6 @@ func NewInformer(kind string) (inf *Informer) {
 }
 
 func (inf *Informer) Run(stopChan chan bool) {
-	//inf.synced = true
-	//time.Sleep(time.Second)
-	//for _, handler := range inf.Handlers {
-	//	fmt.Println(handler)
-	//	handler.OnUpdate(inf.Kind, "1")
-	//}
-	//return
-
 	reflectorStopChan := make(chan bool)
 	syncChan := make(chan bool)
 	go inf.reflector.Run(reflectorStopChan, syncChan)
@@ -62,19 +53,22 @@ func (inf *Informer) Run(stopChan chan bool) {
 	}
 
 	inf.synced = true
+	/*
+		TODO:
+		   use queue to process the events, channel will congest, in such case the stored
+		 objects may not be the newest
+	*/
 	for {
 		select {
 		case delta := <-inf.notifyChan:
 			{
 				switch delta.GetType() {
 				case "PUT":
-				case "POST":
 					oldObj, exist := inf.store.Get(delta.GetKey())
 					inf.store.Add(delta.GetKey(), delta.GetValue())
 
 					if exist {
 						for _, handler := range inf.Handlers {
-							fmt.Println(handler)
 							handler.OnUpdate(delta.GetValue(), oldObj)
 						}
 					} else {
@@ -106,4 +100,17 @@ func (inf *Informer) AddEventHandler(handler EventHandler) {
 
 func (inf *Informer) HasSynced() bool {
 	return inf.synced
+}
+
+func (inf *Informer) List() []any {
+	return inf.store.List()
+}
+
+func (inf *Informer) GetItem(key string) any {
+	item, exist := inf.store.Get(key)
+	if !exist {
+		return nil
+	} else {
+		return item
+	}
 }

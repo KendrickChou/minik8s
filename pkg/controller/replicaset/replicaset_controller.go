@@ -1,13 +1,15 @@
 package rs
 
 import (
-	"fmt"
+	"k8s.io/klog"
+	v1 "minik8s.com/minik8s/pkg/api/v1"
 	"minik8s.com/minik8s/pkg/controller/component"
 )
 
 type ReplicaSetController struct {
 	podInformer *component.Informer
 	rsInformer  *component.Informer
+	queue       component.WorkQueue
 }
 
 func NewReplicaSetController(podInfo *component.Informer, rsInfo *component.Informer) *ReplicaSetController {
@@ -33,54 +35,102 @@ func (rsc *ReplicaSetController) Run() {
 		OnDelete: rsc.deletePod,
 		OnUpdate: rsc.updatePod,
 	})
+
+	rsc.worker()
 }
 
-func (rsc *ReplicaSetController) syncReplicaSet() {
+func (rsc *ReplicaSetController) worker() {
+	for rsc.processNextWorkItem() {
+	}
+}
 
+func (rsc *ReplicaSetController) processNextWorkItem() bool {
+	key := rsc.queue.Get().(string)
+	defer rsc.queue.Done(key)
+
+	err := rsc.syncReplicaSet(key)
+	if err != nil {
+		klog.Error("syncReplicaSet error\n")
+	}
+	return true
+}
+
+func (rsc *ReplicaSetController) syncReplicaSet(key string) error {
+	pods := rsc.podInformer.List()
+	rs := rsc.rsInformer.GetItem(key).(v1.ReplicaSet)
+
+	// TODO: sync logic
+}
+
+// return replicaSets that matches the pod, while there
+// is only one replicaSet actually manage the pod
+func (rsc *ReplicaSetController) getPodReplicaSet(pod *v1.Pod) []v1.ReplicaSet {
+	rss := rsc.rsInformer.List()
+	var result []v1.ReplicaSet
+
+	for _, item := range rss {
+		rs := item.(v1.ReplicaSet)
+
+		flag := v1.MatchSelector(rs.Spec.Selector, pod.Labels)
+
+		if flag {
+			result = append(result, rs)
+		}
+	}
+
+	return result
+}
+
+func (rsc *ReplicaSetController) enqueueRS(rs v1.ReplicaSet) {
+	key := rs.UID
+	rsc.queue.Add(key)
 }
 
 /*
 addRS 在有 ReplicaSet 被创建（Informer 发现从前未出现过的 ReplicaSet）时被调用。
 */
 func (rsc *ReplicaSetController) addRS(obj any) {
-	fmt.Println(obj)
+	rs := obj.(v1.ReplicaSet)
+	rsc.enqueueRS(rs)
 }
 
-/* updateRS
-可能在几种情况下被调用：
-1. 某 ReplicaSet 被使用 Update 或 Patch 方法更改，触发 Update 事件；
-2. 在 Periodic Resync 的过程中，所有 ReplicaSet 都会被触发 Update 事件；
-3. 某个旧 ReplicaSet 被删除（删除之前可能被进行若干次修改）,
-后一个新的有同样 Namespaced Name 的 ReplicaSet 被创建出来，如果删除事件被 Informer 错失的话，
-它是无法区分新旧 ReplicaSet 的，因此它认为发生了一次 Update；
-*/
 func (rsc *ReplicaSetController) updateRS(newObj any, oldObj any) {
-	fmt.Println(newObj, oldObj)
+	newRS := newObj.(v1.ReplicaSet)
+
+	rsc.enqueueRS(newRS)
 }
 
-/* deleteRS
-触发有两种情况：
-即 API Server 告知 Informer 有 Object 被删除，
-或 Informer 自行产生的 DeletedFinalStateUnknown 。
-*/
 func (rsc *ReplicaSetController) deleteRS(obj any) {
-	fmt.Println(obj)
+	rs := obj.(v1.ReplicaSet)
+	rsc.enqueueRS(rs)
 }
-
-func (rsc *ReplicaSetController) manageReplicas() {
-
-}
-
-func (rsc *ReplicaSetController) getPods() {}
 
 func (rsc *ReplicaSetController) addPod(obj any) {
-	fmt.Println(obj)
+	pod := obj.(v1.Pod)
+
+	rss := rsc.getPodReplicaSet(&pod)
+
+	for _, rs := range rss {
+		rsc.enqueueRS(rs)
+	}
 }
 
 func (rsc *ReplicaSetController) updatePod(newObj, oldObj any) {
-	fmt.Println(newObj, oldObj)
+	newPod := newObj.(v1.Pod)
+
+	rss := rsc.getPodReplicaSet(&newPod)
+
+	for _, rs := range rss {
+		rsc.enqueueRS(rs)
+	}
 }
 
 func (rsc *ReplicaSetController) deletePod(obj any) {
-	fmt.Println(obj)
+	pod := obj.(v1.Pod)
+
+	rss := rsc.getPodReplicaSet(&pod)
+
+	for _, rs := range rss {
+		rsc.enqueueRS(rs)
+	}
 }

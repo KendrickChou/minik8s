@@ -27,7 +27,12 @@ type ReplicaSetObject struct {
 
 type ServiceObject struct {
 	DeltaPart
-	// TODO: add Service struct
+	Service v1.Service `json:"value"`
+}
+
+type EndpointObject struct {
+	DeltaPart
+	Endpoint v1.Endpoint `json:"value"`
 }
 
 func (d *DeltaPart) GetType() string {
@@ -47,6 +52,9 @@ func (rs *ReplicaSetObject) GetValue() any {
 }
 
 func (s *ServiceObject) GetValue() any {
-	// TODO: return a real service object
-	return nil
+	return s.Service
+}
+
+func (ed *EndpointObject) GetValue() any {
+	return ed.Endpoint
 }
