@@ -34,10 +34,6 @@ type ReplicaSetStatus struct {
 	// +optional
 	AvailableReplicas int32 `json:"availableReplicas,omitempty"`
 
-	// ObservedGeneration reflects the generation of the most recently observed ReplicaSet.
-	// +optional
-	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
-
 	// Represents the latest available observations of a replica set's current state.
 	// +optional
 	Conditions []ReplicaSetCondition `json:"conditions,omitempty"`

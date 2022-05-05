@@ -1,6 +1,7 @@
 package v1
 
 type LabelSelector struct {
+	MatchLabels map[string]string `json:"matchLabels,omitempty"`
 }
 
 type PodTemplateSpec struct {
@@ -15,3 +16,15 @@ const (
 	ConditionFalse   ConditionStatus = "False"
 	ConditionUnknown ConditionStatus = "Unknown"
 )
+
+func MatchSelector(requirement LabelSelector, labels map[string]string) bool {
+	flag := true
+	for reqKey, reqVal := range requirement.MatchLabels {
+		givenVal, exist := labels[reqKey]
+		if !exist || reqVal != givenVal {
+			flag = false
+			break
+		}
+	}
+	return flag
+}

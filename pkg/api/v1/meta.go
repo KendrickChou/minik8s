@@ -32,4 +32,15 @@ type ObjectMeta struct {
 	// operations.
 	// Read Only
 	UID string `json:"UID,omitempty"`
+
+	Labels map[string]string `json:"labels,omitempty"`
+
+	OwnerReferences []OwnerReference `json:"OwnerReferences,omitempty"`
+}
+
+type OwnerReference struct {
+	APIVersion string `json:"APIVersion"`
+	Kind       string `json:"Kind"`
+	Name       string `json:"Name"`
+	UID        string `json:"UID"`
 }
