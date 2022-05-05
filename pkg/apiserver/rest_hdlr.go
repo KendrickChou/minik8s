@@ -601,13 +601,10 @@ func handlePutNode(c *gin.Context) {
 
 func handleDeleteNode(c *gin.Context) {
 	name := c.Param("name")
-	kv, err := etcdGet("/node/" + name)
-	if err != nil {
-		c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
-	} else if kv.Type == config.AS_OP_ERROR_String {
+	if etcdTest("/node/" + name) {
 		c.JSON(404, gin.H{"status": "ERR", "error": "No such replica"})
 	} else {
-		err = etcdDel("/node/" + name)
+		err := etcdDel("/node/" + name)
 		if err != nil {
 			c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
 		} else {
