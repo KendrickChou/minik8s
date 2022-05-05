@@ -13,6 +13,10 @@ type KubeletConfiguration struct {
 	HeartbeatInterval uint64
 }
 
-const (
-	InternalPodBridgeNetworkName string = "kubelet"
-)
+var	InternalPodBridgeNetworkName string = "kubelet"
+
+var ApiServerAddress string = "addr"
+
+var GatewayAddress string = "addr"
+
+var NodeName string = "node"

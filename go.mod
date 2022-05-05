@@ -9,8 +9,11 @@ require (
 	github.com/containernetworking/cni v1.0.1
 	github.com/docker/docker v20.10.14+incompatible
 	github.com/gin-gonic/gin v1.7.7
+	github.com/vishvananda/netlink v1.1.1-0.20210330154013-f5de75959ad5
 	k8s.io/klog/v2 v2.30.0
 )
+
+require github.com/vishvananda/netns v0.0.0-20210104183010-2eb08e3e575f // indirect
 
 require (
 	github.com/Azure/go-ansiterm v0.0.0-20210617225240-d185dfc1b5a1 // indirect

@@ -5,13 +5,10 @@ import v1 "minik8s.com/minik8s/pkg/api/v1"
 const EOF int = 26
 
 const (
-	ApiServerAddress string = "addr"
-)
-
-const (
-	RegistNodeRequest string = ApiServerAddress + "/node"
-	WatchPodsRequest  string = ApiServerAddress + "/watch/pods/"
-	HeartBeatRequest  string = ApiServerAddress + "/heartbeat/"
+	RegistNodeRequest string = "/node"
+	WatchNodeRequest  string = "/watch/node/"
+	WatchPodsRequest  string = "/watch/pods/"
+	HeartBeatRequest  string = "/heartbeat/"
 )
 
 const (
@@ -22,6 +19,7 @@ const (
 const (
 	NetworkIDPrefix          string = "container:"
 	InitialPauseContainerKey string = "pause"
+	NetworkBridgeName        string = "kubenet"
 )
 
 var InitialPauseContainer v1.Container = v1.Container{
