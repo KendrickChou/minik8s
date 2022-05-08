@@ -2,15 +2,12 @@ package kubelet
 
 import (
 	"errors"
-	"net"
 	"os"
 
 	"github.com/gin-gonic/gin"
-	"github.com/vishvananda/netlink"
 	"k8s.io/klog/v2"
 
 	v1 "minik8s.com/minik8s/pkg/api/v1"
-	"minik8s.com/minik8s/pkg/kubelet/apis/config"
 	kubeconfig "minik8s.com/minik8s/pkg/kubelet/apis/config"
 	"minik8s.com/minik8s/pkg/kubelet/apis/constants"
 	"minik8s.com/minik8s/pkg/kubelet/pod"
@@ -27,34 +24,27 @@ type Kubelet struct {
 	setNodeStatusFuncs []func(*v1.Node)
 }
 
-func NewKubelet(nodeName string, UID string, CIDR string, CIDRFullDomain string) (Kubelet, error) {
+func NewKubelet(nodeName string, UID string) (Kubelet, error) {
 	kubelet := Kubelet{
 		Node: v1.Node{
 			TypeMeta: v1.TypeMeta{
-				Kind: "Node",
+				Kind:       "Node",
 				APIVersion: "v1",
 			},
 			ObjectMeta: v1.ObjectMeta{
-				Name: nodeName,
+				Name:      nodeName,
 				Namespace: "default",
-				UID: UID,
+				UID:       UID,
 			},
 		},
-		podManager:     pod.NewPodManager(),
+		podManager: pod.NewPodManager(),
 	}
 
 	kubelet.PodManager = &kubelet.podManager
 
-	err := kubelet.podManager.CreatePodBridgeNetwork(kubelet.Spec.CIDR)
+	// err := kubelet.podManager.CreatePodBridgeNetwork(kubelet.Spec.CIDR)
 
-	// config route table
-	_, dst, err := net.ParseCIDR(CIDRFullDomain)
-	netlink.RouteAdd(&netlink.Route{
-		Dst: dst,
-		Gw: net.ParseIP(config.GatewayAddress),
-	})
-
-	return kubelet, err
+	return kubelet, nil
 }
 
 func (kl *Kubelet) ListenAndServe(kubeCfg *kubeconfig.KubeletConfiguration) {

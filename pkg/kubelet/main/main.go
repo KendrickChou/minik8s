@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"os/exec"
 	"strconv"
 	"time"
 
@@ -22,7 +23,7 @@ const JsonContentType string = "application/json"
 
 func main() {
 
-	resp, err := http.Post(config.ApiServerAddress + constants.RegistNodeRequest, JsonContentType, bytes.NewBuffer([]byte{}))
+	resp, err := http.Post(config.ApiServerAddress+constants.RegistNodeRequest(), JsonContentType, bytes.NewBuffer([]byte{}))
 
 	// regist to apiserver
 	if err != nil || resp.StatusCode != 200 {
@@ -44,31 +45,33 @@ func main() {
 	}
 
 	// watch node to get CIDR and block till get response.
-	resp, err = http.Get(config.ApiServerAddress + constants.WatchNodeRequest + registResp.UID)
+	// resp, err = http.Get(config.ApiServerAddress + constants.WatchNodeRequest + registResp.UID)
 
-	if err != nil {
-		klog.Fatalf("Node failed get CIDR from apiserver: %s", err.Error())
-		os.Exit(0)
-	}
+	// if err != nil {
+	// 	klog.Fatalf("Node failed get CIDR from apiserver: %s", err.Error())
+	// 	os.Exit(0)
+	// }
 
-	watchNodeResp := httpresponse.WatchNodeResponse{}
-	buf, _ = io.ReadAll(resp.Body)
-	err = json.Unmarshal(buf, watchNodeResp)
+	// watchNodeResp := httpresponse.WatchNodeResponse{}
+	// buf, _ = io.ReadAll(resp.Body)
+	// err = json.Unmarshal(buf, watchNodeResp)
 
-	resp.Body.Close()
+	// resp.Body.Close()
 
-	if err != nil {
-		klog.Fatal("Json parse WatchNodeResponse failed")
-		os.Exit(0)
-	}
+	// if err != nil {
+	// 	klog.Fatal("Json parse WatchNodeResponse failed")
+	// 	os.Exit(0)
+	// }
 
-	if watchNodeResp.Key != registResp.UID {
-		klog.Fatalf("Actual Node Name: %s, Received Node Name: %s", registResp.UID, watchNodeResp.Key)
-		os.Exit(0)
-	}
+	// if watchNodeResp.Key != registResp.UID {
+	// 	klog.Fatalf("Actual Node Name: %s, Received Node Name: %s", registResp.UID, watchNodeResp.Key)
+	// 	os.Exit(0)
+	// }
+
+	connectWeaveNet()
 
 	// create kubelet
-	kl, err := kubelet.NewKubelet(config.NodeName, registResp.UID, watchNodeResp.Node.Spec.CIDR, watchNodeResp.Node.Spec.CIDRFullDomain)
+	kl, err := kubelet.NewKubelet(config.NodeName, registResp.UID)
 
 	if err != nil {
 		klog.Fatalf("Create Kubelet Failed: %s", err.Error())
@@ -85,6 +88,9 @@ func main() {
 
 	// start heartbeat
 	go sendHeartBeat(ctx, kl.UID, errChan)
+
+	// start refreshPodStatus periodically
+	go refreshAllPodStatus(ctx, &kl)
 
 	for {
 		select {
@@ -106,7 +112,7 @@ func main() {
 }
 
 func watchingPods(ctx context.Context, nodeName string, podChange chan []byte, errChan chan string) {
-	resp, err := http.Get(config.ApiServerAddress + constants.WatchPodsRequest + nodeName)
+	resp, err := http.Get(config.ApiServerAddress + constants.WatchPodsRequest(nodeName))
 
 	if err != nil {
 		klog.Errorf("Node %s Watch Pods Failed: %s", nodeName, err.Error())
@@ -146,7 +152,7 @@ func handlePodChangeRequest(kl *kubelet.Kubelet, req *httpresponse.PodChangeRequ
 	}
 }
 
-func sendHeartBeat(ctx context.Context, nodeName string, errChan chan string) {
+func sendHeartBeat(ctx context.Context, nodeUID string, errChan chan string) {
 	counter := 0
 	errorCounter := 0
 	lastReportTime := time.Now()
@@ -164,7 +170,7 @@ func sendHeartBeat(ctx context.Context, nodeName string, errChan chan string) {
 
 		klog.Infof("Send Heartbeat %d, time: %s", counter, lastReportTime)
 
-		resp, err := http.Get(config.ApiServerAddress + constants.HeartBeatRequest + nodeName + "/" + strconv.Itoa(counter))
+		resp, err := http.Get(config.ApiServerAddress + constants.HeartBeatRequest(nodeUID, strconv.Itoa(counter)))
 
 		if err != nil {
 			klog.Warningf("Send Heartbeat %d Failed: %s", counter, err.Error())
@@ -180,4 +186,60 @@ func sendHeartBeat(ctx context.Context, nodeName string, errChan chan string) {
 
 		errorCounter = 0
 	}
+}
+
+func refreshAllPodStatus(ctx context.Context, kl *kubelet.Kubelet) {
+
+	for {
+		pods, err := kl.GetPods()
+
+		if err != nil {
+			klog.Errorf("Error When refresh Pod Status: %s", err.Error())
+		}
+
+		for _, pod := range pods {
+			body, err := json.Marshal(pod.Status)
+
+			if err != nil {
+				klog.Errorf("Marshal pod status error: %s", err.Error())
+			}
+
+			resp, err := http.Post(config.ApiServerAddress+constants.RefreshPodRequest(kl.UID, pod.UID), JsonContentType, bytes.NewReader(body))
+
+			if err != nil {
+				klog.Errorf("Error When refresh Pod Status: %s", err.Error())
+			}
+
+			resp.Body.Close()
+		}
+
+		time.Sleep(time.Duration(constants.RefreshPodStatusInterval) * time.Second)
+	}
+}
+
+func connectWeaveNet() {
+	// If there is a firewall between $HOST1 and $HOST2,
+	// you must permit traffic to flow through TCP 6783 and UDP 6783/6784,
+	// which are Weave’s control and data ports.
+
+	// connect to weave net
+	cmd := exec.Command("weave", "connect", config.ApiServerAddress)
+	out, err := cmd.CombinedOutput()
+
+	if err != nil {
+		klog.Errorf("Error in Weave Connect: %s", err.Error())
+		os.Exit(0)
+	}
+
+	klog.Info("Weave Connect to %s: %s", config.ApiServerAddress, out)
+
+	cmd = exec.Command("eval $(weave env)")
+	_, err = cmd.CombinedOutput()
+
+	if err != nil {
+		klog.Errorf("Error in set Weave env: %s", err.Error())
+		os.Exit(0)
+	}
+
+	klog.Info("Set Weave Env Successfully!")
 }

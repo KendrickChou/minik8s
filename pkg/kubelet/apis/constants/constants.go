@@ -4,16 +4,30 @@ import v1 "minik8s.com/minik8s/pkg/api/v1"
 
 const EOF int = 26
 
-const (
-	RegistNodeRequest string = "/node"
-	WatchNodeRequest  string = "/watch/node/"
-	WatchPodsRequest  string = "/watch/pods/"
-	HeartBeatRequest  string = "/heartbeat/"
-)
+func RegistNodeRequest() string {
+	return "/node"
+}
+
+func WatchNodeRequest(nodeUID string) string {
+	return "/watch/node/" + nodeUID
+}
+
+func WatchPodsRequest(podUID string) string {
+	return "/watch/pods/" + podUID
+}
+
+func HeartBeatRequest(nodeUID string, counter string) string {
+	return "/heartbeat/" + nodeUID + "/" + counter
+}
+
+func RefreshPodRequest(nodeUID string, podUID string) string {
+	return "/node/" + nodeUID + "/podstatus/" + podUID
+}
 
 const (
-	HeartBeatInterval uint64 = 1  //second
-	MaxErrorHeartBeat int    = 10 // if successively failed over 10 times, close node
+	HeartBeatInterval        uint64 = 1  //second
+	MaxErrorHeartBeat        int    = 10 // if successively failed over 10 times, close node
+	RefreshPodStatusInterval uint64 = 10
 )
 
 const (

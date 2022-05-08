@@ -7,7 +7,6 @@ import (
 
 	"k8s.io/klog/v2"
 	v1 "minik8s.com/minik8s/pkg/api/v1"
-	"minik8s.com/minik8s/pkg/kubelet/apis/config"
 	"minik8s.com/minik8s/pkg/kubelet/apis/constants"
 	"minik8s.com/minik8s/pkg/kubelet/container"
 )
@@ -141,7 +140,7 @@ func (pm *podManager) AddPod(pod *v1.Pod) error {
 
 		pod.Spec.InitialContainers[k] = container
 
-		pm.containerManager.ConnectNetwork(context.TODO(), config.InternalPodBridgeNetworkName, container.ID)
+		// pm.containerManager.ConnectNetwork(context.TODO(), config.InternalPodBridgeNetworkName, container.ID)
 	}
 
 	for _, container := range pod.Spec.Containers {
