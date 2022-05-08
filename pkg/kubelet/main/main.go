@@ -111,13 +111,8 @@ func main() {
 
 }
 
-<<<<<<< HEAD
-func watching(ctx context.Context, nodeId string, podChange chan []byte, errChan chan string) {
-	resp, err := http.Get(constants.WatchPodsRequest + nodeId + "/pods")
-=======
 func watchingPods(ctx context.Context, nodeName string, podChange chan []byte, errChan chan string) {
 	resp, err := http.Get(config.ApiServerAddress + constants.WatchPodsRequest(nodeName))
->>>>>>> feature/kubenet
 
 	if err != nil {
 		klog.Errorf("Node %s Watch Pods Failed: %s", nodeId, err.Error())
