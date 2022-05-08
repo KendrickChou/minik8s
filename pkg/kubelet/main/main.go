@@ -111,11 +111,11 @@ func main() {
 
 }
 
-func watchingPods(ctx context.Context, nodeName string, podChange chan []byte, errChan chan string) {
-	resp, err := http.Get(config.ApiServerAddress + constants.WatchPodsRequest(nodeName))
+func watchingPods(ctx context.Context, nodeUID string, podChange chan []byte, errChan chan string) {
+	resp, err := http.Get(config.ApiServerAddress + constants.WatchPodsRequest(nodeUID))
 
 	if err != nil {
-		klog.Errorf("Node %s Watch Pods Failed: %s", nodeId, err.Error())
+		klog.Errorf("Node %s Watch Pods Failed: %s", nodeUID, err.Error())
 		errChan <- err.Error()
 		return
 	}
@@ -225,21 +225,21 @@ func connectWeaveNet() {
 	// which are Weave’s control and data ports.
 
 	// connect to weave net
-	cmd := exec.Command("weave", "connect", config.ApiServerAddress)
+	cmd := exec.Command("weave", "launch", config.ApiServerIP)
 	out, err := cmd.CombinedOutput()
 
 	if err != nil {
-		klog.Errorf("Error in Weave Connect: %s", err.Error())
+		klog.Errorf("Error in Weave Launch: %s", err.Error())
 		os.Exit(0)
 	}
 
-	klog.Info("Weave Connect to %s: %s", config.ApiServerAddress, out)
+	klog.Infof("Weave Connect to %s: %s", config.ApiServerIP, out)
 
-	cmd = exec.Command("eval $(weave env)")
-	_, err = cmd.CombinedOutput()
+	cmd = exec.Command("/bin/bash", "-c", "eval $(weave env)")
+	out, err = cmd.CombinedOutput()
 
 	if err != nil {
-		klog.Errorf("Error in set Weave env: %s", err.Error())
+		klog.Errorf("Error in set Weave env: output: %s, %s", out, err.Error())
 		os.Exit(0)
 	}
 
