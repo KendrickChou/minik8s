@@ -7,7 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"k8s.io/klog/v2"
 
-	"minik8s.com/minik8s/pkg/api/v1"
+	v1 "minik8s.com/minik8s/pkg/api/v1"
 	kubeconfig "minik8s.com/minik8s/pkg/kubelet/apis/config"
 	"minik8s.com/minik8s/pkg/kubelet/apis/constants"
 	"minik8s.com/minik8s/pkg/kubelet/pod"
@@ -15,24 +15,36 @@ import (
 )
 
 type Kubelet struct {
-	NodeName string
+	v1.Node
 
-	podManager pod.PodManager	
+	podManager pod.PodManager
 	// same as podManager, just for test
 	PodManager *pod.PodManager
 
 	setNodeStatusFuncs []func(*v1.Node)
 }
 
-func NewKubelet(nodeName string) Kubelet {
+func NewKubelet(nodeName string, UID string) (Kubelet, error) {
 	kubelet := Kubelet{
-		NodeName: nodeName,
+		Node: v1.Node{
+			TypeMeta: v1.TypeMeta{
+				Kind:       "Node",
+				APIVersion: "v1",
+			},
+			ObjectMeta: v1.ObjectMeta{
+				Name:      nodeName,
+				Namespace: "default",
+				UID:       UID,
+			},
+		},
 		podManager: pod.NewPodManager(),
 	}
 
 	kubelet.PodManager = &kubelet.podManager
 
-	return kubelet
+	// err := kubelet.podManager.CreatePodBridgeNetwork(kubelet.Spec.CIDR)
+
+	return kubelet, nil
 }
 
 func (kl *Kubelet) ListenAndServe(kubeCfg *kubeconfig.KubeletConfiguration) {
@@ -73,7 +85,7 @@ func (kl *Kubelet) CreatePod(pod v1.Pod) (v1.Pod, error) {
 	if err != nil {
 		return v1.Pod{}, err
 	}
-	
+
 	return pod, err
 }
 

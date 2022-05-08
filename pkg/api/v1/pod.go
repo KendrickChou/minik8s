@@ -33,25 +33,25 @@ type Pod struct {
 
 	ObjectMeta
 
-	Spec PodSpec `json:"Spec,omitempty"`
+	Spec PodSpec `json:"spec,omitempty"`
 
-	Status PodStatus `json:"Status,omitempty"`
+	Status PodStatus `json:"-"`
 }
 
 type PodSpec struct {
 	InitialContainers map[string]Container
 
-	Containers []*Container `json:"Containers,omitempty"`
+	Containers []*Container `json:"containers,omitempty"`
 
-	RestartPolicy RestartPolicy `json:"RestartPolicy,omitempty"`
+	RestartPolicy RestartPolicy `json:"restartPolicy,omitempty"`
 }
 
 type PodStatus struct {
-	Phase PodPhase `json:"Phase,omitempty"`
+	Phase PodPhase `json:"phase,omitempty"`
 
-	PodIP string `json:"PodIP,omitempty"`
+	PodIP string `json:"podip,omitempty"`
 
 	PodNetworkID string `json:"-"`
 
-	ContainerStatuses []ContainerStatus `json:"ContainerStatuses,omitempty"`
+	ContainerStatuses []ContainerStatus `json:"containerstatuses,omitempty"`
 }

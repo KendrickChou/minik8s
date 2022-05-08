@@ -10,6 +10,7 @@ import (
 	"github.com/docker/docker/api/types"
 	dockerctnr "github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/mount"
+	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/client"
 	"k8s.io/klog/v2"
 
@@ -26,8 +27,9 @@ type ContainerManager interface {
 	RemoveContainer(ctx context.Context, container *v1.Container) error
 	ListContainers(ctx context.Context) ([]*v1.Container, error)
 	ContainerStatus(ctx context.Context, containerID string) (types.ContainerState, error)
-	CreateNetworkNamespace(ctx context.Context, name string) (string, error)
-	RemoveNetworkNamespace(ctx context.Context, networkID string) error
+	CreateNetwork(ctx context.Context, name string, CIDR string) (string, error)
+	RemoveNetwork(ctx context.Context, networkID string) error
+	ConnectNetwork(ctx context.Context, networkID string, containerID string) error
 }
 
 type containerManager struct {
@@ -185,8 +187,20 @@ func (manager *containerManager) ContainerStatus(ctx context.Context, containerI
 	return *cntr.State, err
 }
 
-func (manager *containerManager) CreateNetworkNamespace(ctx context.Context, name string) (string, error) {
-	resp, err := manager.dockerClient.NetworkCreate(ctx, name, types.NetworkCreate{CheckDuplicate: true})
+func (manager *containerManager) CreateNetwork(ctx context.Context, name string, CIDR string) (string, error) {
+	resp, err := manager.dockerClient.NetworkCreate(ctx, name, types.NetworkCreate{
+		CheckDuplicate: true,
+		Driver:         "bridge",
+		IPAM: &network.IPAM{
+			Driver: "default",
+			Config: []network.IPAMConfig{
+				{
+					Subnet: CIDR,
+					// Gateway: constants.GatewayAddress,
+				},
+			},
+		},
+	})
 
 	if err != nil {
 		return "", err
@@ -195,7 +209,12 @@ func (manager *containerManager) CreateNetworkNamespace(ctx context.Context, nam
 	return resp.ID, nil
 }
 
-func (manager *containerManager) RemoveNetworkNamespace(ctx context.Context, networkID string) error {
+func (manager *containerManager) RemoveNetwork(ctx context.Context, networkID string) error {
 	err := manager.dockerClient.NetworkRemove(ctx, networkID)
+	return err
+}
+
+func (manager *containerManager) ConnectNetwork(ctx context.Context, networkID string, containerID string) error {
+	err := manager.dockerClient.NetworkConnect(ctx, networkID, containerID, nil)
 	return err
 }

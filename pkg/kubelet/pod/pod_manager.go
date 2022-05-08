@@ -25,6 +25,8 @@ type PodManager interface {
 	DeletePod(UID string) error
 
 	PodStatus(UID string) (v1.PodStatus, error)
+
+	CreatePodBridgeNetwork(CIDR string) error
 }
 
 type podManager struct {
@@ -137,6 +139,8 @@ func (pm *podManager) AddPod(pod *v1.Pod) error {
 		}
 
 		pod.Spec.InitialContainers[k] = container
+
+		// pm.containerManager.ConnectNetwork(context.TODO(), config.InternalPodBridgeNetworkName, container.ID)
 	}
 
 	for _, container := range pod.Spec.Containers {
@@ -366,4 +370,15 @@ func (pm *podManager) PodStatus(UID string) (v1.PodStatus, error) {
 	// not need to update pm.podByName & pod.podByUID
 
 	return pod.Status, nil
+}
+
+func (pm *podManager) CreatePodBridgeNetwork(CIDR string) error {
+	_, err := pm.containerManager.CreateNetwork(context.TODO(), constants.NetworkBridgeName, CIDR)
+
+	if err != nil {
+		klog.Fatalf("Create Bridge Network %s Failed: %s", constants.NetworkBridgeName, err.Error())
+		return err
+	}
+
+	return nil
 }
