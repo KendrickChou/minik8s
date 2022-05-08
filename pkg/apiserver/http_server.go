@@ -40,6 +40,11 @@ func runHttpServer() {
 	r.PUT("/innode/:nname/pod/:pname", handlePutPodByNode)
 	r.DELETE("/innode/:nname/pod/:pname", handleDeletePodByNode)
 
+	r.GET("/innode/:nname/podstatuses", handleGetPodStatusesByNode)
+	r.GET("/innode/:nname/podstatus/:pname", handleGetPodStatusByNode)
+	r.PUT("/innode/:nname/podstatus/:pname", handlePutPodStatusByNode)
+	r.DELETE("/innode/:nname/podstatus/:pname", handleDeletePodStatusByNode)
+
 	// replica
 	r.GET("/replicas", handleGetReplicas)
 	r.GET("/replica/:name", handleGetReplica)
