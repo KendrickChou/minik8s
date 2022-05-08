@@ -5,11 +5,11 @@ import v1 "minik8s.com/minik8s/pkg/api/v1"
 const EOF int = 26
 
 func RegistNodeRequest() string {
-	return "/node"
+	return "/innode"
 }
 
 func WatchNodeRequest(nodeUID string) string {
-	return "/watch/node/" + nodeUID
+	return "/watch/innode/" + nodeUID
 }
 
 func WatchPodsRequest(podUID string) string {
@@ -21,7 +21,7 @@ func HeartBeatRequest(nodeUID string, counter string) string {
 }
 
 func RefreshPodRequest(nodeUID string, podUID string) string {
-	return "/node/" + nodeUID + "/podstatus/" + podUID
+	return "/innode/" + nodeUID + "/podstatus/" + podUID
 }
 
 const (
