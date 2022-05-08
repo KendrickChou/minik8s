@@ -343,6 +343,65 @@ func handleDeletePodByNode(c *gin.Context) {
 	}
 }
 
+func handleGetPodStatusesByNode(c *gin.Context) {
+	nname := c.Param("nname")
+	if !etcdTest("/node/" + nname) {
+		c.JSON(404, gin.H{"status": "ERR", "error": "No such node"})
+	} else {
+		pods, _ := etcdGetPrefix("/node/" + nname + "/podstatus")
+		c.JSON(200, pods)
+	}
+}
+
+func handleGetPodStatusByNode(c *gin.Context) {
+	nname := c.Param("nname")
+	if !etcdTest("/node/" + nname) {
+		c.JSON(404, gin.H{"status": "ERR", "error": "No such node"})
+	} else {
+		pname := c.Param("pname")
+		kv, err := etcdGet("/node/" + nname + "/podstatus/" + pname)
+		if err != nil {
+			c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
+		} else if kv.Type == config.AS_OP_ERROR_String {
+			c.JSON(404, gin.H{"status": "ERR", "error": "No such pod"})
+		} else {
+			c.JSON(200, kv)
+		}
+	}
+}
+
+func handlePutPodStatusByNode(c *gin.Context) {
+	buf := make([]byte, c.Request.ContentLength)
+	_, err := c.Request.Body.Read(buf)
+	nname := c.Param("nname")
+	pname := c.Param("pname")
+	if !etcdTest("/node/"+nname) || !etcdTest("/pod/"+pname) {
+		c.JSON(404, gin.H{"status": "ERR", "error": "No such pod"})
+	} else {
+		err = etcdPut("/node/"+nname+"/podstatus/"+pname, string(buf))
+		if err != nil {
+			c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
+		} else {
+			c.JSON(200, gin.H{"status": "OK"})
+		}
+	}
+}
+
+func handleDeletePodStatusByNode(c *gin.Context) {
+	nname := c.Param("nname")
+	pname := c.Param("pname")
+	if !etcdTest("/node/"+nname) || !etcdTest("/node/"+nname+"/podstatus/"+pname) {
+		c.JSON(404, gin.H{"status": "ERR", "error": "No such pod"})
+	} else {
+		err := etcdDel("/node/" + nname + "/podstatus/" + pname)
+		if err != nil {
+			c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
+		} else {
+			c.JSON(200, gin.H{"status": "OK"})
+		}
+	}
+}
+
 func handleWatchPodsByNode(c *gin.Context) {
 	nname := c.Param("nname")
 	wch, cancel := etcdWatchPrefix("/node/" + nname + "/pod")
