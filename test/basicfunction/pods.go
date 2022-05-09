@@ -30,11 +30,11 @@ func main() {
 					Namespace:       "example",
 					Image:           "alpine:latest",
 					ImagePullPolicy: "IfNotPresent",
-					Entrypoint:      []string{"/bin/sh", "-c", "wget -o /home/mountdir/nginx.html 10.40.0.0:8080"},
+					Entrypoint:      []string{"/bin/sh", "-c", "wget -O /home/mountdir/nginx.html 10.40.0.0:80"},
 					Mounts: []v1.Mount{
 						{
 							Type:   v1.TypeBind,
-							Source: "/home/kendrick/mountdir",
+							Source: "/root/mountdir",
 							Target: "/home/mountdir",
 						},
 					},
