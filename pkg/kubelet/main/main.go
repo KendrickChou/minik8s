@@ -145,6 +145,7 @@ func watchingPods(ctx context.Context, nodeUID string, podChange chan []byte, er
 func handlePodChangeRequest(kl *kubelet.Kubelet, req *httpresponse.PodChangeRequest) {
 	switch req.Type {
 	case "PUT":
+		req.Pod.UID = req.Key
 		kl.CreatePod(req.Pod)
 	case "DELETE":
 		kl.DeletePod(req.Pod.UID)
