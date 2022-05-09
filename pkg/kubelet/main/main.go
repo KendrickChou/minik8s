@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"strconv"
+	"strings"
 	"time"
 
 	"k8s.io/klog/v2"
@@ -145,7 +146,9 @@ func watchingPods(ctx context.Context, nodeUID string, podChange chan []byte, er
 func handlePodChangeRequest(kl *kubelet.Kubelet, req *httpresponse.PodChangeRequest) {
 	switch req.Type {
 	case "PUT":
-		req.Pod.UID = req.Key
+		parsedPath := strings.Split(req.Key, "/")
+		req.Pod.UID = parsedPath[len(parsedPath) - 1]
+		
 		kl.CreatePod(req.Pod)
 	case "DELETE":
 		kl.DeletePod(req.Pod.UID)
@@ -158,7 +161,7 @@ func handlePodChangeRequest(kl *kubelet.Kubelet, req *httpresponse.PodChangeRequ
 func sendHeartBeat(ctx context.Context, nodeUID string, errChan chan string) {
 	counter := 0
 	errorCounter := 0
-	lastReportTime := time.Now()
+	// lastReportTime := time.Now()
 
 	for {
 		if errorCounter >= constants.MaxErrorHeartBeat {
@@ -169,7 +172,7 @@ func sendHeartBeat(ctx context.Context, nodeUID string, errChan chan string) {
 		time.Sleep(time.Duration(constants.HeartBeatInterval) * time.Second)
 
 		counter++
-		lastReportTime = time.Now()
+		// lastReportTime = time.Now()
 
 		// klog.Infof("Send Heartbeat %d, time: %s", counter, lastReportTime)
 
