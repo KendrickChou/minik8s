@@ -33,7 +33,7 @@ const (
 const (
 	NetworkIDPrefix          string = "container:"
 	InitialPauseContainerKey string = "pause"
-	NetworkBridgeName        string = "kubenet"
+	WeaveNetworkName         string = "weave"
 )
 
 var InitialPauseContainer v1.Container = v1.Container{

@@ -3,6 +3,7 @@ package main
 import (
 	"k8s.io/klog/v2"
 	v1 "minik8s.com/minik8s/pkg/api/v1"
+	"minik8s.com/minik8s/pkg/kubelet/apis/constants"
 	"minik8s.com/minik8s/pkg/kubelet/pod"
 )
 
@@ -20,13 +21,16 @@ func main() {
 			UID:       "123456789",
 		},
 		Spec: v1.PodSpec{
+			InitialContainers: map[string]v1.Container{
+				constants.InitialPauseContainerKey: constants.InitialPauseContainer,
+			},
 			Containers: []*v1.Container{
 				{
 					Name:            "myFirstContainer",
 					Namespace:       "example",
 					Image:           "alpine:latest",
 					ImagePullPolicy: "IfNotPresent",
-					Entrypoint:      []string{"/bin/sh", "-c", "cat /home/mountdir/hello.txt"},
+					Entrypoint:      []string{"/bin/sh", "-c", "wget -o /home/mountdir/nginx.html 10.40.0.0:8080"},
 					Mounts: []v1.Mount{
 						{
 							Type:   v1.TypeBind,
@@ -35,13 +39,13 @@ func main() {
 						},
 					},
 				},
-				{
-					Name:            "mySecondContainer",
-					Namespace:       "example",
-					Image:           "alpine:latest",
-					ImagePullPolicy: "IfNotPresent",
-					Entrypoint:      []string{"echo", "hello world 2"},
-				},
+				// {
+				// 	Name:            "mySecondContainer",
+				// 	Namespace:       "example",
+				// 	Image:           "alpine:latest",
+				// 	ImagePullPolicy: "IfNotPresent",
+				// 	Entrypoint:      []string{"echo", "hello world 2"},
+				// },
 			},
 		},
 		Status: v1.PodStatus{},

@@ -171,7 +171,7 @@ func sendHeartBeat(ctx context.Context, nodeUID string, errChan chan string) {
 		counter++
 		lastReportTime = time.Now()
 
-		klog.Infof("Send Heartbeat %d, time: %s", counter, lastReportTime)
+		// klog.Infof("Send Heartbeat %d, time: %s", counter, lastReportTime)
 
 		resp, err := http.Get(config.ApiServerAddress + constants.HeartBeatRequest(nodeUID, strconv.Itoa(counter)))
 
