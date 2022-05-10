@@ -63,7 +63,7 @@ func (inf *Informer) Run(stopChan chan bool) {
 		case delta := <-inf.notifyChan:
 			{
 				switch delta.GetType() {
-				case "PUT":
+				case "PUT", "POST":
 					oldObj, exist := inf.store.Get(delta.GetKey())
 					inf.store.Add(delta.GetKey(), delta.GetValue())
 

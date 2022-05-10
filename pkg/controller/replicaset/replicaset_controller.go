@@ -1,8 +1,10 @@
 package rs
 
 import (
+	"fmt"
 	"k8s.io/klog"
 	v1 "minik8s.com/minik8s/pkg/api/v1"
+	"minik8s.com/minik8s/pkg/apiclient"
 	"minik8s.com/minik8s/pkg/controller/component"
 )
 
@@ -60,6 +62,38 @@ func (rsc *ReplicaSetController) syncReplicaSet(key string) error {
 	rs := rsc.rsInformer.GetItem(key).(v1.ReplicaSet)
 
 	// TODO: sync logic
+	for _, item := range pods {
+		pod := item.(v1.Pod)
+		var own, labelMatch bool
+
+		// check ownerReferences
+		for _, ownerRef := range pod.OwnerReferences {
+			own = ownerRef.UID == rs.UID
+		}
+
+		labelMatch = v1.MatchSelector(rs.Spec.Selector, pod.Labels)
+
+		if own && !labelMatch {
+			// TODO: change pod ownerReference
+		}
+
+		// TODO: handle cases when labels match but ownerReference not set
+	}
+
+	// following codes are just for template use
+	fmt.Println(pods)
+
+	var requestedPod v1.Pod
+	requestedPod.Kind = "Pod"
+	requestedPod.APIVersion = rs.APIVersion
+	requestedPod.Spec = rs.Spec.Template.Spec
+	requestedPod.ObjectMeta = rs.Spec.Template.ObjectMeta
+
+	for i := 0; i < rs.Spec.Replicas; i++ {
+		apiclient.TemplateArrangePodToNode(requestedPod)
+	}
+
+	return nil
 }
 
 // return replicaSets that matches the pod, while there

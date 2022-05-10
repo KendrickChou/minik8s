@@ -12,7 +12,7 @@ type ReplicaSet struct {
 }
 
 type ReplicaSetSpec struct {
-	Replicas int32           `json:"replicas,omitempty"`
+	Replicas int             `json:"replicas,omitempty"`
 	Selector LabelSelector   `json:"selector"`
 	Template PodTemplateSpec `json:"template,omitempty"`
 }
