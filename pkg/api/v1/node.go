@@ -8,7 +8,17 @@ type Node struct {
 
 	ObjectMeta
 
-	Status NodeStatus `json:"status,omitempty"`
+	Spec NodeSpec `json:"spec,omitempty"`
+
+	// Status NodeStatus `json:"status,omitempty"`
+}
+
+type NodeSpec struct {
+	CIDR string `json:"cidr"`
+
+	CIDRFullDomain string `json:"cidr-fulldomain"`
+
+	IP string `json:"ip"`
 }
 
 type NodeStatus struct {
