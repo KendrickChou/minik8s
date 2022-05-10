@@ -15,7 +15,9 @@ type KubeletConfiguration struct {
 
 var	InternalPodBridgeNetworkName string = "kubelet"
 
-var ApiServerAddress string = "addr"
+var ApiServerIP string = "10.119.11.209"
+
+var ApiServerAddress string = "http://" + ApiServerIP + ":8080"
 
 var GatewayAddress string = "addr"
 

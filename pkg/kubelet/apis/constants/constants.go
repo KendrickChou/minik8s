@@ -5,15 +5,15 @@ import v1 "minik8s.com/minik8s/pkg/api/v1"
 const EOF int = 26
 
 func RegistNodeRequest() string {
-	return "/innode"
+	return "/node"
 }
 
 func WatchNodeRequest(nodeUID string) string {
 	return "/watch/innode/" + nodeUID
 }
 
-func WatchPodsRequest(podUID string) string {
-	return "/watch/pods/" + podUID
+func WatchPodsRequest(nodeUID string) string {
+	return "/watch/innode/" + nodeUID + "/pods"
 }
 
 func HeartBeatRequest(nodeUID string, counter string) string {
@@ -33,7 +33,7 @@ const (
 const (
 	NetworkIDPrefix          string = "container:"
 	InitialPauseContainerKey string = "pause"
-	NetworkBridgeName        string = "kubenet"
+	WeaveNetworkName         string = "weave"
 )
 
 var InitialPauseContainer v1.Container = v1.Container{

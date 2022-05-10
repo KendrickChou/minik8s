@@ -30,6 +30,7 @@ type ContainerManager interface {
 	CreateNetwork(ctx context.Context, name string, CIDR string) (string, error)
 	RemoveNetwork(ctx context.Context, networkID string) error
 	ConnectNetwork(ctx context.Context, networkID string, containerID string) error
+	ListNetwork(ctx context.Context, filter types.NetworkListOptions) ([]types.NetworkResource, error)
 }
 
 type containerManager struct {
@@ -215,6 +216,18 @@ func (manager *containerManager) RemoveNetwork(ctx context.Context, networkID st
 }
 
 func (manager *containerManager) ConnectNetwork(ctx context.Context, networkID string, containerID string) error {
+	klog.Infof("Connect to Network: %s", networkID)
+
 	err := manager.dockerClient.NetworkConnect(ctx, networkID, containerID, nil)
 	return err
+}
+
+func (manager *containerManager) ListNetwork(ctx context.Context, filter types.NetworkListOptions) ([]types.NetworkResource, error) {
+	networks, err := manager.dockerClient.NetworkList(ctx, filter)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return networks, nil
 }
