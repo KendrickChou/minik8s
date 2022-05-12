@@ -15,6 +15,7 @@ import (
 	"k8s.io/klog/v2"
 
 	v1 "minik8s.com/minik8s/pkg/api/v1"
+	"minik8s.com/minik8s/pkg/kubelet/apis/constants"
 )
 
 type ContainerManager interface {
@@ -53,7 +54,10 @@ func (manager *containerManager) CreateContainer(ctx context.Context, container 
 	klog.Infof("Create Container %v", container.Name)
 
 	containerConfig := &dockerctnr.Config{}
-	hostConfig := &dockerctnr.HostConfig{}
+	hostConfig := &dockerctnr.HostConfig{
+		DNS:       []string{constants.DNS},
+		DNSSearch: []string{constants.DNSSearch},
+	}
 
 	if container.Image != "" {
 		containerConfig.Image = container.Image

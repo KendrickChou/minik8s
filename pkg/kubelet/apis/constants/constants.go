@@ -34,6 +34,9 @@ const (
 	NetworkIDPrefix          string = "container:"
 	InitialPauseContainerKey string = "pause"
 	NetworkBridgeName        string = "kubenet"
+
+	DNS       string = "172.17.0.1"
+	DNSSearch string = "weave.local."
 )
 
 var InitialPauseContainer v1.Container = v1.Container{
