@@ -44,6 +44,8 @@ type PodSpec struct {
 	Containers []*Container `json:"Containers,omitempty"`
 
 	RestartPolicy RestartPolicy `json:"RestartPolicy,omitempty"`
+
+	NodeName string `json:"NodeName,omitempty"`
 }
 
 type PodStatus struct {

@@ -14,6 +14,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"k8s.io/klog"
 	"minik8s.com/minik8s/config"
+	v1 "minik8s.com/minik8s/pkg/api/v1"
 	"minik8s.com/minik8s/utils/random"
 	"net/http"
 	"strconv"
@@ -168,6 +169,14 @@ func handlePostPod(c *gin.Context) {
 	_, err := c.Request.Body.Read(buf)
 	name := "P" + strconv.Itoa(objCount) + "-" + random.String(8)
 	objCount++
+	var pod v1.Pod
+	err = json.Unmarshal(buf, &pod)
+	if err != nil {
+		c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
+		return
+	}
+	pod.UID = name
+	buf, _ = json.Marshal(pod)
 	err = etcdPut("/pod/"+name, string(buf))
 	if err != nil {
 		c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
@@ -631,6 +640,14 @@ func handlePostNode(c *gin.Context) {
 	_, err := c.Request.Body.Read(buf)
 	name := "N" + strconv.Itoa(objCount) + "-" + random.String(8)
 	objCount++
+	var node v1.Node
+	err = json.Unmarshal(buf, &node)
+	if err != nil {
+		c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
+		return
+	}
+	node.UID = name
+	buf, _ = json.Marshal(node)
 	err = etcdPut("/node/"+name, string(buf))
 	if err != nil {
 		c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})

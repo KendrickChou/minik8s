@@ -16,6 +16,11 @@ type GetPodResponse struct {
 	Pod  v1.Pod `json:"value"`
 	Type string `json:"type"`
 }
+type GetNodeResponse struct {
+	Key  string  `json:"key"`
+	Node v1.Node `json:"value"`
+	Type string  `json:"type"`
+}
 
 var rootCmd = &cobra.Command{
 	Use:   "newApp",

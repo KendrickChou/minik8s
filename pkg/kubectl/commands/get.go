@@ -35,8 +35,10 @@ var getCmd = &cobra.Command{
 			case "replica":
 				resp := apiclient.Rest("", []byte{}, apiclient.OBJ_ALL_REPLICAS, apiclient.OP_GET)
 				fmt.Printf("%s\n", resp)
+			case "node":
+				getNodes()
 			case "all":
-				resp := apiclient.Rest("", []byte{}, apiclient.OBJ_ALL_REPLICAS, apiclient.OP_GET)
+				resp := apiclient.Rest("", []byte{}, apiclient.OBJ_ALL_NODES, apiclient.OP_GET)
 				fmt.Printf("%s\n", resp)
 			default:
 				fmt.Println("未知的对象类型！")
@@ -61,9 +63,24 @@ func getPods() {
 		fmt.Println("服务器返回信息无效: ", err)
 		return
 	}
-	fmt.Println("=->Pods")
+	fmt.Printf("=->%v Pods\n", len(kvs))
 	fmt.Printf("%v\t\t\t\t%v\t\t\t%v\t\t\t%v\n", "Key", "Name", "Uid", "Status")
 	for _, kv := range kvs {
 		fmt.Printf("%v\t\t%v\t\t%v\t\t%v\n", kv.Key, kv.Pod.Name, kv.Pod.UID, kv.Pod.Status.Phase)
+	}
+}
+
+func getNodes() {
+	resp := apiclient.Rest("", []byte{}, apiclient.OBJ_ALL_NODES, apiclient.OP_GET)
+	var kvs []GetNodeResponse
+	err := json.Unmarshal(resp, &kvs)
+	if err != nil {
+		fmt.Println("服务器返回信息无效: ", err)
+		return
+	}
+	fmt.Printf("=->%v Nodes\n", len(kvs))
+	fmt.Printf("%v\t\t\t\t%v\t\t\t%v\t\t\t%v\n", "Key", "Name", "Uid", "Status")
+	for _, kv := range kvs {
+		fmt.Printf("%v\t\t%v\t\t%v\t\t%v\n", kv.Key, kv.Node.Name, kv.Node.UID, kv.Node.Status.Phase)
 	}
 }

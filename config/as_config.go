@@ -19,6 +19,7 @@ const (
 
 	AC_WatchServices_Path = "/watch/services"
 	AC_WatchPods_Path     = "/watch/pods"
+	AC_WatchNodes_Path    = "/watch/nodes"
 	AC_WatchReplicas_Path = "/watch/replicas"
 	AC_WatchService_Path  = "/watch/service"
 	AC_WatchPod_Path      = "/watch/pod"
