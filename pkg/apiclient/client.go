@@ -157,3 +157,8 @@ func TemplateArrangePodToNode(pod v1.Pod) {
 		klog.Error("TemplateArrangePodToNode Error\n")
 	}
 }
+
+func PostEndpoint(endpoint v1.Endpoint) {
+
+}
+

@@ -42,7 +42,6 @@ type EndpointAddress struct {
 	// or link-local multicast ((224.0.0.0/24).
 	// IPv6 is also accepted but not fully supported on all platforms. Also, certain
 	// kubernetes components, like kube-proxy, are not IPv6 ready.
-	// TODO: This should allow hostname or IP, See #4447.
 	IP string `json:"ip" protobuf:"bytes,1,opt,name=ip"`
 	// The Hostname of this endpoint
 	// +optional
