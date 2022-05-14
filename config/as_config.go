@@ -33,4 +33,6 @@ const (
 	AC_RestPod_Path      = "/pod"
 	AC_RestReplica_Path  = "/replica"
 	AC_RestNode_Path     = "/node"
+
+	AC_Root_Path = "/"
 )
