@@ -19,12 +19,14 @@ type ObjType int8
 type OpType int8
 
 const (
-	OBJ_ALL_PODS     ObjType = 0
-	OBJ_ALL_SERVICES ObjType = 1
-	OBJ_ALL_REPLICAS ObjType = 2
-	OBJ_POD          ObjType = 3
-	OBJ_SERVICE      ObjType = 4
-	OBJ_REPLICAS     ObjType = 5
+	OBJ_ALL_PODS      ObjType = 0
+	OBJ_ALL_SERVICES  ObjType = 1
+	OBJ_ALL_REPLICAS  ObjType = 2
+	OBJ_ALL_ENDPOINTS ObjType = 6
+	OBJ_POD           ObjType = 3
+	OBJ_SERVICE       ObjType = 4
+	OBJ_REPLICAS      ObjType = 5
+	OBJ_ENDPOINT      ObjType = 7
 
 	OP_GET    OpType = 6
 	OP_POST   OpType = 7
@@ -49,12 +51,16 @@ func Watch(ctx context.Context, ch chan []byte, ty ObjType) {
 		resp, err = http.Get(baseUrl + config.AC_WatchServices_Path)
 	case OBJ_ALL_REPLICAS:
 		resp, err = http.Get(baseUrl + config.AC_WatchReplicas_Path)
+	case OBJ_ALL_ENDPOINTS:
+		resp, err = http.Get(baseUrl + config.AC_WatchEndpoints_Path)
 	case OBJ_POD:
 		resp, err = http.Get(baseUrl + config.AC_WatchPod_Path)
 	case OBJ_SERVICE:
 		resp, err = http.Get(baseUrl + config.AC_WatchService_Path)
 	case OBJ_REPLICAS:
 		resp, err = http.Get(baseUrl + config.AC_WatchReplica_Path)
+	case OBJ_ENDPOINT:
+		resp, err = http.Get(baseUrl + config.AC_WatchEndpoint_Path)
 	default:
 		klog.Error("Invalid arguments!\n")
 		return
@@ -81,6 +87,39 @@ func Watch(ctx context.Context, ch chan []byte, ty ObjType) {
 	}
 }
 
+func GetAll(objType ObjType) []byte {
+	var resp *http.Response
+	var err error
+	url := config.AC_ServerAddr + ":" + strconv.Itoa(config.AC_ServerPort)
+	switch objType {
+	case OBJ_ALL_PODS:
+		url += config.AC_RestPods_Path
+	case OBJ_ALL_SERVICES:
+		url += config.AC_RestServices_Path
+	case OBJ_ALL_REPLICAS:
+		url += config.AC_RestReplicas_Path
+	case OBJ_ALL_ENDPOINTS:
+		url += config.AC_RestEndpoints_Path
+	case OBJ_POD:
+		url += config.AC_RestPod_Path
+	case OBJ_SERVICE:
+		url += config.AC_RestService_Path
+	case OBJ_REPLICAS:
+		url += config.AC_RestReplica_Path
+	case OBJ_ENDPOINT:
+		url += config.AC_RestEndpoint_Path
+	default:
+		klog.Error("Invalid arguments!\n")
+		return nil
+	}
+	resp, err = http.Get(url)
+	buf, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil
+	}
+	return buf
+}
+
 /*
 	这个函数用于发送rest请求，请正确填写参数
 	objTy: which kind of object you want to operate on.
@@ -99,16 +138,21 @@ func Rest(id string, value string, objTy ObjType, opTy OpType) []byte {
 		url += config.AC_RestServices_Path
 	case OBJ_ALL_REPLICAS:
 		url += config.AC_RestReplicas_Path
+	case OBJ_ALL_ENDPOINTS:
+		url += config.AC_RestEndpoints_Path
 	case OBJ_POD:
 		url += config.AC_RestPod_Path
 	case OBJ_SERVICE:
 		url += config.AC_RestService_Path
 	case OBJ_REPLICAS:
 		url += config.AC_RestReplica_Path
+	case OBJ_ENDPOINT:
+		url += config.AC_RestEndpoint_Path
 	default:
 		klog.Error("Invalid arguments!\n")
 		return nil
 	}
+	fmt.Println(url)
 	switch opTy {
 	case OP_GET:
 		resp, err = http.Get(url)
@@ -140,7 +184,7 @@ func Rest(id string, value string, objTy ObjType, opTy OpType) []byte {
 func TemplateArrangePodToNode(pod v1.Pod) {
 	var resp *http.Response
 	var err error
-	url := config.AC_ServerAddr + ":" + strconv.Itoa(config.AC_ServerPort) + config.AC_RestPod_Path
+	url := config.AC_ServerAddr + ":" + strconv.Itoa(config.AC_ServerPort)
 
 	cli := http.Client{}
 	podBytes, err := json.Marshal(pod)
@@ -159,6 +203,22 @@ func TemplateArrangePodToNode(pod v1.Pod) {
 }
 
 func PostEndpoint(endpoint v1.Endpoint) {
+	var resp *http.Response
+	var err error
+	url := config.AC_ServerAddr + ":" + strconv.Itoa(config.AC_ServerPort)
 
+	cli := http.Client{}
+	epBytes, err := json.Marshal(endpoint)
+	if err != nil {
+		klog.Error("Json marshall error\n")
+	}
+
+	req, _ := http.NewRequest(http.MethodPost, url+config.AC_RestEndpoint_Path+"/"+endpoint.UID, bytes.NewReader(epBytes))
+	resp, err = cli.Do(req)
+
+	buf, err := io.ReadAll(resp.Body)
+	fmt.Printf(string(buf))
+	if err != nil {
+		klog.Error("Read response error\n")
+	}
 }
-

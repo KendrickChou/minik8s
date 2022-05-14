@@ -47,8 +47,7 @@ func (rsc *ReplicaSetController) worker() {
 }
 
 func (rsc *ReplicaSetController) processNextWorkItem() bool {
-	key := rsc.queue.Get().(string)
-	defer rsc.queue.Done(key)
+	key := rsc.queue.Fetch().(string)
 
 	err := rsc.syncReplicaSet(key)
 	if err != nil {
@@ -117,7 +116,7 @@ func (rsc *ReplicaSetController) getPodReplicaSet(pod *v1.Pod) []v1.ReplicaSet {
 
 func (rsc *ReplicaSetController) enqueueRS(rs v1.ReplicaSet) {
 	key := rs.UID
-	rsc.queue.Add(key)
+	rsc.queue.Push(key)
 }
 
 /*

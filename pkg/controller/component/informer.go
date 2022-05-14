@@ -53,11 +53,7 @@ func (inf *Informer) Run(stopChan chan bool) {
 	}
 
 	inf.synced = true
-	/*
-		TODO:
-		   use queue to process the events, channel will congest, in such case the stored
-		 objects may not be the newest
-	*/
+
 	for {
 		select {
 		case delta := <-inf.notifyChan:
@@ -113,4 +109,12 @@ func (inf *Informer) GetItem(key string) any {
 	} else {
 		return item
 	}
+}
+
+func (inf *Informer) DeleteItem(key string) {
+	inf.store.Delete(key)
+}
+
+func (inf *Informer) UpdateItem(key string, obj any) {
+	inf.store.Update(key, obj)
 }

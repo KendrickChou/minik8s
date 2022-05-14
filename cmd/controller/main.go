@@ -2,7 +2,7 @@ package main
 
 import (
 	"minik8s.com/minik8s/pkg/controller/component"
-	rs "minik8s.com/minik8s/pkg/controller/replicaset"
+	"minik8s.com/minik8s/pkg/controller/endpoint"
 )
 
 func main() {
@@ -14,10 +14,20 @@ func main() {
 	rsStopChan := make(chan bool)
 	go rsInformer.Run(rsStopChan)
 
-	rsController := rs.NewReplicaSetController(podInformer, rsInformer)
-	go rsController.Run()
+	serviceInformer := component.NewInformer("Service")
+	serviceStopChan := make(chan bool)
+	go serviceInformer.Run(serviceStopChan)
+
+	endpointInformer := component.NewInformer("Endpoint")
+	endpointStopChan := make(chan bool)
+	go endpointInformer.Run(endpointStopChan)
+
+	//rsController := rs.NewReplicaSetController(podInformer, rsInformer)
+	//go rsController.Run()
+	endpointController := endpoint.NewEndpointController(podInformer, serviceInformer, endpointInformer)
+	go endpointController.Run()
 
 	for {
-
+		
 	}
 }

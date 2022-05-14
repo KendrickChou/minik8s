@@ -31,10 +31,10 @@ func (r *Reflector) list() {
 	case "ReplicaSet":
 		objType = apiclient.OBJ_ALL_REPLICAS
 	case "Endpoint":
-		// TODO: handle Endpoint Object
+		objType = apiclient.OBJ_ALL_ENDPOINTS
 	}
 
-	objects := apiclient.Rest("", "", objType, apiclient.OP_GET)
+	objects := apiclient.GetAll(objType)
 	switch r.Kind {
 	case "Pod":
 		var fmtObjs []PodObject
@@ -72,6 +72,18 @@ func (r *Reflector) list() {
 			serviceObj.Type = "PUT"
 			r.NotifyChan <- &serviceObj
 		}
+	case "Endpoint":
+		var fmtObjs []EndpointObject
+
+		err := json.Unmarshal(objects, &fmtObjs)
+		if err != nil {
+			klog.Error("Reflector parse error\n")
+		}
+
+		for _, epObj := range fmtObjs {
+			epObj.Type = "PUT"
+			r.NotifyChan <- &epObj
+		}
 	}
 }
 
@@ -85,6 +97,8 @@ func (r *Reflector) watch(stopChan chan bool) {
 		objType = apiclient.OBJ_ALL_SERVICES
 	case "ReplicaSet":
 		objType = apiclient.OBJ_ALL_REPLICAS
+	case "Endpoint":
+		objType = apiclient.OBJ_ALL_ENDPOINTS
 	}
 
 	ctx, cl := context.WithCancel(context.Background())
@@ -121,6 +135,14 @@ func (r *Reflector) parseJsonAndNotify(jsonObj []byte) {
 		r.NotifyChan <- obj
 	case "Service":
 		obj := &ServiceObject{}
+		err := json.Unmarshal(jsonObj, obj)
+		if err != nil {
+			klog.Error("Reflector parse error\n")
+		}
+
+		r.NotifyChan <- obj
+	case "Endpoint":
+		obj := &EndpointObject{}
 		err := json.Unmarshal(jsonObj, obj)
 		if err != nil {
 			klog.Error("Reflector parse error\n")
