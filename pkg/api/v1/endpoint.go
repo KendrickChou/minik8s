@@ -4,6 +4,8 @@ type Endpoint struct {
 	TypeMeta
 	ObjectMeta `json:"metadata"`
 
+	ServiceIp string `json:"serviceip"`
+
 	// The set of all endpoints is the union of all subsets. Addresses are placed into
 	// subsets according to the IPs they share. A single address with multiple ports,
 	// some of which are ready and some of which are not (because they come from
@@ -12,7 +14,7 @@ type Endpoint struct {
 	// NotReadyAddresses in the same subset.
 	// Sets of addresses and ports that comprise a service.
 	// +optional
-	Subsets []EndpointSubset `json:"subsets,omitempty"`
+	Subset EndpointSubset `json:"subsets,omitempty"`
 }
 
 // EndpointSubset is a group of addresses with a common set of ports. The
@@ -63,6 +65,8 @@ type EndpointPort struct {
 
 	// The port number of the endpoint.
 	Port int32 `json:"port"`
+
+	ServicePort int32 `json:"serviceport"`
 
 	// The IP protocol for this port.
 	// Must be UDP, TCP, or SCTP.

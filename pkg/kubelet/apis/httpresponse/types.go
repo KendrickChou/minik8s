@@ -23,3 +23,11 @@ type WatchNodeResponse struct {
 
 	Type string `json:"type"`
 }
+
+type EndpointChangeRequest struct {
+	Key string `json:"key"`
+
+	Endpoint v1.Endpoint `json:"value"`
+
+	Type string `json:"type"`
+}

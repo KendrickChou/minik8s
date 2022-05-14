@@ -6,6 +6,7 @@ replace minik8s.com/minik8s/pkg/kubelet => ./pkg/kubelet
 
 require (
 	github.com/containerd/containerd v1.6.2
+	github.com/coreos/go-iptables v0.5.0
 	github.com/docker/docker v20.10.14+incompatible
 	github.com/gin-gonic/gin v1.7.7
 	github.com/vishvananda/netlink v1.1.1-0.20210330154013-f5de75959ad5
@@ -38,7 +39,7 @@ require (
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
-	github.com/google/uuid v1.2.0 // indirect
+	github.com/google/uuid v1.2.0
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/klauspost/compress v1.11.13 // indirect
 	github.com/leodido/go-urn v1.2.1 // indirect

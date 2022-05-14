@@ -17,6 +17,7 @@ import (
 	"minik8s.com/minik8s/pkg/kubelet/apis/config"
 	"minik8s.com/minik8s/pkg/kubelet/apis/constants"
 	"minik8s.com/minik8s/pkg/kubelet/apis/httpresponse"
+	kubeproxy "minik8s.com/minik8s/pkg/kubelet/kube-proxy"
 )
 
 const JsonContentType string = "application/json"
@@ -78,13 +79,22 @@ func main() {
 		os.Exit(0)
 	}
 
-	// watch pod
+	// create kube proxy
+	kp, err := kubeproxy.NewKubeProxy()
+
+	if err != nil {
+		klog.Fatalf("Create Kube-Proxy Failed: %s", err.Error())
+		os.Exit(0)
+	}
+
 	ctx, cancel := context.WithCancel(context.TODO())
 	defer cancel()
 
-	podChangeRaw := make(chan []byte)
+	// may some parallel bugs. maybe should not share kl
+
+	// watch pod
 	errChan := make(chan string)
-	go watchingPods(ctx, kl.UID, podChangeRaw, errChan)
+	go watchingPods(ctx, &kl, errChan)
 
 	// start heartbeat
 	go sendHeartBeat(ctx, kl.UID, errChan)
@@ -92,30 +102,24 @@ func main() {
 	// start refreshPodStatus periodically
 	go refreshAllPodStatus(ctx, &kl)
 
+	// watch endpoints
+	go watchingEndpoints(ctx, kp, errChan)
+
 	for {
 		select {
 		case e := <-errChan:
 			klog.Fatalf("Node Failed: %s", e)
 			return
-		case rawBytes := <-podChangeRaw:
-			req := &httpresponse.PodChangeRequest{}
-			err := json.Unmarshal(rawBytes, req)
-
-			if err != nil {
-				klog.Error("Unmarshal APIServer Data Failed: %s", err.Error())
-			} else {
-				handlePodChangeRequest(&kl, req)
-			}
 		}
 	}
 
 }
 
-func watchingPods(ctx context.Context, nodeName string, podChange chan []byte, errChan chan string) {
-	resp, err := http.Get(config.ApiServerAddress + constants.WatchPodsRequest(nodeName))
+func watchingPods(ctx context.Context, kl *kubelet.Kubelet, errChan chan string) {
+	resp, err := http.Get(config.ApiServerAddress + constants.WatchPodsRequest(kl.UID))
 
 	if err != nil {
-		klog.Errorf("Node %s Watch Pods Failed: %s", nodeName, err.Error())
+		klog.Errorf("Node %s Watch Pods Failed: %s", kl.UID, err.Error())
 		errChan <- err.Error()
 		return
 	}
@@ -134,7 +138,14 @@ func watchingPods(ctx context.Context, nodeName string, podChange chan []byte, e
 				return
 			}
 
-			podChange <- buf
+			req := &httpresponse.PodChangeRequest{}
+			err = json.Unmarshal(buf, req)
+
+			if err != nil {
+				klog.Error("Unmarshal APIServer Data Failed: %s", err.Error())
+			} else {
+				handlePodChangeRequest(kl, req)
+			}
 
 		}
 	}
@@ -217,6 +228,53 @@ func refreshAllPodStatus(ctx context.Context, kl *kubelet.Kubelet) {
 	}
 }
 
+func watchingEndpoints(ctx context.Context, kp kubeproxy.KubeProxy, errChan chan string) {
+	resp, err := http.Get(config.ApiServerAddress + constants.WatchEndpointsRequest())
+
+	if err != nil {
+		klog.Errorf("Node %s Watch Endpoints Failed: %s", err.Error())
+		errChan <- err.Error()
+		return
+	}
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+			reader := bufio.NewReader(resp.Body)
+			buf, err := reader.ReadBytes(byte(constants.EOF))
+
+			if err != nil {
+				klog.Errorf("Watch Endpoints Error: %s", err)
+				errChan <- err.Error()
+				return
+			}
+
+			req :=&httpresponse.EndpointChangeRequest{}
+			err = json.Unmarshal(buf, req)
+
+			if err != nil {
+				klog.Error("Unmarshal APIServer Data Failed: %s", err.Error())
+			} else {
+				handleEndpointChangeRequest(kp, req)
+			}
+		}
+	}
+}
+
+func handleEndpointChangeRequest(kp kubeproxy.KubeProxy, req *httpresponse.EndpointChangeRequest) {
+	switch req.Type {
+	case "PUT":
+		kp.AddEndpoint(context.TODO(), req.Endpoint)
+	case "DELETE":
+		kp.RemoveEndpoint(context.TODO(), req.Endpoint.Name)
+	default:
+		klog.Errorln("Unknown Pod Change Request Type: %s", req.Type)
+		return
+	}
+}
+
 func connectWeaveNet() {
 	// If there is a firewall between $HOST1 and $HOST2,
 	// you must permit traffic to flow through TCP 6783 and UDP 6783/6784,
@@ -234,6 +292,14 @@ func connectWeaveNet() {
 	klog.Info("Weave Connect to %s: %s", config.ApiServerAddress, out)
 
 	cmd = exec.Command("eval $(weave env)")
+	_, err = cmd.CombinedOutput()
+
+	if err != nil {
+		klog.Errorf("Error in set Weave env: %s", err.Error())
+		os.Exit(0)
+	}
+
+	cmd = exec.Command("weave expose")
 	_, err = cmd.CombinedOutput()
 
 	if err != nil {
