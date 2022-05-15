@@ -4,13 +4,16 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os/exec"
+	"regexp"
+	"strings"
 
 	"k8s.io/klog"
 	v1 "minik8s.com/minik8s/pkg/api/v1"
 	"minik8s.com/minik8s/pkg/kubelet/apis/constants"
 
 	"github.com/coreos/go-iptables/iptables"
-	"github.com/google/uuid"
+	"github.com/dchest/uniuri"
 )
 
 type KubeProxy interface {
@@ -26,15 +29,15 @@ type kubeProxy struct {
 
 	ipt *iptables.IPTables
 
-	SVCChain map[string][]string	// map service name -> iptables svc chain name array
-	SEPChain map[string][]string	// map iptables svc chain name -> a sep chain name array
+	SVCChain map[string][]string // map service name -> iptables svc chain name array
+	SEPChain map[string][]string // map iptables svc chain name -> a sep chain name array
 }
 
 func NewKubeProxy() (KubeProxy, error) {
 	kp := &kubeProxy{
 		endpoints: make(map[string]*v1.Endpoint),
-		SVCChain: make(map[string][]string),
-		SEPChain: make(map[string][]string),
+		SVCChain:  make(map[string][]string),
+		SEPChain:  make(map[string][]string),
 	}
 
 	ipt, err := iptables.New()
@@ -45,7 +48,9 @@ func NewKubeProxy() (KubeProxy, error) {
 
 	kp.ipt = ipt
 
-	return kp, nil
+	err = initIPtables(ipt)
+
+	return kp, err
 }
 
 func (kp *kubeProxy) AddEndpoint(ctx context.Context, endpoint v1.Endpoint) error {
@@ -64,45 +69,59 @@ func (kp *kubeProxy) AddEndpoint(ctx context.Context, endpoint v1.Endpoint) erro
 		return errors.New(err)
 	}
 
-	if !ok {
-		err := fmt.Sprintf("Add endpoint error: no corresponding service %s", endpoint.Name)
-		klog.Error(err)
-		return errors.New(err)
-	}
-
 	kp.endpoints[endpoint.Name] = &endpoint
 
 	svcChains := []string{}
 	for _, port := range endpoint.Subset.Ports {
 		// create svc chain
 		svcID := createAServiceChainID()
-		kp.ipt.NewChain(constants.NATTableName, svcID)
+		err := kp.ipt.NewChain(constants.NATTableName, svcID)
 		svcChains = append(svcChains, svcID)
 
+		if err != nil {
+			klog.Errorf("Create Service Chain %s Error: %s", svcID, err.Error())
+		}
+
 		// append to K8S-SERVICE chain
-		rule := fmt.Sprintf("-d %s -p %s --dport %d -j %s", endpoint.ServiceIp, port.Protocol, port.ServicePort, svcID)
-		kp.ipt.Append(constants.NATTableName, constants.ServiceChainName, rule)
+		rule := fmt.Sprintf("-d %s -p %s --dport %d -m comment --comment %s -j %s", endpoint.ServiceIp, port.Protocol, port.ServicePort, endpoint.Name, svcID)
+		err = kp.ipt.Append(constants.NATTableName, constants.ServiceChainName, strings.Split(rule, " ")...)
+
+		if err != nil {
+			klog.Errorf("Append %s to K8S-SERVICE Chain Error: %s", svcID, err.Error())
+		}
 
 		sepChains := []string{}
 		for i, addr := range endpoint.Subset.Addresses {
 			// create sep chain
 			sepID := createASEPChainID()
-			kp.ipt.NewChain(constants.NATTableName, sepID)
+			err = kp.ipt.NewChain(constants.NATTableName, sepID)
 			sepChains = append(sepChains, sepID)
+
+			if err != nil {
+				klog.Errorf("Create SEP Chain %s Error: %s", sepID, err.Error())
+			}
 
 			// append to K8S-SVC-xxx chain
 			p := 1 / float32(len(endpoint.Subset.Addresses))
-			if i != len(endpoint.Subset.Addresses) - 1 {
-				rule = fmt.Sprintf("-m statistics --mode random --probability %f -j %s", p, sepID)
+			if i != len(endpoint.Subset.Addresses)-1 {
+				rule = fmt.Sprintf("-m statistic --mode random --probability %f -j %s", p, sepID)
 			} else {
 				rule = fmt.Sprintf("-j %s", sepID)
 			}
 
-			kp.ipt.Append(constants.NATTableName, svcID, rule)
+			err = kp.ipt.Append(constants.NATTableName, svcID, strings.Split(rule, " ")...)
+
+			if err != nil {
+				klog.Errorf("Append %s to SVC Chain %s Error: %s", sepID, svcID, err.Error())
+			}
 
 			// append to K8S-SEP-xxx
-			rule = fmt.Sprintf("--to %s:%d -j DNAT", addr.IP, port.Port)
-			kp.ipt.Append(constants.NATTableName, sepID, rule)
+			rule = fmt.Sprintf("-j DNAT -p %s --to %s:%d", port.Protocol, addr.IP, port.Port)
+			err = kp.ipt.Append(constants.NATTableName, sepID, strings.Split(rule, " ")...)
+
+			if err != nil {
+				klog.Errorf("Append DNAT Rule to SEP Chain %s Error: %s", sepID, err.Error())
+			}
 		}
 
 		kp.SEPChain[svcID] = sepChains
@@ -126,14 +145,24 @@ func (kp *kubeProxy) RemoveEndpoint(ctx context.Context, name string) error {
 	delete(kp.endpoints, name)
 
 	for _, svcID := range kp.SVCChain[name] {
-		rule := fmt.Sprintf("-j %s", svcID)
 
-		kp.ipt.Delete(constants.NATTableName, constants.ServiceChainName, rule)
+		res, err := deleteRulesByTarget(constants.NATTableName, constants.ServiceChainName, svcID)
 
-		kp.ipt.DeleteChain(constants.NATTableName, svcID)
+		if err != nil {
+			klog.Errorf("Remove rules %s from K8S-SERVICE error: %s %s", svcID, err.Error(), res)
+		}
+
+		err = kp.ipt.ClearAndDeleteChain(constants.NATTableName, svcID)
+
+		if err != nil {
+			klog.Errorf("Remove Chain %s error: %s", svcID, err.Error())
+		}
 
 		for _, sepID := range kp.SEPChain[svcID] {
-			kp.ipt.DeleteChain(constants.NATTableName, sepID)
+			err = kp.ipt.ClearAndDeleteChain(constants.NATTableName, sepID)
+			if err != nil {
+				klog.Errorf("Remove Chain %s error: %s", sepID, err.Error())
+			}
 		}
 
 		delete(kp.SEPChain, svcID)
@@ -159,9 +188,78 @@ func (kp *kubeProxy) UpdateEndpoint(ctx context.Context, endpoint v1.Endpoint) e
 }
 
 func createAServiceChainID() string {
-	return constants.ServiceChainPrefix + uuid.NewString()
+	return constants.ServiceChainPrefix + strings.ToUpper(uniuri.New())
 }
 
 func createASEPChainID() string {
-	return constants.SepChainPrefix + uuid.NewString()
+	return constants.SepChainPrefix + strings.ToUpper(uniuri.New())
+}
+
+func initIPtables(ipt *iptables.IPTables) error {
+	// clear all remanent K8S-SVC-xxx K8S-SEP-xxx
+	chains, err := ipt.ListChains(constants.NATTableName)
+
+	if err != nil {
+		errInfo := fmt.Sprintf("Check K8S-SERVICE chain error: %s", err.Error())
+		return errors.New(errInfo)
+	}
+
+	for _, chain := range chains {
+		match, _ := regexp.MatchString("K8S", chain)
+		if match {
+			if chain == constants.ServiceChainName {
+				ipt.ClearChain(constants.NATTableName, chain)
+			} else {
+				ipt.ClearAndDeleteChain(constants.NATTableName, chain)
+			}
+		}
+	}
+
+	// return if already exist
+	exist, err := ipt.ChainExists(constants.NATTableName, constants.ServiceChainName)
+
+	if err != nil {
+		errInfo := fmt.Sprintf("Check K8S-SERVICE chain error: %s", err.Error())
+		return errors.New(errInfo)
+	}
+
+	if exist {
+		klog.Infof("K8S-SERVICE Chain exist.")
+		return nil
+	}
+
+	klog.Info("Create K8S-SERVICE Chain")
+
+	// create K8S-SERVICE
+	err = ipt.NewChain(constants.NATTableName, constants.ServiceChainName)
+
+	if err != nil {
+		return err
+	}
+
+	// append it to OUTPUT Chain & PREROUTING chain
+	rule := "-j " + constants.ServiceChainName
+
+	err = ipt.Insert(constants.NATTableName, "OUTPUT", 1, strings.Split(rule, " ")...)
+	if err != nil {
+		return err
+	}
+
+	err = ipt.Insert(constants.NATTableName, "PREROUTING", 1, strings.Split(rule, " ")...)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func deleteRulesByTarget(table, chain, target string) (string, error) {
+	command := fmt.Sprintf("iptables -t %s -D %s $(iptables -t %s --line-number -nL %s | grep %s | awk '{print $1}' | tac)",
+				 			table, chain, table, chain, target)
+
+	cmd := exec.Command("bash", "-c", command)
+
+	res, err := cmd.CombinedOutput()
+
+	return string(res), err
 }

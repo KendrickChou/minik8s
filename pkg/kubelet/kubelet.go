@@ -2,12 +2,15 @@ package kubelet
 
 import (
 	"errors"
+	"fmt"
 	"os"
+	"os/exec"
 
 	"github.com/gin-gonic/gin"
 	"k8s.io/klog/v2"
 
 	v1 "minik8s.com/minik8s/pkg/api/v1"
+	"minik8s.com/minik8s/pkg/kubelet/apis/config"
 	kubeconfig "minik8s.com/minik8s/pkg/kubelet/apis/config"
 	"minik8s.com/minik8s/pkg/kubelet/apis/constants"
 	"minik8s.com/minik8s/pkg/kubelet/pod"
@@ -43,8 +46,9 @@ func NewKubelet(nodeName string, UID string) (Kubelet, error) {
 	kubelet.PodManager = &kubelet.podManager
 
 	// err := kubelet.podManager.CreatePodBridgeNetwork(kubelet.Spec.CIDR)
+	err := connectWeaveNet()
 
-	return kubelet, nil
+	return kubelet, err
 }
 
 func (kl *Kubelet) ListenAndServe(kubeCfg *kubeconfig.KubeletConfiguration) {
@@ -98,5 +102,41 @@ func installInitialContainers(pod *v1.Pod) error {
 
 	pod.Spec.InitialContainers[constants.InitialPauseContainerKey] = constants.InitialPauseContainer
 
+	return nil
+}
+
+func connectWeaveNet() error {
+	// If there is a firewall between $HOST1 and $HOST2,
+	// you must permit traffic to flow through TCP 6783 and UDP 6783/6784,
+	// which are Weave’s control and data ports.
+
+	// connect to weave net
+	cmd := exec.Command("weave", "connect", config.ApiServerAddress)
+	out, err := cmd.CombinedOutput()
+
+	if err != nil {
+		errInfo := fmt.Sprintf("Error in Weave Connect: %s", err.Error())
+		return errors.New(errInfo)
+	}
+
+	klog.Info("Weave Connect to %s: %s", config.ApiServerAddress, out)
+
+	cmd = exec.Command("eval $(weave env)")
+	_, err = cmd.CombinedOutput()
+
+	if err != nil {
+		errInfo := fmt.Sprintf("Error in set Weave env: %s", err.Error())
+		return errors.New(errInfo)
+	}
+
+	cmd = exec.Command("weave expose")
+	_, err = cmd.CombinedOutput()
+
+	if err != nil {
+		errInfo := fmt.Sprintf("Error in set Weave env: %s", err.Error())
+		return errors.New(errInfo)
+	}
+
+	klog.Info("Set Weave Env Successfully!")
 	return nil
 }

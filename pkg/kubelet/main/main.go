@@ -8,7 +8,6 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"os/exec"
 	"strconv"
 	"time"
 
@@ -68,8 +67,6 @@ func main() {
 	// 	klog.Fatalf("Actual Node Name: %s, Received Node Name: %s", registResp.UID, watchNodeResp.Key)
 	// 	os.Exit(0)
 	// }
-
-	connectWeaveNet()
 
 	// create kubelet
 	kl, err := kubelet.NewKubelet(config.NodeName, registResp.UID)
@@ -251,7 +248,7 @@ func watchingEndpoints(ctx context.Context, kp kubeproxy.KubeProxy, errChan chan
 				return
 			}
 
-			req :=&httpresponse.EndpointChangeRequest{}
+			req := &httpresponse.EndpointChangeRequest{}
 			err = json.Unmarshal(buf, req)
 
 			if err != nil {
@@ -273,39 +270,4 @@ func handleEndpointChangeRequest(kp kubeproxy.KubeProxy, req *httpresponse.Endpo
 		klog.Errorln("Unknown Pod Change Request Type: %s", req.Type)
 		return
 	}
-}
-
-func connectWeaveNet() {
-	// If there is a firewall between $HOST1 and $HOST2,
-	// you must permit traffic to flow through TCP 6783 and UDP 6783/6784,
-	// which are Weave’s control and data ports.
-
-	// connect to weave net
-	cmd := exec.Command("weave", "connect", config.ApiServerAddress)
-	out, err := cmd.CombinedOutput()
-
-	if err != nil {
-		klog.Errorf("Error in Weave Connect: %s", err.Error())
-		os.Exit(0)
-	}
-
-	klog.Info("Weave Connect to %s: %s", config.ApiServerAddress, out)
-
-	cmd = exec.Command("eval $(weave env)")
-	_, err = cmd.CombinedOutput()
-
-	if err != nil {
-		klog.Errorf("Error in set Weave env: %s", err.Error())
-		os.Exit(0)
-	}
-
-	cmd = exec.Command("weave expose")
-	_, err = cmd.CombinedOutput()
-
-	if err != nil {
-		klog.Errorf("Error in set Weave env: %s", err.Error())
-		os.Exit(0)
-	}
-
-	klog.Info("Set Weave Env Successfully!")
 }
