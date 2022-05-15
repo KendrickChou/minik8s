@@ -37,9 +37,9 @@ var addCmd = &cobra.Command{
 		var resp []byte
 		switch kind {
 		case "pod":
-			resp = apiclient.Rest("", buf, apiclient.OBJ_POD, apiclient.OP_POST)
+			resp = apiclient.Rest("", string(buf), apiclient.OBJ_POD, apiclient.OP_POST)
 		case "service":
-			resp = apiclient.Rest("", buf, apiclient.OBJ_SERVICE, apiclient.OP_POST)
+			resp = apiclient.Rest("", string(buf), apiclient.OBJ_SERVICE, apiclient.OP_POST)
 		}
 
 		var stat StatusResponse

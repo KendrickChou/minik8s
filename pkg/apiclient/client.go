@@ -22,16 +22,19 @@ const (
 	OBJ_ALL_PODS      ObjType = 0
 	OBJ_ALL_SERVICES  ObjType = 1
 	OBJ_ALL_REPLICAS  ObjType = 2
-	OBJ_ALL_ENDPOINTS ObjType = 6
-	OBJ_POD           ObjType = 3
-	OBJ_SERVICE       ObjType = 4
-	OBJ_REPLICAS      ObjType = 5
-	OBJ_ENDPOINT      ObjType = 7
+	OBJ_ALL_ENDPOINTS ObjType = 3
+	OBJ_ALL_NODES     ObjType = 4
 
-	OP_GET    OpType = 6
-	OP_POST   OpType = 7
-	OP_PUT    OpType = 8
-	OP_DELETE OpType = 9
+	OBJ_POD      ObjType = 5
+	OBJ_SERVICE  ObjType = 6
+	OBJ_REPLICAS ObjType = 7
+	OBJ_ENDPOINT ObjType = 8
+	OBJ_NODE     ObjType = 9
+
+	OP_GET    OpType = 60
+	OP_POST   OpType = 70
+	OP_PUT    OpType = 80
+	OP_DELETE OpType = 90
 )
 
 /*
@@ -134,6 +137,8 @@ func Rest(id string, value string, objTy ObjType, opTy OpType) []byte {
 	switch objTy {
 	case OBJ_ALL_PODS:
 		url += config.AC_RestPods_Path
+	case OBJ_ALL_NODES:
+		url += config.AC_RestNodes_Path
 	case OBJ_ALL_SERVICES:
 		url += config.AC_RestServices_Path
 	case OBJ_ALL_REPLICAS:
