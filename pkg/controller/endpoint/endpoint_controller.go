@@ -145,7 +145,7 @@ func (epc *EndpointController) createEndpoint(service v1.Service, pods []v1.Pod,
 	}
 	subset.Ports = ports
 
-	endpoint.Subsets = append(endpoint.Subsets, subset)
+	endpoint.Subset = subset
 	apiclient.PostEndpoint(endpoint)
 }
 
