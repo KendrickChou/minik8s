@@ -31,7 +31,7 @@ const (
 type Pod struct {
 	TypeMeta
 
-	ObjectMeta
+	ObjectMeta `json:"metadata,omitempty"`
 
 	Spec PodSpec `json:"spec,omitempty"`
 

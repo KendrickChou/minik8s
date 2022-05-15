@@ -26,6 +26,7 @@ const (
 	AC_WatchReplica_Path  = "/watch/replica"
 
 	AC_RestServices_Path = "/services"
+	AC_RestEP_Path       = "/endpoints"
 	AC_RestPods_Path     = "/pods"
 	AC_RestReplicas_Path = "/replicas"
 	AC_RestNodes_Path    = "/nodes"

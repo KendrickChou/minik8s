@@ -21,6 +21,16 @@ type GetNodeResponse struct {
 	Node v1.Node `json:"value"`
 	Type string  `json:"type"`
 }
+type GetServiceResponse struct {
+	Key     string     `json:"key"`
+	Service v1.Service `json:"value"`
+	Type    string     `json:"type"`
+}
+type GetEndpointResponse struct {
+	Key      string      `json:"key"`
+	Endpoint v1.Endpoint `json:"value"`
+	Type     string      `json:"type"`
+}
 
 var rootCmd = &cobra.Command{
 	Use:   "newApp",
