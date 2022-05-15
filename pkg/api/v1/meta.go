@@ -32,4 +32,6 @@ type ObjectMeta struct {
 	// operations.
 	// Read Only
 	UID string `json:"uid,omitempty"`
+
+	Labels map[string]string `json:"labels,omitempty"`
 }

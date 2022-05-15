@@ -1,10 +1,15 @@
 {
-    "Kind": "pod",
-    "APIVersion": "v1",
-    "Name": "myFirstPod",
-    "Namespace": "default",
-    "UID": "123456789",
-    "Spec": {
+    "kind": "pod",
+    "apiversion": "v1",
+    "metadata": {
+        "name": "myFirstPod",
+        "namespace": "default",
+        "uid": "",
+        "labels": {
+            "app" : "nginx"
+        }
+    },
+    "spec": {
         "Containers": [
             {
                 "Name": "myFirstPod-myFirstContainer",

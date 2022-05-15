@@ -40,8 +40,15 @@ func handleGetService(c *gin.Context) {
 func handlePostService(c *gin.Context) {
 	buf := make([]byte, c.Request.ContentLength)
 	_, err := c.Request.Body.Read(buf)
-	name := "S" + strconv.Itoa(objCount) + "-" + random.String(8)
-	objCount++
+	name := "S" + strconv.Itoa(nextObjNum()) + "-" + random.String(8)
+	var service v1.Service
+	err = json.Unmarshal(buf, &service)
+	if err != nil {
+		c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
+		return
+	}
+	service.UID = name
+	buf, _ = json.Marshal(service)
 	err = etcdPut("/service/"+name, string(buf))
 	if err != nil {
 		c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
@@ -164,8 +171,7 @@ func handleGetPod(c *gin.Context) {
 func handlePostPod(c *gin.Context) {
 	buf := make([]byte, c.Request.ContentLength)
 	_, err := c.Request.Body.Read(buf)
-	name := "P" + strconv.Itoa(objCount) + "-" + random.String(8)
-	objCount++
+	name := "P" + strconv.Itoa(nextObjNum()) + "-" + random.String(8)
 	var pod v1.Pod
 	err = json.Unmarshal(buf, &pod)
 	if err != nil {
@@ -303,8 +309,7 @@ func handlePostPodByNode(c *gin.Context) {
 	buf := make([]byte, c.Request.ContentLength)
 	_, err := c.Request.Body.Read(buf)
 	nname := c.Param("nname")
-	pname := "P" + strconv.Itoa(objCount) + "-" + random.String(8)
-	objCount++
+	pname := "P" + strconv.Itoa(nextObjNum()) + "-" + random.String(8)
 	if !etcdTest("/node/" + nname) {
 		c.JSON(404, gin.H{"status": "ERR", "error": "No such pod"})
 	} else {
@@ -498,7 +503,7 @@ func handleWatchNode(c *gin.Context) {
 
 //------------ Replica Rest API -----------
 func handleGetReplicas(c *gin.Context) {
-	replicas, _ := etcdGetPrefix("/replicas")
+	replicas, _ := etcdGetPrefix("/replica")
 	c.JSON(200, replicas)
 }
 
@@ -516,8 +521,15 @@ func handleGetReplica(c *gin.Context) {
 func handlePostReplica(c *gin.Context) {
 	buf := make([]byte, c.Request.ContentLength)
 	_, err := c.Request.Body.Read(buf)
-	name := "R" + strconv.Itoa(objCount) + "-" + random.String(8)
-	objCount++
+	name := "R" + strconv.Itoa(nextObjNum()) + "-" + random.String(8)
+	var rep v1.ReplicaSet
+	err = json.Unmarshal(buf, &rep)
+	if err != nil {
+		c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
+		return
+	}
+	rep.UID = name
+	buf, _ = json.Marshal(rep)
 	err = etcdPut("/replica/"+name, string(buf))
 	if err != nil {
 		c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
@@ -617,7 +629,7 @@ func handleWatchReplica(c *gin.Context) {
 
 //------------ Endpoint Rest API -----------
 func handleGetEndpoints(c *gin.Context) {
-	replicas, _ := etcdGetPrefix("/endpoints")
+	replicas, _ := etcdGetPrefix("/endpoint")
 	c.JSON(200, replicas)
 }
 
@@ -635,8 +647,15 @@ func handleGetEndpoint(c *gin.Context) {
 func handlePostEndpoint(c *gin.Context) {
 	buf := make([]byte, c.Request.ContentLength)
 	_, err := c.Request.Body.Read(buf)
-	name := "E" + strconv.Itoa(objCount) + "-" + random.String(8)
-	objCount++
+	name := "E" + strconv.Itoa(nextObjNum()) + "-" + random.String(8)
+	var ep v1.Endpoint
+	err = json.Unmarshal(buf, &ep)
+	if err != nil {
+		c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
+		return
+	}
+	ep.UID = name
+	buf, _ = json.Marshal(ep)
 	err = etcdPut("/endpoint/"+name, string(buf))
 	if err != nil {
 		c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
@@ -736,7 +755,7 @@ func handleWatchEndpoint(c *gin.Context) {
 
 //------------ Node Rest API -----------
 func handleGetNodes(c *gin.Context) {
-	nodes, _ := etcdGetPrefix("/nodes")
+	nodes, _ := etcdGetPrefix("/node")
 	c.JSON(200, nodes)
 }
 
@@ -754,8 +773,7 @@ func handleGetNode(c *gin.Context) {
 func handlePostNode(c *gin.Context) {
 	buf := make([]byte, c.Request.ContentLength)
 	_, err := c.Request.Body.Read(buf)
-	name := "N" + strconv.Itoa(objCount) + "-" + random.String(8)
-	objCount++
+	name := "N" + strconv.Itoa(nextObjNum()) + "-" + random.String(8)
 	var node v1.Node
 	err = json.Unmarshal(buf, &node)
 	if err != nil {

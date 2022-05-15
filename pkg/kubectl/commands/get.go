@@ -30,16 +30,19 @@ var getCmd = &cobra.Command{
 			case "pod":
 				getPods()
 			case "service":
-				resp := apiclient.Rest("", []byte{}, apiclient.OBJ_ALL_SERVICES, apiclient.OP_GET)
-				fmt.Printf("%s\n", resp)
+				getServices()
 			case "replica":
 				resp := apiclient.Rest("", []byte{}, apiclient.OBJ_ALL_REPLICAS, apiclient.OP_GET)
 				fmt.Printf("%s\n", resp)
 			case "node":
 				getNodes()
+			case "endpoint":
+				getEndpoints()
 			case "all":
-				resp := apiclient.Rest("", []byte{}, apiclient.OBJ_ALL_NODES, apiclient.OP_GET)
-				fmt.Printf("%s\n", resp)
+				getPods()
+				getNodes()
+				getServices()
+				getEndpoints()
 			default:
 				fmt.Println("未知的对象类型！")
 			}
@@ -68,6 +71,7 @@ func getPods() {
 	for _, kv := range kvs {
 		fmt.Printf("%v\t\t%v\t\t%v\t\t%v\n", kv.Key, kv.Pod.Name, kv.Pod.UID, kv.Pod.Status.Phase)
 	}
+	fmt.Printf("\n")
 }
 
 func getNodes() {
@@ -79,8 +83,41 @@ func getNodes() {
 		return
 	}
 	fmt.Printf("=->%v Nodes\n", len(kvs))
-	fmt.Printf("%v\t\t\t\t%v\t\t\t%v\t\t\t%v\n", "Key", "Name", "Uid", "Status")
+	fmt.Printf("%v\t\t\t\t%v\t\t\t%v\t\t\t%v\n", "Key", "Name", "Uid", "IP")
 	for _, kv := range kvs {
-		fmt.Printf("%v\t\t%v\t\t%v\t\t%v\n", kv.Key, kv.Node.Name, kv.Node.UID, kv.Node.Status.Phase)
+		fmt.Printf("%v\t\t%v\t\t%v\t\t%v\n", kv.Key, kv.Node.Name, kv.Node.UID, kv.Node.Spec.IP)
 	}
+	fmt.Printf("\n")
+}
+
+func getServices() {
+	resp := apiclient.Rest("", []byte{}, apiclient.OBJ_ALL_SERVICES, apiclient.OP_GET)
+	var kvs []GetServiceResponse
+	err := json.Unmarshal(resp, &kvs)
+	if err != nil {
+		fmt.Println("服务器返回信息无效: ", err)
+		return
+	}
+	fmt.Printf("=->%v Services\n", len(kvs))
+	fmt.Printf("%v\t\t\t\t%v\t\t\t%v\t\t\t%v\n", "Key", "Name", "Uid", "Cluster IP")
+	for _, kv := range kvs {
+		fmt.Printf("%v\t\t%v\t\t%v\t\t%v\n", kv.Key, kv.Service.Name, kv.Service.UID, kv.Service.Spec.ClusterIP)
+	}
+	fmt.Printf("\n")
+}
+
+func getEndpoints() {
+	resp := apiclient.Rest("", []byte{}, apiclient.OBJ_ALL_EPS, apiclient.OP_GET)
+	var kvs []GetEndpointResponse
+	err := json.Unmarshal(resp, &kvs)
+	if err != nil {
+		fmt.Println("服务器返回信息无效: ", err)
+		return
+	}
+	fmt.Printf("=->%v Endpoints\n", len(kvs))
+	fmt.Printf("%v\t\t\t\t\t%v\t\t\t%v\t\t\t%v\n", "Key", "Name", "Uid", "SubsetLen")
+	for _, kv := range kvs {
+		fmt.Printf("%v\t\t%v\t\t%v\t\t%v\n", kv.Key, kv.Endpoint.Name, kv.Endpoint.UID, len(kv.Endpoint.Subsets))
+	}
+	fmt.Printf("\n")
 }

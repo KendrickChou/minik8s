@@ -18,6 +18,7 @@ type OpType int8
 const (
 	OBJ_ALL_PODS     ObjType = 0
 	OBJ_ALL_SERVICES ObjType = 1
+	OBJ_ALL_EPS      ObjType = 12
 	OBJ_ALL_REPLICAS ObjType = 2
 	OBJ_ALL_NODES    ObjType = 3
 	OBJ_POD          ObjType = 4
@@ -98,6 +99,8 @@ func Rest(id string, value []byte, objTy ObjType, opTy OpType) []byte {
 		url += config.AC_RestPods_Path
 	case OBJ_ALL_SERVICES:
 		url += config.AC_RestServices_Path
+	case OBJ_ALL_EPS:
+		url += config.AC_RestEP_Path
 	case OBJ_ALL_REPLICAS:
 		url += config.AC_RestReplicas_Path
 	case OBJ_ALL_NODES:
