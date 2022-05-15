@@ -46,6 +46,7 @@ func (r *Reflector) list() {
 
 		for _, podObj := range fmtObjs {
 			podObj.Type = "PUT"
+			podObj.StripKey()
 			r.NotifyChan <- &podObj
 		}
 	case "ReplicaSet":
@@ -58,6 +59,7 @@ func (r *Reflector) list() {
 
 		for _, rsObj := range fmtObjs {
 			rsObj.Type = "PUT"
+			rsObj.StripKey()
 			r.NotifyChan <- &rsObj
 		}
 	case "Service":
@@ -70,6 +72,7 @@ func (r *Reflector) list() {
 
 		for _, serviceObj := range fmtObjs {
 			serviceObj.Type = "PUT"
+			serviceObj.StripKey()
 			r.NotifyChan <- &serviceObj
 		}
 	case "Endpoint":
@@ -82,6 +85,7 @@ func (r *Reflector) list() {
 
 		for _, epObj := range fmtObjs {
 			epObj.Type = "PUT"
+			epObj.StripKey()
 			r.NotifyChan <- &epObj
 		}
 	}
@@ -124,6 +128,7 @@ func (r *Reflector) parseJsonAndNotify(jsonObj []byte) {
 			klog.Error("Reflector parse error\n")
 		}
 
+		obj.StripKey()
 		r.NotifyChan <- obj
 	case "ReplicaSet":
 		obj := &ReplicaSetObject{}
@@ -132,6 +137,7 @@ func (r *Reflector) parseJsonAndNotify(jsonObj []byte) {
 			klog.Error("Reflector parse error\n")
 		}
 
+		obj.StripKey()
 		r.NotifyChan <- obj
 	case "Service":
 		obj := &ServiceObject{}
@@ -140,6 +146,7 @@ func (r *Reflector) parseJsonAndNotify(jsonObj []byte) {
 			klog.Error("Reflector parse error\n")
 		}
 
+		obj.StripKey()
 		r.NotifyChan <- obj
 	case "Endpoint":
 		obj := &EndpointObject{}
@@ -148,6 +155,7 @@ func (r *Reflector) parseJsonAndNotify(jsonObj []byte) {
 			klog.Error("Reflector parse error\n")
 		}
 
+		obj.StripKey()
 		r.NotifyChan <- obj
 	}
 }

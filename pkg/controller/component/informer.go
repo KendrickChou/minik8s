@@ -1,6 +1,7 @@
 package component
 
 import (
+	"fmt"
 	"k8s.io/klog"
 )
 
@@ -58,6 +59,7 @@ func (inf *Informer) Run(stopChan chan bool) {
 		select {
 		case delta := <-inf.notifyChan:
 			{
+				fmt.Println("delta", delta.GetType(), delta.GetValue())
 				switch delta.GetType() {
 				case "PUT", "POST":
 					oldObj, exist := inf.store.Get(delta.GetKey())

@@ -1,7 +1,6 @@
 package endpoint
 
 import (
-	"fmt"
 	"k8s.io/klog"
 	v1 "minik8s.com/minik8s/pkg/api/v1"
 	"minik8s.com/minik8s/pkg/apiclient"
@@ -47,7 +46,6 @@ func (epc *EndpointController) Run() {
 func (epc *EndpointController) syncAll() {
 	services := epc.serviceInformer.List()
 	for _, item := range services {
-		fmt.Println(item)
 		service := item.(v1.Service)
 		epc.queue.Push(service.UID)
 	}
@@ -61,7 +59,14 @@ func (epc *EndpointController) worker() {
 func (epc *EndpointController) processNextWorkItem() bool {
 	key := epc.queue.Fetch().(string)
 
-	service := epc.serviceInformer.GetItem(key).(v1.Service)
+	item := epc.serviceInformer.GetItem(key)
+	if item == nil {
+		klog.Warning("item " + key + " not found\n")
+		return true
+	}
+
+	service := item.(v1.Service)
+	klog.Info("processing Service ", service.Name)
 	err := epc.syncEndpoint(service)
 	if err != nil {
 		klog.Error("syncEndpoint error\n")
@@ -92,6 +97,11 @@ func (epc *EndpointController) syncEndpoint(service v1.Service) error {
 		}
 	}
 
+	if len(relatedPods) == 0 {
+		klog.Info("Service ", service.Name, " has no related pods\n")
+		return nil
+	}
+
 	// check if there are existing endpoints
 	eps := epc.endpointInformer.List()
 	UID := ""
@@ -115,6 +125,7 @@ func (epc *EndpointController) createEndpoint(service v1.Service, pods []v1.Pod,
 	endpoint.APIVersion = service.APIVersion
 	endpoint.ObjectMeta.Name = service.ObjectMeta.Name
 	endpoint.UID = prevID
+	endpoint.ServiceIp = service.Spec.ClusterIP
 
 	var subset v1.EndpointSubset
 

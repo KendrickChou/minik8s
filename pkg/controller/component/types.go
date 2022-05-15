@@ -2,6 +2,7 @@ package component
 
 import (
 	v1 "minik8s.com/minik8s/pkg/api/v1"
+	"strings"
 )
 
 type Delta interface {
@@ -13,6 +14,11 @@ type Delta interface {
 type DeltaPart struct {
 	Type string `json:"type,omitempty"`
 	Key  string `json:"key"`
+}
+
+func (dp *DeltaPart) StripKey() {
+	slices := strings.Split(dp.Key, "/")
+	dp.Key = slices[len(slices)-1]
 }
 
 type PodObject struct {

@@ -4,6 +4,8 @@ type Endpoint struct {
 	TypeMeta
 	ObjectMeta `json:"metadata"`
 
+	ServiceIp string `json:"serviceip,omitempty"`
+
 	// The set of all endpoints is the union of all subsets. Addresses are placed into
 	// subsets according to the IPs they share. A single address with multiple ports,
 	// some of which are ready and some of which are not (because they come from

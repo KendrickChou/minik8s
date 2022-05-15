@@ -152,7 +152,6 @@ func Rest(id string, value string, objTy ObjType, opTy OpType) []byte {
 		klog.Error("Invalid arguments!\n")
 		return nil
 	}
-	fmt.Println(url)
 	switch opTy {
 	case OP_GET:
 		resp, err = http.Get(url)
