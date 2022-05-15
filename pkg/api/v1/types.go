@@ -28,3 +28,25 @@ func MatchSelector(requirement LabelSelector, labels map[string]string) bool {
 	}
 	return flag
 }
+
+func MatchLabels(requirement map[string]string, labels map[string]string) bool {
+	flag := true
+	for reqKey, reqVal := range requirement {
+		givenVal, exist := labels[reqKey]
+		if !exist || reqVal != givenVal {
+			flag = false
+			break
+		}
+	}
+	return flag
+}
+
+func CheckOwner(owners []OwnerReference, key string) bool {
+	for _, owner := range owners {
+		if owner.UID == key {
+			return true
+		}
+	}
+
+	return false
+}

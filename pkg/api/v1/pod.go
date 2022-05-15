@@ -31,7 +31,7 @@ const (
 type Pod struct {
 	TypeMeta
 
-	ObjectMeta
+	ObjectMeta `json:"metadata,omitempty"`
 
 	Spec PodSpec `json:"spec,omitempty"`
 
@@ -44,6 +44,8 @@ type PodSpec struct {
 	Containers []*Container `json:"containers,omitempty"`
 
 	RestartPolicy RestartPolicy `json:"restartPolicy,omitempty"`
+
+	NodeName string `json:"nodeName,omitempty"`
 }
 
 type PodStatus struct {

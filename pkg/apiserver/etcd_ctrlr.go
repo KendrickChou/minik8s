@@ -129,6 +129,18 @@ func etcdDel(key string) error {
 	return err
 }
 
+func etcdDelPrefix(key string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	_, err := etcdClient.Delete(ctx, key, clientv3.WithPrefix())
+	cancel()
+	if err != nil {
+		klog.Errorf("etcd delete failed, err: %v", err)
+	} else {
+		klog.Infof("etcd delete prefix: %v\n", key)
+	}
+	return err
+}
+
 func etcdWatch(key string) (chan *KV, context.CancelFunc) {
 	ch := make(chan *KV)
 	ctx, cancel := context.WithCancel(context.Background())

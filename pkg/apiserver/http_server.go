@@ -7,7 +7,15 @@ import (
 	"strconv"
 )
 
-var objCount int = 0
+var objCount int = 1000
+
+func nextObjNum() int {
+	objCount++
+	if objCount > 9999 {
+		objCount = 1000
+	}
+	return objCount
+}
 
 func runHttpServer() {
 	gin.SetMode(gin.ReleaseMode)
@@ -59,9 +67,22 @@ func runHttpServer() {
 	r.PUT("/node/:name", handlePutNode)
 	r.DELETE("/node/:name", handleDeleteNode)
 
+	// endpoint
+	r.GET("/endpoints", handleGetEndpoints)
+	r.GET("/endpoint/:name", handleGetEndpoint)
+	r.POST("/endpoint", handlePostEndpoint)
+	r.PUT("/endpoint/:name", handlePutEndpoint)
+	r.DELETE("/endpoint/:name", handleDeleteEndpoint)
+
+	//clear all
+	r.DELETE("/", handleDeleteAll)
+
 	//------------------ WATCH API ----------------------
 	r.GET("/watch/services", handleWatchServices)
 	r.GET("/watch/service/:name", handleWatchService)
+
+	r.GET("/watch/endpoints", handleWatchEndpoints)
+	r.GET("/watch/endpoint/:name", handleWatchEndpoint)
 
 	r.GET("/watch/pods", handleWatchPods)
 	r.GET("/watch/pod/:name", handleWatchPod)
