@@ -11,6 +11,7 @@ type ServiceSpec struct {
 	Ports     []ServicePort     `json:"ports,omitempty"`
 	Selector  map[string]string `json:"selector,omitempty"`
 	ClusterIP string            `json:"clusterIP,omitempty"`
+	Type      string            `json:"type,omitempty"`
 }
 
 type ServiceStatus struct {
