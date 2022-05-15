@@ -8,7 +8,6 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"os/exec"
 	"strconv"
 	"strings"
 	"time"
@@ -18,6 +17,7 @@ import (
 	"minik8s.com/minik8s/pkg/kubelet/apis/config"
 	"minik8s.com/minik8s/pkg/kubelet/apis/constants"
 	"minik8s.com/minik8s/pkg/kubelet/apis/httpresponse"
+	kubeproxy "minik8s.com/minik8s/pkg/kubelet/kube-proxy"
 )
 
 const JsonContentType string = "application/json"
@@ -69,8 +69,6 @@ func main() {
 	// 	os.Exit(0)
 	// }
 
-	connectWeaveNet()
-
 	// create kubelet
 	kl, err := kubelet.NewKubelet(config.NodeName, registResp.UID)
 
@@ -79,13 +77,22 @@ func main() {
 		os.Exit(0)
 	}
 
-	// watch pod
+	// create kube proxy
+	kp, err := kubeproxy.NewKubeProxy()
+
+	if err != nil {
+		klog.Fatalf("Create Kube-Proxy Failed: %s", err.Error())
+		os.Exit(0)
+	}
+
 	ctx, cancel := context.WithCancel(context.TODO())
 	defer cancel()
 
-	podChangeRaw := make(chan []byte)
+	// may some parallel bugs. maybe should not share kl
+
+	// watch pod
 	errChan := make(chan string)
-	go watchingPods(ctx, kl.UID, podChangeRaw, errChan)
+	go watchingPods(ctx, &kl, errChan)
 
 	// start heartbeat
 	go sendHeartBeat(ctx, kl.UID, errChan)
@@ -93,30 +100,24 @@ func main() {
 	// start refreshPodStatus periodically
 	go refreshAllPodStatus(ctx, &kl)
 
+	// watch endpoints
+	go watchingEndpoints(ctx, kp, errChan)
+
 	for {
 		select {
 		case e := <-errChan:
 			klog.Fatalf("Node Failed: %s", e)
 			return
-		case rawBytes := <-podChangeRaw:
-			req := &httpresponse.PodChangeRequest{}
-			err := json.Unmarshal(rawBytes, req)
-
-			if err != nil {
-				klog.Error("Unmarshal APIServer Data Failed: %v", err)
-			} else {
-				handlePodChangeRequest(&kl, req)
-			}
 		}
 	}
 
 }
 
-func watchingPods(ctx context.Context, nodeUID string, podChange chan []byte, errChan chan string) {
-	resp, err := http.Get(config.ApiServerAddress + constants.WatchPodsRequest(nodeUID))
+func watchingPods(ctx context.Context, kl *kubelet.Kubelet, errChan chan string) {
+	resp, err := http.Get(config.ApiServerAddress + constants.WatchPodsRequest(kl.UID))
 
 	if err != nil {
-		klog.Errorf("Node %s Watch Pods Failed: %s", nodeUID, err.Error())
+		klog.Errorf("Node %s Watch Pods Failed: %s", kl.UID, err.Error())
 		errChan <- err.Error()
 		return
 	}
@@ -135,8 +136,14 @@ func watchingPods(ctx context.Context, nodeUID string, podChange chan []byte, er
 				return
 			}
 
-			buf[len(buf)-1] = '\n'
-			klog.Infof("Watch Info from server: %v", string(buf))
+			req := &httpresponse.PodChangeRequest{}
+			err = json.Unmarshal(buf, req)
+
+			if err != nil {
+				klog.Error("Unmarshal APIServer Data Failed: %s", err.Error())
+			} else {
+				handlePodChangeRequest(kl, req)
+			}
 
 			podChange <- buf
 		}
@@ -223,29 +230,49 @@ func refreshAllPodStatus(ctx context.Context, kl *kubelet.Kubelet) {
 	}
 }
 
-func connectWeaveNet() {
-	// If there is a firewall between $HOST1 and $HOST2,
-	// you must permit traffic to flow through TCP 6783 and UDP 6783/6784,
-	// which are Weave’s control and data ports.
-
-	// connect to weave net
-	cmd := exec.Command("weave", "launch", config.ApiServerIP)
-	out, err := cmd.CombinedOutput()
+func watchingEndpoints(ctx context.Context, kp kubeproxy.KubeProxy, errChan chan string) {
+	resp, err := http.Get(config.ApiServerAddress + constants.WatchEndpointsRequest())
 
 	if err != nil {
-		klog.Errorf("Error in Weave Launch: %s", err.Error())
-		os.Exit(0)
+		klog.Errorf("Node %s Watch Endpoints Failed: %s", err.Error())
+		errChan <- err.Error()
+		return
 	}
 
-	klog.Infof("Weave Connect to %s: %s", config.ApiServerIP, out)
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+			reader := bufio.NewReader(resp.Body)
+			buf, err := reader.ReadBytes(byte(constants.EOF))
 
-	cmd = exec.Command("/bin/bash", "-c", "eval $(weave env)")
-	out, err = cmd.CombinedOutput()
+			if err != nil {
+				klog.Errorf("Watch Endpoints Error: %s", err)
+				errChan <- err.Error()
+				return
+			}
 
-	if err != nil {
-		klog.Errorf("Error in set Weave env: output: %s, %s", out, err.Error())
-		os.Exit(0)
+			req := &httpresponse.EndpointChangeRequest{}
+			err = json.Unmarshal(buf, req)
+
+			if err != nil {
+				klog.Error("Unmarshal APIServer Data Failed: %s", err.Error())
+			} else {
+				handleEndpointChangeRequest(kp, req)
+			}
+		}
 	}
+}
 
-	klog.Info("Set Weave Env Successfully!")
+func handleEndpointChangeRequest(kp kubeproxy.KubeProxy, req *httpresponse.EndpointChangeRequest) {
+	switch req.Type {
+	case "PUT":
+		kp.AddEndpoint(context.TODO(), req.Endpoint)
+	case "DELETE":
+		kp.RemoveEndpoint(context.TODO(), req.Endpoint.Name)
+	default:
+		klog.Errorln("Unknown Pod Change Request Type: %s", req.Type)
+		return
+	}
 }

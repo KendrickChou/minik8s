@@ -24,6 +24,10 @@ func RefreshPodRequest(nodeUID string, podUID string) string {
 	return "/innode/" + nodeUID + "/podstatus/" + podUID
 }
 
+func WatchEndpointsRequest() string {
+	return "/watch/endpoints"
+}
+
 const (
 	HeartBeatInterval        uint64 = 1  //second
 	MaxErrorHeartBeat        int    = 10 // if successively failed over 10 times, close node
@@ -34,6 +38,16 @@ const (
 	NetworkIDPrefix          string = "container:"
 	InitialPauseContainerKey string = "pause"
 	WeaveNetworkName         string = "weave"
+	NetworkBridgeName        string = "kubenet"
+
+	NATTableName string = "nat"
+
+	ServiceChainName   string = "K8S-SERVICE"
+	ServiceChainPrefix string = "K8S-SVC-"
+	SepChainPrefix     string = "K8S-SEP-"
+
+	DNS       string = "172.17.0.1"
+	DNSSearch string = "weave.local."
 )
 
 var InitialPauseContainer v1.Container = v1.Container{
