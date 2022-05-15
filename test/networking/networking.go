@@ -31,7 +31,7 @@ func main() {
 					Namespace:       "example",
 					Image:           "alpine:latest",
 					ImagePullPolicy: "IfNotPresent",
-					Entrypoint:      []string{"/bin/sh", "-c", "wget localhost:80"},
+					Entrypoint:      []string{"/bin/sh", "-c", "wget -O /home/mountdir/nginx.html localhost:80"},
 					Mounts: []v1.Mount{
 						{
 							Type:   v1.TypeBind,
@@ -47,5 +47,5 @@ func main() {
 
 	kubelet.CreatePod(*pod)
 
-	kubelet.DeletePod(pod.UID)
+	// kubelet.DeletePod(pod.UID)
 }
