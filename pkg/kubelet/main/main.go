@@ -45,30 +45,6 @@ func main() {
 		os.Exit(0)
 	}
 
-	// watch node to get CIDR and block till get response.
-	// resp, err = http.Get(config.ApiServerAddress + constants.WatchNodeRequest + registResp.UID)
-
-	// if err != nil {
-	// 	klog.Fatalf("Node failed get CIDR from apiserver: %s", err.Error())
-	// 	os.Exit(0)
-	// }
-
-	// watchNodeResp := httpresponse.WatchNodeResponse{}
-	// buf, _ = io.ReadAll(resp.Body)
-	// err = json.Unmarshal(buf, watchNodeResp)
-
-	// resp.Body.Close()
-
-	// if err != nil {
-	// 	klog.Fatal("Json parse WatchNodeResponse failed")
-	// 	os.Exit(0)
-	// }
-
-	// if watchNodeResp.Key != registResp.UID {
-	// 	klog.Fatalf("Actual Node Name: %s, Received Node Name: %s", registResp.UID, watchNodeResp.Key)
-	// 	os.Exit(0)
-	// }
-
 	// create kubelet
 	kl, err := kubelet.NewKubelet(config.NodeName, registResp.UID)
 
@@ -144,8 +120,6 @@ func watchingPods(ctx context.Context, kl *kubelet.Kubelet, errChan chan string)
 			} else {
 				handlePodChangeRequest(kl, req)
 			}
-
-			podChange <- buf
 		}
 	}
 }
