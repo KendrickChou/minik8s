@@ -1,9 +1,14 @@
 package commands
 
 import (
+	"bytes"
 	"fmt"
 	"github.com/spf13/cobra"
+	"io"
+	"minik8s.com/minik8s/config"
 	"minik8s.com/minik8s/pkg/apiclient"
+	"net/http"
+	"strconv"
 )
 
 var delCmd = &cobra.Command{
@@ -29,6 +34,13 @@ var delCmd = &cobra.Command{
 		case 'R':
 			resp := apiclient.Rest(id, []byte{}, apiclient.OBJ_REPLICA, apiclient.OP_DELETE)
 			fmt.Printf("%s\n", resp)
+		case 'A':
+			cli := http.Client{}
+			url := config.AC_ServerAddr + ":" + strconv.Itoa(config.AC_ServerPort)
+			req, _ := http.NewRequest(http.MethodDelete, url+"/", bytes.NewReader([]byte{}))
+			resp, _ := cli.Do(req)
+			buf, _ := io.ReadAll(resp.Body)
+			fmt.Printf("%s\n", buf)
 		default:
 			fmt.Println("找不到指定的对象！")
 		}

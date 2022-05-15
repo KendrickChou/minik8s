@@ -14,6 +14,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"k8s.io/klog"
 	"minik8s.com/minik8s/config"
+	v1 "minik8s.com/minik8s/pkg/api/v1"
 	"minik8s.com/minik8s/utils/random"
 	"net/http"
 	"strconv"
@@ -22,10 +23,7 @@ import (
 //------------ Service Rest API -----------
 func handleGetServices(c *gin.Context) {
 	services, _ := etcdGetPrefix("/service")
-	c.JSON(200, gin.H{
-		"status":      "OK",
-		"service_num": len(services),
-		"services":    services})
+	c.JSON(200, services)
 }
 
 func handleGetService(c *gin.Context) {
@@ -168,6 +166,14 @@ func handlePostPod(c *gin.Context) {
 	_, err := c.Request.Body.Read(buf)
 	name := "P" + strconv.Itoa(objCount) + "-" + random.String(8)
 	objCount++
+	var pod v1.Pod
+	err = json.Unmarshal(buf, &pod)
+	if err != nil {
+		c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
+		return
+	}
+	pod.UID = name
+	buf, _ = json.Marshal(pod)
 	err = etcdPut("/pod/"+name, string(buf))
 	if err != nil {
 		c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
@@ -609,6 +615,125 @@ func handleWatchReplica(c *gin.Context) {
 	}
 }
 
+//------------ Endpoint Rest API -----------
+func handleGetEndpoints(c *gin.Context) {
+	replicas, _ := etcdGetPrefix("/endpoints")
+	c.JSON(200, replicas)
+}
+
+func handleGetEndpoint(c *gin.Context) {
+	kv, err := etcdGet("/endpoint/" + c.Param("name"))
+	if err != nil {
+		c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
+	} else if kv.Type == config.AS_OP_ERROR_String {
+		c.JSON(404, gin.H{"status": "ERR", "error": "No such endpoint"})
+	} else {
+		c.JSON(200, kv)
+	}
+}
+
+func handlePostEndpoint(c *gin.Context) {
+	buf := make([]byte, c.Request.ContentLength)
+	_, err := c.Request.Body.Read(buf)
+	name := "E" + strconv.Itoa(objCount) + "-" + random.String(8)
+	objCount++
+	err = etcdPut("/endpoint/"+name, string(buf))
+	if err != nil {
+		c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
+	} else {
+		c.JSON(200, gin.H{"status": "OK", "id": name})
+	}
+}
+
+func handlePutEndpoint(c *gin.Context) {
+	buf := make([]byte, c.Request.ContentLength)
+	_, err := c.Request.Body.Read(buf)
+	name := c.Param("name")
+	if etcdTest("/endpoint/" + name) {
+		c.JSON(404, gin.H{"status": "ERR", "error": "No such endpoint"})
+	} else {
+		err = etcdPut("/endpoint/"+name, string(buf))
+		if err != nil {
+			c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
+		} else {
+			c.JSON(200, gin.H{"status": "OK"})
+		}
+	}
+}
+
+func handleDeleteEndpoint(c *gin.Context) {
+	name := c.Param("name")
+	if !etcdTest("/endpoint/" + name) {
+		c.JSON(404, gin.H{"status": "ERR", "error": "No such endpoint"})
+	} else {
+		err := etcdDel("/endpoint/" + name)
+		if err != nil {
+			c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
+		} else {
+			c.JSON(200, gin.H{"status": "OK"})
+		}
+	}
+}
+
+func handleWatchEndpoints(c *gin.Context) {
+	wch, cancel := etcdWatchPrefix("/endpoint")
+	flusher, _ := c.Writer.(http.Flusher)
+	for {
+		select {
+		case <-c.Request.Context().Done():
+			klog.Infof("connection closed, cancel watch task...\n")
+			cancel()
+			return
+		case kv := <-wch:
+			info, err := json.Marshal(kv)
+			if err != nil {
+				klog.Infof("json parse error, cancel watch task...\n")
+				cancel()
+				return
+			}
+			_, err = fmt.Fprintf(c.Writer, string(info))
+			if err != nil {
+				klog.Infof("fail to write to client, cancel watch task...\n")
+				cancel()
+				return
+			}
+			flusher.Flush()
+		}
+	}
+}
+
+func handleWatchEndpoint(c *gin.Context) {
+	name := c.Param("name")
+	if !etcdTest("/endpoint/" + name) {
+		c.JSON(404, gin.H{"status": "ERR", "error": "No such endpoint"})
+	} else {
+		wch, cancel := etcdWatch("/endpoint" + name)
+		flusher, _ := c.Writer.(http.Flusher)
+		for {
+			select {
+			case <-c.Request.Context().Done():
+				klog.Infof("connection closed, cancel watch task...\n")
+				cancel()
+				return
+			case kv := <-wch:
+				info, err := json.Marshal(kv)
+				if err != nil {
+					klog.Infof("json parse error, cancel watch task...\n")
+					cancel()
+					return
+				}
+				_, err = fmt.Fprintf(c.Writer, string(info))
+				if err != nil {
+					klog.Infof("fail to write to client, cancel watch task...\n")
+					cancel()
+					return
+				}
+				flusher.Flush()
+			}
+		}
+	}
+}
+
 //------------ Node Rest API -----------
 func handleGetNodes(c *gin.Context) {
 	nodes, _ := etcdGetPrefix("/nodes")
@@ -631,6 +756,14 @@ func handlePostNode(c *gin.Context) {
 	_, err := c.Request.Body.Read(buf)
 	name := "N" + strconv.Itoa(objCount) + "-" + random.String(8)
 	objCount++
+	var node v1.Node
+	err = json.Unmarshal(buf, &node)
+	if err != nil {
+		c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
+		return
+	}
+	node.UID = name
+	buf, _ = json.Marshal(node)
 	err = etcdPut("/node/"+name, string(buf))
 	if err != nil {
 		c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
@@ -679,4 +812,13 @@ func handleHeartbeat(c *gin.Context) {
 	//num := c.Param("num")
 	//klog.Infof("heartbeat from %v, num %v\n", name, num)
 	c.JSON(200, gin.H{"status": "OK"})
+}
+
+func handleDeleteAll(c *gin.Context) {
+	err := etcdDelPrefix("/")
+	if err != nil {
+		c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
+	} else {
+		c.JSON(200, gin.H{"status": "OK"})
+	}
 }

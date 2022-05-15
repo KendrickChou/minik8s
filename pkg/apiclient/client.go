@@ -44,6 +44,8 @@ func Watch(ctx context.Context, ch chan []byte, ty ObjType) {
 	switch ty {
 	case OBJ_ALL_PODS:
 		resp, err = http.Get(baseUrl + config.AC_WatchPods_Path)
+	case OBJ_ALL_NODES:
+		resp, err = http.Get(baseUrl + config.AC_WatchNodes_Path)
 	case OBJ_ALL_SERVICES:
 		resp, err = http.Get(baseUrl + config.AC_WatchServices_Path)
 	case OBJ_ALL_REPLICAS:

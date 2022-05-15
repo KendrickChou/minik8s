@@ -1,0 +1,22 @@
+{
+    "kind": "Service",
+    "apiversion": "v1",
+    "metadata": {
+        "name": "myFirstService",
+        "namespace": "default",
+        "uid": "123456789"
+    },
+    "spec": {
+        "type": "ClusterIP",
+        "selector":{
+            "app": "nginx"
+        },
+        "ports":[{
+            "name": "nginx",
+            "port": 80,
+            "targetPort": 80
+        }
+        ]
+    }
+
+}
