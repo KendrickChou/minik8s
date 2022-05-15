@@ -31,6 +31,11 @@ type GetEndpointResponse struct {
 	Endpoint v1.Endpoint `json:"value"`
 	Type     string      `json:"type"`
 }
+type GetReplicaResponse struct {
+	Key        string        `json:"key"`
+	ReplicaSet v1.ReplicaSet `json:"value"`
+	Type       string        `json:"type"`
+}
 
 var rootCmd = &cobra.Command{
 	Use:   "newApp",

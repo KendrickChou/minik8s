@@ -32,8 +32,7 @@ var getCmd = &cobra.Command{
 			case "service":
 				getServices()
 			case "replica":
-				resp := apiclient.Rest("", []byte{}, apiclient.OBJ_ALL_REPLICAS, apiclient.OP_GET)
-				fmt.Printf("%s\n", resp)
+				getReplicaSet()
 			case "node":
 				getNodes()
 			case "endpoint":
@@ -43,6 +42,7 @@ var getCmd = &cobra.Command{
 				getNodes()
 				getServices()
 				getEndpoints()
+				getReplicaSet()
 			default:
 				fmt.Println("未知的对象类型！")
 			}
@@ -59,7 +59,7 @@ func init() {
 }
 
 func getPods() {
-	resp := apiclient.Rest("", []byte{}, apiclient.OBJ_ALL_PODS, apiclient.OP_GET)
+	resp := apiclient.Rest("", "", apiclient.OBJ_ALL_PODS, apiclient.OP_GET)
 	var kvs []GetPodResponse
 	err := json.Unmarshal(resp, &kvs)
 	if err != nil {
@@ -75,7 +75,7 @@ func getPods() {
 }
 
 func getNodes() {
-	resp := apiclient.Rest("", []byte{}, apiclient.OBJ_ALL_NODES, apiclient.OP_GET)
+	resp := apiclient.Rest("", "", apiclient.OBJ_ALL_NODES, apiclient.OP_GET)
 	var kvs []GetNodeResponse
 	err := json.Unmarshal(resp, &kvs)
 	if err != nil {
@@ -91,7 +91,7 @@ func getNodes() {
 }
 
 func getServices() {
-	resp := apiclient.Rest("", []byte{}, apiclient.OBJ_ALL_SERVICES, apiclient.OP_GET)
+	resp := apiclient.Rest("", "", apiclient.OBJ_ALL_SERVICES, apiclient.OP_GET)
 	var kvs []GetServiceResponse
 	err := json.Unmarshal(resp, &kvs)
 	if err != nil {
@@ -107,7 +107,7 @@ func getServices() {
 }
 
 func getEndpoints() {
-	resp := apiclient.Rest("", []byte{}, apiclient.OBJ_ALL_EPS, apiclient.OP_GET)
+	resp := apiclient.Rest("", "", apiclient.OBJ_ALL_ENDPOINTS, apiclient.OP_GET)
 	var kvs []GetEndpointResponse
 	err := json.Unmarshal(resp, &kvs)
 	if err != nil {
@@ -118,6 +118,22 @@ func getEndpoints() {
 	fmt.Printf("%v\t\t\t\t\t%v\t\t\t%v\t\t\t%v\n", "Key", "Name", "Uid", "SubsetLen")
 	for _, kv := range kvs {
 		fmt.Printf("%v\t\t%v\t\t%v\t\t%v\n", kv.Key, kv.Endpoint.Name, kv.Endpoint.UID, len(kv.Endpoint.Subsets))
+	}
+	fmt.Printf("\n")
+}
+
+func getReplicaSet() {
+	resp := apiclient.Rest("", "", apiclient.OBJ_ALL_REPLICAS, apiclient.OP_GET)
+	var kvs []GetReplicaResponse
+	err := json.Unmarshal(resp, &kvs)
+	if err != nil {
+		fmt.Println("服务器返回信息无效: ", err)
+		return
+	}
+	fmt.Printf("=->%v ReplicaSets\n", len(kvs))
+	fmt.Printf("%v\t\t\t\t\t%v\t\t\t%v\t\t\t%v\n", "Key", "Name", "Uid", "")
+	for _, kv := range kvs {
+		fmt.Printf("%v\t\t%v\t\t%v\t\t%v\n", kv.Key, kv.ReplicaSet.Name, kv.ReplicaSet.UID, "")
 	}
 	fmt.Printf("\n")
 }
