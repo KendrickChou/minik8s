@@ -1,6 +1,5 @@
 package v1
 
-
 type ResourceList map[string]string
 type NodePhase string
 
@@ -9,11 +8,21 @@ type Node struct {
 
 	ObjectMeta
 
-	Status NodeStatus `json:"status,omitempty"`
+	Spec NodeSpec `json:"spec,omitempty"`
+
+	// Status NodeStatus `json:"status,omitempty"`
+}
+
+type NodeSpec struct {
+	CIDR string `json:"cidr"`
+
+	CIDRFullDomain string `json:"cidr-fulldomain"`
+
+	IP string `json:"ip"`
 }
 
 type NodeStatus struct {
-	// some capacity, such as disk size, cpu usage... 
+	// some capacity, such as disk size, cpu usage...
 	// what's needed by scheduler?
 	Capacity ResourceList
 
