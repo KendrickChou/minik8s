@@ -6,14 +6,18 @@ replace minik8s.com/minik8s/pkg/kubelet => ./pkg/kubelet
 
 require (
 	github.com/containerd/containerd v1.6.2
+	github.com/containernetworking/cni v1.0.1
 	github.com/docker/docker v20.10.14+incompatible
 	github.com/gin-gonic/gin v1.7.7
+	github.com/spf13/cobra v1.4.0
+	github.com/vishvananda/netlink v1.1.1-0.20210330154013-f5de75959ad5
 	k8s.io/klog/v2 v2.30.0
 )
 
+require github.com/vishvananda/netns v0.0.0-20210104183010-2eb08e3e575f // indirect
+
 require (
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
-	github.com/spf13/cobra v1.4.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 )
 

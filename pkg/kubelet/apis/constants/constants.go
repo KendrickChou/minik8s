@@ -4,24 +4,36 @@ import v1 "minik8s.com/minik8s/pkg/api/v1"
 
 const EOF int = 26
 
-const (
-	ApiServerAddress string = "http://127.0.0.1:8080"
-)
+func RegistNodeRequest() string {
+	return "/node"
+}
+
+func WatchNodeRequest(nodeUID string) string {
+	return "/watch/innode/" + nodeUID
+}
+
+func WatchPodsRequest(nodeUID string) string {
+	return "/watch/innode/" + nodeUID + "/pods"
+}
+
+func HeartBeatRequest(nodeUID string, counter string) string {
+	return "/heartbeat/" + nodeUID + "/" + counter
+}
+
+func RefreshPodRequest(nodeUID string, podUID string) string {
+	return "/innode/" + nodeUID + "/podstatus/" + podUID
+}
 
 const (
-	RegistNodeRequest string = ApiServerAddress + "/node"
-	WatchPodsRequest  string = ApiServerAddress + "/watch/innode/"
-	HeartBeatRequest  string = ApiServerAddress + "/heartbeat/"
-)
-
-const (
-	HeartBeatInterval uint64 = 1  //second
-	MaxErrorHeartBeat int    = 10 // if successively failed over 10 times, close node
+	HeartBeatInterval        uint64 = 1  //second
+	MaxErrorHeartBeat        int    = 10 // if successively failed over 10 times, close node
+	RefreshPodStatusInterval uint64 = 10
 )
 
 const (
 	NetworkIDPrefix          string = "container:"
 	InitialPauseContainerKey string = "pause"
+	WeaveNetworkName         string = "weave"
 )
 
 var InitialPauseContainer v1.Container = v1.Container{

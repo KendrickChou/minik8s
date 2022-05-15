@@ -4,7 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
+	"time"
 
+	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/filters"
 	"k8s.io/klog/v2"
 	v1 "minik8s.com/minik8s/pkg/api/v1"
 	"minik8s.com/minik8s/pkg/kubelet/apis/constants"
@@ -25,6 +29,8 @@ type PodManager interface {
 	DeletePod(UID string) error
 
 	PodStatus(UID string) (v1.PodStatus, error)
+
+	CreatePodBridgeNetwork(CIDR string) error
 }
 
 type podManager struct {
@@ -34,6 +40,8 @@ type podManager struct {
 	podByName map[string]*v1.Pod
 
 	containerManager container.ContainerManager
+
+	weaveNetwork types.NetworkResource
 }
 
 func NewPodManager() PodManager {
@@ -48,6 +56,25 @@ func NewPodManager() PodManager {
 	}
 
 	pm.containerManager = newContainerManager
+
+	network, err := pm.containerManager.ListNetwork(context.TODO(),
+		types.NetworkListOptions{
+			Filters: filters.NewArgs(filters.Arg("name", "weave"))})
+
+	if err != nil {
+		klog.Errorf("Get Weave Network Error: %s", err.Error())
+		os.Exit(0)
+	}
+
+	if len(network) == 0 {
+		klog.Errorln("Weave Network doesn't exist.")
+		os.Exit(0)
+	}
+
+	pm.weaveNetwork = network[0]
+
+	klog.Infoln("Weave Network Info: ", pm.weaveNetwork.Name, pm.weaveNetwork.ID, pm.weaveNetwork.IPAM.Config)
+
 	return pm
 }
 
@@ -137,6 +164,15 @@ func (pm *podManager) AddPod(pod *v1.Pod) error {
 		}
 
 		pod.Spec.InitialContainers[k] = container
+
+		timeoutctx, cancel := context.WithTimeout(context.TODO(), time.Second * 5)
+		err = pm.containerManager.ConnectNetwork(timeoutctx, pm.weaveNetwork.ID, container.ID)
+		cancel()
+
+		if err != nil {
+			klog.Errorf("Pod %s Connect to Weave Network Failed", pod.Name)
+			return err
+		}
 	}
 
 	for _, container := range pod.Spec.Containers {
@@ -366,4 +402,15 @@ func (pm *podManager) PodStatus(UID string) (v1.PodStatus, error) {
 	// not need to update pm.podByName & pod.podByUID
 
 	return pod.Status, nil
+}
+
+func (pm *podManager) CreatePodBridgeNetwork(CIDR string) error {
+	_, err := pm.containerManager.CreateNetwork(context.TODO(), constants.WeaveNetworkName, CIDR)
+
+	if err != nil {
+		klog.Fatalf("Create Bridge Network %s Failed: %s", constants.WeaveNetworkName, err.Error())
+		return err
+	}
+
+	return nil
 }
