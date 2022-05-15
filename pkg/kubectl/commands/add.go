@@ -32,7 +32,15 @@ var addCmd = &cobra.Command{
 			return
 		}
 
-		resp := apiclient.Rest("", buf, apiclient.OBJ_POD, apiclient.OP_POST)
+		kind, err := cmd.Flags().GetString("kind")
+
+		var resp []byte
+		switch kind {
+		case "pod":
+			resp = apiclient.Rest("", buf, apiclient.OBJ_POD, apiclient.OP_POST)
+		case "service":
+			resp = apiclient.Rest("", buf, apiclient.OBJ_SERVICE, apiclient.OP_POST)
+		}
 
 		var stat StatusResponse
 		err = json.Unmarshal(resp, &stat)
@@ -49,6 +57,7 @@ var addCmd = &cobra.Command{
 
 func init() {
 	addCmd.Flags().StringP("file", "f", "default.json", "指定json配置文件")
+	addCmd.Flags().StringP("kind", "k", "pod", "指定创建对象类型")
 
 	rootCmd.AddCommand(addCmd)
 }
