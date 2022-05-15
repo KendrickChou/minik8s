@@ -112,11 +112,12 @@ func watchingPods(ctx context.Context, kl *kubelet.Kubelet, errChan chan string)
 				return
 			}
 
+			buf[len(buf) - 1] = '\n'
 			req := &httpresponse.PodChangeRequest{}
 			err = json.Unmarshal(buf, req)
 
 			if err != nil {
-				klog.Error("Unmarshal APIServer Data Failed: %s", err.Error())
+				klog.Errorf("Unmarshal APIServer Data Failed: %s", err.Error())
 			} else {
 				handlePodChangeRequest(kl, req)
 			}
@@ -177,6 +178,8 @@ func sendHeartBeat(ctx context.Context, nodeUID string, errChan chan string) {
 
 func refreshAllPodStatus(ctx context.Context, kl *kubelet.Kubelet) {
 
+	cli := http.Client{}
+
 	for {
 		pods, err := kl.GetPods()
 
@@ -185,13 +188,15 @@ func refreshAllPodStatus(ctx context.Context, kl *kubelet.Kubelet) {
 		}
 
 		for _, pod := range pods {
+
 			body, err := json.Marshal(pod.Status)
 
 			if err != nil {
 				klog.Errorf("Marshal pod status error: %s", err.Error())
 			}
 
-			resp, err := http.Post(config.ApiServerAddress+constants.RefreshPodRequest(kl.UID, pod.UID), JsonContentType, bytes.NewReader(body))
+			req, _ := http.NewRequest(http.MethodPut, config.ApiServerAddress+constants.RefreshPodRequest(kl.UID, pod.UID), bytes.NewReader(body))
+			resp, err := cli.Do(req)
 
 			if err != nil {
 				klog.Errorf("Error When refresh Pod Status: %s", err.Error())
@@ -219,7 +224,9 @@ func watchingEndpoints(ctx context.Context, kp kubeproxy.KubeProxy, errChan chan
 			return
 		default:
 			reader := bufio.NewReader(resp.Body)
+			klog.Info("Wait resp from apiserver")
 			buf, err := reader.ReadBytes(byte(constants.EOF))
+			klog.Info("Receive resp from apiserver")
 
 			if err != nil {
 				klog.Errorf("Watch Endpoints Error: %s", err)
@@ -227,6 +234,7 @@ func watchingEndpoints(ctx context.Context, kp kubeproxy.KubeProxy, errChan chan
 				return
 			}
 
+			buf[len(buf) - 1] = '\n'
 			req := &httpresponse.EndpointChangeRequest{}
 			err = json.Unmarshal(buf, req)
 
@@ -240,6 +248,7 @@ func watchingEndpoints(ctx context.Context, kp kubeproxy.KubeProxy, errChan chan
 }
 
 func handleEndpointChangeRequest(kp kubeproxy.KubeProxy, req *httpresponse.EndpointChangeRequest) {
+	klog.Infof("Receive %s Endpoint %s", req.Type, req.Endpoint.Name)
 	switch req.Type {
 	case "PUT":
 		kp.AddEndpoint(context.TODO(), req.Endpoint)

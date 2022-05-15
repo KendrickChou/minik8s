@@ -49,6 +49,7 @@ func NewKubeProxy() (KubeProxy, error) {
 	kp.ipt = ipt
 
 	err = initIPtables(ipt)
+	klog.Info("Init IP Tables successfully!")
 
 	return kp, err
 }
@@ -224,7 +225,7 @@ func initIPtables(ipt *iptables.IPTables) error {
 	}
 
 	if exist {
-		klog.Infof("K8S-SERVICE Chain exist.")
+		klog.Info("K8S-SERVICE Chain already exists")
 		return nil
 	}
 
@@ -250,6 +251,8 @@ func initIPtables(ipt *iptables.IPTables) error {
 		return err
 	}
 
+	klog.Info("Add K8S-SERVICE Chain to OUTPUT & PREROUTING")
+	
 	return nil
 }
 
