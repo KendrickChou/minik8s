@@ -165,7 +165,7 @@ func (pm *podManager) AddPod(pod *v1.Pod) error {
 
 		pod.Spec.InitialContainers[k] = container
 
-		timeoutctx, cancel := context.WithTimeout(context.TODO(), time.Second * 5)
+		timeoutctx, cancel := context.WithTimeout(context.TODO(), time.Second*5)
 		err = pm.containerManager.ConnectNetwork(timeoutctx, pm.weaveNetwork.ID, container.ID)
 		cancel()
 
@@ -337,14 +337,32 @@ func (pm *podManager) PodStatus(UID string) (v1.PodStatus, error) {
 		cntr := pod.Spec.InitialContainers[k]
 		stats, err := pm.containerManager.ContainerStatus(context.TODO(), cntr.ID)
 
-		if err != nil {
+		dynamicStats, err1 := pm.containerManager.ContainerStats(context.TODO(), cntr.ID)
+
+		if err != nil || err1 != nil {
 			klog.Errorln(err)
 			pod.Status.ContainerStatuses = append(pod.Status.ContainerStatuses,
 				v1.ContainerStatus{Name: cntr.Name})
 			continue
 		}
 
-		if cntr.Name == pod.Name + "-" + constants.InitialPauseContainer.Name {
+		var containerState v1.ContainerState = v1.ContainerState{
+			Status:     stats.State.Status,
+			ExitCode:   stats.State.ExitCode,
+			Error:      stats.State.Error,
+			StartedAt:  stats.State.StartedAt,
+			FinishedAt: stats.State.FinishedAt,
+			CPUUsage:   dynamicStats[0],
+			MemUsage:   dynamicStats[1],
+		}
+
+		pod.Status.ContainerStatuses = append(pod.Status.ContainerStatuses,
+			v1.ContainerStatus{
+				Name:  cntr.Name,
+				State: containerState,
+			})
+
+		if cntr.Name == pod.Name+"-"+constants.InitialPauseContainer.Name {
 			pod.Status.PodIP = stats.NetworkSettings.Networks[constants.WeaveNetworkName].IPAddress
 		}
 	}
@@ -358,19 +376,23 @@ func (pm *podManager) PodStatus(UID string) (v1.PodStatus, error) {
 	for _, cntr := range pod.Spec.Containers {
 		stats, err := pm.containerManager.ContainerStatus(context.TODO(), cntr.ID)
 
-		if err != nil {
+		dynamicStats, err1 := pm.containerManager.ContainerStats(context.TODO(), cntr.ID)
+
+		if err != nil || err1 != nil {
 			klog.Errorln(err)
 			pod.Status.ContainerStatuses = append(pod.Status.ContainerStatuses,
 				v1.ContainerStatus{Name: cntr.Name})
 			continue
 		}
-
+		
 		var containerState v1.ContainerState = v1.ContainerState{
 			Status:     stats.State.Status,
 			ExitCode:   stats.State.ExitCode,
 			Error:      stats.State.Error,
 			StartedAt:  stats.State.StartedAt,
 			FinishedAt: stats.State.FinishedAt,
+			CPUUsage:   dynamicStats[0],
+			MemUsage:   dynamicStats[1],
 		}
 
 		pod.Status.ContainerStatuses = append(pod.Status.ContainerStatuses,
