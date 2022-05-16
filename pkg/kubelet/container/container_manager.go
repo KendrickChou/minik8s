@@ -54,10 +54,7 @@ func (manager *containerManager) CreateContainer(ctx context.Context, container 
 	klog.Infof("Create Container %v", container.Name)
 
 	containerConfig := &dockerctnr.Config{}
-	hostConfig := &dockerctnr.HostConfig{
-		// DNS:       []string{constants.DNS},
-		// DNSSearch: []string{constants.DNSSearch},
-	}
+	hostConfig := &dockerctnr.HostConfig{}
 
 	if container.Image != "" {
 		containerConfig.Image = container.Image
@@ -107,6 +104,12 @@ func (manager *containerManager) CreateContainer(ctx context.Context, container 
 	}
 	if container.NetworkMode != "" {
 		hostConfig.NetworkMode = dockerctnr.NetworkMode(container.NetworkMode)
+	}
+	if container.DNS != "" {
+		hostConfig.DNS = []string{container.DNS}
+	}
+	if container.DNSSearch != "" {
+		hostConfig.DNSSearch = []string{container.DNSSearch}
 	}
 	if len(container.Command) != 0 {
 		containerConfig.Cmd = append(containerConfig.Cmd, container.Command...)

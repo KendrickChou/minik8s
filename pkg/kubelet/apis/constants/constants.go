@@ -54,4 +54,6 @@ var InitialPauseContainer v1.Container = v1.Container{
 	Name:            "pause",
 	Image:           "kubernetes/pause:latest",
 	ImagePullPolicy: "IfNotPresent",
+	DNS:             DNS,
+	DNSSearch:       DNSSearch,
 }
