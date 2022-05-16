@@ -224,9 +224,7 @@ func watchingEndpoints(ctx context.Context, kp kubeproxy.KubeProxy, errChan chan
 			return
 		default:
 			reader := bufio.NewReader(resp.Body)
-			klog.Info("Wait resp from apiserver")
 			buf, err := reader.ReadBytes(byte(constants.EOF))
-			klog.Info("Receive resp from apiserver")
 
 			if err != nil {
 				klog.Errorf("Watch Endpoints Error: %s", err)
