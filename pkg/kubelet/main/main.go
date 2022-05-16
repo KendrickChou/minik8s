@@ -45,30 +45,6 @@ func main() {
 		os.Exit(0)
 	}
 
-	// watch node to get CIDR and block till get response.
-	// resp, err = http.Get(config.ApiServerAddress + constants.WatchNodeRequest + registResp.UID)
-
-	// if err != nil {
-	// 	klog.Fatalf("Node failed get CIDR from apiserver: %s", err.Error())
-	// 	os.Exit(0)
-	// }
-
-	// watchNodeResp := httpresponse.WatchNodeResponse{}
-	// buf, _ = io.ReadAll(resp.Body)
-	// err = json.Unmarshal(buf, watchNodeResp)
-
-	// resp.Body.Close()
-
-	// if err != nil {
-	// 	klog.Fatal("Json parse WatchNodeResponse failed")
-	// 	os.Exit(0)
-	// }
-
-	// if watchNodeResp.Key != registResp.UID {
-	// 	klog.Fatalf("Actual Node Name: %s, Received Node Name: %s", registResp.UID, watchNodeResp.Key)
-	// 	os.Exit(0)
-	// }
-
 	// create kubelet
 	kl, err := kubelet.NewKubelet(config.NodeName, registResp.UID)
 
@@ -136,16 +112,15 @@ func watchingPods(ctx context.Context, kl *kubelet.Kubelet, errChan chan string)
 				return
 			}
 
+			buf[len(buf) - 1] = '\n'
 			req := &httpresponse.PodChangeRequest{}
 			err = json.Unmarshal(buf, req)
 
 			if err != nil {
-				klog.Error("Unmarshal APIServer Data Failed: %s", err.Error())
+				klog.Errorf("Unmarshal APIServer Data Failed: %s", err.Error())
 			} else {
 				handlePodChangeRequest(kl, req)
 			}
-
-			podChange <- buf
 		}
 	}
 }
@@ -203,6 +178,8 @@ func sendHeartBeat(ctx context.Context, nodeUID string, errChan chan string) {
 
 func refreshAllPodStatus(ctx context.Context, kl *kubelet.Kubelet) {
 
+	cli := http.Client{}
+
 	for {
 		pods, err := kl.GetPods()
 
@@ -211,13 +188,15 @@ func refreshAllPodStatus(ctx context.Context, kl *kubelet.Kubelet) {
 		}
 
 		for _, pod := range pods {
+
 			body, err := json.Marshal(pod.Status)
 
 			if err != nil {
 				klog.Errorf("Marshal pod status error: %s", err.Error())
 			}
 
-			resp, err := http.Post(config.ApiServerAddress+constants.RefreshPodRequest(kl.UID, pod.UID), JsonContentType, bytes.NewReader(body))
+			req, _ := http.NewRequest(http.MethodPut, config.ApiServerAddress+constants.RefreshPodRequest(kl.UID, pod.UID), bytes.NewReader(body))
+			resp, err := cli.Do(req)
 
 			if err != nil {
 				klog.Errorf("Error When refresh Pod Status: %s", err.Error())
@@ -253,6 +232,7 @@ func watchingEndpoints(ctx context.Context, kp kubeproxy.KubeProxy, errChan chan
 				return
 			}
 
+			buf[len(buf) - 1] = '\n'
 			req := &httpresponse.EndpointChangeRequest{}
 			err = json.Unmarshal(buf, req)
 
@@ -266,6 +246,7 @@ func watchingEndpoints(ctx context.Context, kp kubeproxy.KubeProxy, errChan chan
 }
 
 func handleEndpointChangeRequest(kp kubeproxy.KubeProxy, req *httpresponse.EndpointChangeRequest) {
+	klog.Infof("Receive %s Endpoint %s", req.Type, req.Endpoint.Name)
 	switch req.Type {
 	case "PUT":
 		kp.AddEndpoint(context.TODO(), req.Endpoint)

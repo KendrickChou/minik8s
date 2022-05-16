@@ -15,7 +15,6 @@ import (
 	"k8s.io/klog/v2"
 
 	v1 "minik8s.com/minik8s/pkg/api/v1"
-	"minik8s.com/minik8s/pkg/kubelet/apis/constants"
 )
 
 type ContainerManager interface {
@@ -27,7 +26,7 @@ type ContainerManager interface {
 	ResumeContainer(ctx context.Context, container *v1.Container) error
 	RemoveContainer(ctx context.Context, container *v1.Container) error
 	ListContainers(ctx context.Context) ([]*v1.Container, error)
-	ContainerStatus(ctx context.Context, containerID string) (types.ContainerState, error)
+	ContainerStatus(ctx context.Context, containerID string) (types.ContainerJSON, error)
 	CreateNetwork(ctx context.Context, name string, CIDR string) (string, error)
 	RemoveNetwork(ctx context.Context, networkID string) error
 	ConnectNetwork(ctx context.Context, networkID string, containerID string) error
@@ -56,8 +55,8 @@ func (manager *containerManager) CreateContainer(ctx context.Context, container 
 
 	containerConfig := &dockerctnr.Config{}
 	hostConfig := &dockerctnr.HostConfig{
-		DNS:       []string{constants.DNS},
-		DNSSearch: []string{constants.DNSSearch},
+		// DNS:       []string{constants.DNS},
+		// DNSSearch: []string{constants.DNSSearch},
 	}
 
 	if container.Image != "" {
@@ -182,14 +181,14 @@ func (manager *containerManager) ListContainers(ctx context.Context) ([]*v1.Cont
 	return nil, nil
 }
 
-func (manager *containerManager) ContainerStatus(ctx context.Context, containerID string) (types.ContainerState, error) {
+func (manager *containerManager) ContainerStatus(ctx context.Context, containerID string) (types.ContainerJSON, error) {
 	cntr, err := manager.dockerClient.ContainerInspect(ctx, containerID)
 
 	if err != nil {
-		return types.ContainerState{}, err
+		return types.ContainerJSON{}, err
 	}
 
-	return *cntr.State, err
+	return cntr, err
 }
 
 func (manager *containerManager) CreateNetwork(ctx context.Context, name string, CIDR string) (string, error) {

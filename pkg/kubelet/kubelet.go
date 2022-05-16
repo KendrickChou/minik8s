@@ -111,7 +111,7 @@ func connectWeaveNet() error {
 	// which are Weave’s control and data ports.
 
 	// connect to weave net
-	cmd := exec.Command("weave", "connect", config.ApiServerAddress)
+	cmd := exec.Command("weave", "connect", config.WeaveServerIP)
 	out, err := cmd.CombinedOutput()
 
 	if err != nil {
@@ -119,9 +119,9 @@ func connectWeaveNet() error {
 		return errors.New(errInfo)
 	}
 
-	klog.Info("Weave Connect to %s: %s", config.ApiServerAddress, out)
+	klog.Infof("Weave Connect to %s:%s", config.WeaveServerIP, out)
 
-	cmd = exec.Command("eval $(weave env)")
+	cmd = exec.Command("bash", "-c","eval $(weave env)")
 	_, err = cmd.CombinedOutput()
 
 	if err != nil {
@@ -129,7 +129,7 @@ func connectWeaveNet() error {
 		return errors.New(errInfo)
 	}
 
-	cmd = exec.Command("weave expose")
+	cmd = exec.Command("weave", "expose")
 	_, err = cmd.CombinedOutput()
 
 	if err != nil {

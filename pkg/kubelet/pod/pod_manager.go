@@ -79,7 +79,7 @@ func NewPodManager() PodManager {
 }
 
 func (pm *podManager) GetPods() []v1.Pod {
-	pods := make([]v1.Pod, len(pm.podByUID))
+	pods := []v1.Pod{}
 
 	for _, value := range pm.podByUID {
 		// refresh the pod status
@@ -332,6 +332,24 @@ func (pm *podManager) PodStatus(UID string) (v1.PodStatus, error) {
 
 	klog.Infof("Inspect Pod %s status", pod.Name)
 
+	// get pause container statuses
+	for k := range pod.Spec.InitialContainers {
+		cntr := pod.Spec.InitialContainers[k]
+		stats, err := pm.containerManager.ContainerStatus(context.TODO(), cntr.ID)
+
+		if err != nil {
+			klog.Errorln(err)
+			pod.Status.ContainerStatuses = append(pod.Status.ContainerStatuses,
+				v1.ContainerStatus{Name: cntr.Name})
+			continue
+		}
+
+		if cntr.Name == pod.Name + "-" + constants.InitialPauseContainer.Name {
+			pod.Status.PodIP = stats.NetworkSettings.Networks[constants.WeaveNetworkName].IPAddress
+		}
+	}
+
+	// get pod running statuses
 	pod.Status.ContainerStatuses = []v1.ContainerStatus{}
 	pod.Status.Phase = v1.PodRunning
 
@@ -348,11 +366,11 @@ func (pm *podManager) PodStatus(UID string) (v1.PodStatus, error) {
 		}
 
 		var containerState v1.ContainerState = v1.ContainerState{
-			Status:     stats.Status,
-			ExitCode:   stats.ExitCode,
-			Error:      stats.Error,
-			StartedAt:  stats.StartedAt,
-			FinishedAt: stats.FinishedAt,
+			Status:     stats.State.Status,
+			ExitCode:   stats.State.ExitCode,
+			Error:      stats.State.Error,
+			StartedAt:  stats.State.StartedAt,
+			FinishedAt: stats.State.FinishedAt,
 		}
 
 		pod.Status.ContainerStatuses = append(pod.Status.ContainerStatuses,
