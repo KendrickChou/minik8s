@@ -283,7 +283,7 @@ func handleGetPodsByNode(c *gin.Context) {
 	if !etcdTest("/node/" + nname) {
 		c.JSON(404, gin.H{"status": "ERR", "error": "No such node"})
 	} else {
-		pods, _ := etcdGetPrefix("/node/" + nname + "/pod")
+		pods, _ := etcdGetPrefix("/innode/" + nname + "/pod")
 		c.JSON(200, pods)
 	}
 }
@@ -294,7 +294,7 @@ func handleGetPodByNode(c *gin.Context) {
 		c.JSON(404, gin.H{"status": "ERR", "error": "No such node"})
 	} else {
 		pname := c.Param("pname")
-		kv, err := etcdGet("/node/" + nname + "/pod/" + pname)
+		kv, err := etcdGet("/innode/" + nname + "/pod/" + pname)
 		if err != nil {
 			c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
 		} else if kv.Type == config.AS_OP_ERROR_String {
@@ -313,7 +313,7 @@ func handlePostPodByNode(c *gin.Context) {
 	if !etcdTest("/node/" + nname) {
 		c.JSON(404, gin.H{"status": "ERR", "error": "No such pod"})
 	} else {
-		err = etcdPut("/node/"+nname+"/pod/"+pname, string(buf))
+		err = etcdPut("/innode/"+nname+"/pod/"+pname, string(buf))
 		if err != nil {
 			c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
 		} else {
@@ -330,7 +330,7 @@ func handlePutPodByNode(c *gin.Context) {
 	if !etcdTest("/node/"+nname) || !etcdTest("/pod/"+pname) {
 		c.JSON(404, gin.H{"status": "ERR", "error": "No such pod"})
 	} else {
-		err = etcdPut("/node/"+nname+"/pod/"+pname, string(buf))
+		err = etcdPut("/innode/"+nname+"/pod/"+pname, string(buf))
 		if err != nil {
 			c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
 		} else {
@@ -342,10 +342,10 @@ func handlePutPodByNode(c *gin.Context) {
 func handleDeletePodByNode(c *gin.Context) {
 	nname := c.Param("nname")
 	pname := c.Param("pname")
-	if !etcdTest("/node/"+nname) || !etcdTest("/node/"+nname+"/pod/"+pname) {
+	if !etcdTest("/node/"+nname) || !etcdTest("/innode/"+nname+"/pod/"+pname) {
 		c.JSON(404, gin.H{"status": "ERR", "error": "No such pod"})
 	} else {
-		err := etcdDel("/node/" + nname + "/pod/" + pname)
+		err := etcdDel("/innode/" + nname + "/pod/" + pname)
 		if err != nil {
 			c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
 		} else {
@@ -359,7 +359,7 @@ func handleGetPodStatusesByNode(c *gin.Context) {
 	if !etcdTest("/node/" + nname) {
 		c.JSON(404, gin.H{"status": "ERR", "error": "No such node"})
 	} else {
-		pods, _ := etcdGetPrefix("/node/" + nname + "/podstatus")
+		pods, _ := etcdGetPrefix("/innode/" + nname + "/podstatus")
 		c.JSON(200, pods)
 	}
 }
@@ -370,7 +370,7 @@ func handleGetPodStatusByNode(c *gin.Context) {
 		c.JSON(404, gin.H{"status": "ERR", "error": "No such node"})
 	} else {
 		pname := c.Param("pname")
-		kv, err := etcdGet("/node/" + nname + "/podstatus/" + pname)
+		kv, err := etcdGet("/innode/" + nname + "/podstatus/" + pname)
 		if err != nil {
 			c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
 		} else if kv.Type == config.AS_OP_ERROR_String {
@@ -389,7 +389,7 @@ func handlePutPodStatusByNode(c *gin.Context) {
 	if !etcdTest("/node/"+nname) || !etcdTest("/pod/"+pname) {
 		c.JSON(404, gin.H{"status": "ERR", "error": "No such pod"})
 	} else {
-		err = etcdPut("/node/"+nname+"/podstatus/"+pname, string(buf))
+		err = etcdPut("/innode/"+nname+"/podstatus/"+pname, string(buf))
 		if err != nil {
 			c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
 		} else {
@@ -401,10 +401,10 @@ func handlePutPodStatusByNode(c *gin.Context) {
 func handleDeletePodStatusByNode(c *gin.Context) {
 	nname := c.Param("nname")
 	pname := c.Param("pname")
-	if !etcdTest("/node/"+nname) || !etcdTest("/node/"+nname+"/podstatus/"+pname) {
+	if !etcdTest("/node/"+nname) || !etcdTest("/innode/"+nname+"/podstatus/"+pname) {
 		c.JSON(404, gin.H{"status": "ERR", "error": "No such pod"})
 	} else {
-		err := etcdDel("/node/" + nname + "/podstatus/" + pname)
+		err := etcdDel("/innode/" + nname + "/podstatus/" + pname)
 		if err != nil {
 			c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
 		} else {
@@ -415,7 +415,7 @@ func handleDeletePodStatusByNode(c *gin.Context) {
 
 func handleWatchPodsByNode(c *gin.Context) {
 	nname := c.Param("nname")
-	wch, cancel := etcdWatchPrefix("/node/" + nname + "/pod")
+	wch, cancel := etcdWatchPrefix("/innode/" + nname + "/pod/")
 	flusher, _ := c.Writer.(http.Flusher)
 	for {
 		select {
@@ -469,6 +469,7 @@ func handleWatchNodes(c *gin.Context) {
 		}
 	}
 }
+
 func handleWatchNode(c *gin.Context) {
 	name := c.Param("name")
 	if !etcdTest("/node/" + name) {
@@ -585,6 +586,7 @@ func handleWatchReplicas(c *gin.Context) {
 				return
 			}
 			_, err = fmt.Fprintf(c.Writer, string(info))
+			_, err = c.Writer.Write([]byte{26})
 			if err != nil {
 				klog.Infof("fail to write to client, cancel watch task...\n")
 				cancel()
@@ -616,6 +618,7 @@ func handleWatchReplica(c *gin.Context) {
 					return
 				}
 				_, err = fmt.Fprintf(c.Writer, string(info))
+				_, err = c.Writer.Write([]byte{26})
 				if err != nil {
 					klog.Infof("fail to write to client, cancel watch task...\n")
 					cancel()
@@ -711,6 +714,7 @@ func handleWatchEndpoints(c *gin.Context) {
 				return
 			}
 			_, err = fmt.Fprintf(c.Writer, string(info))
+			_, err = c.Writer.Write([]byte{26})
 			if err != nil {
 				klog.Infof("fail to write to client, cancel watch task...\n")
 				cancel()
@@ -742,6 +746,7 @@ func handleWatchEndpoint(c *gin.Context) {
 					return
 				}
 				_, err = fmt.Fprintf(c.Writer, string(info))
+				_, err = c.Writer.Write([]byte{26})
 				if err != nil {
 					klog.Infof("fail to write to client, cancel watch task...\n")
 					cancel()
@@ -774,13 +779,14 @@ func handlePostNode(c *gin.Context) {
 	buf := make([]byte, c.Request.ContentLength)
 	_, err := c.Request.Body.Read(buf)
 	name := "N" + strconv.Itoa(nextObjNum()) + "-" + random.String(8)
-	var node v1.Node
-	err = json.Unmarshal(buf, &node)
-	if err != nil {
-		c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
-		return
-	}
+	node := v1.Node{}
+	//err = json.Unmarshal(buf, &node)
+	//if err != nil {
+	//	c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
+	//	return
+	//}
 	node.UID = name
+	node.Name = name
 	buf, _ = json.Marshal(node)
 	err = etcdPut("/node/"+name, string(buf))
 	if err != nil {
