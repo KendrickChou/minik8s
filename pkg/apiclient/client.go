@@ -50,6 +50,8 @@ func Watch(ctx context.Context, ch chan []byte, ty ObjType) {
 	switch ty {
 	case OBJ_ALL_PODS:
 		resp, err = http.Get(baseUrl + config.AC_WatchPods_Path)
+	case OBJ_ALL_NODES:
+		resp, err = http.Get(baseUrl + config.AC_WatchNodes_Path)
 	case OBJ_ALL_SERVICES:
 		resp, err = http.Get(baseUrl + config.AC_WatchServices_Path)
 	case OBJ_ALL_REPLICAS:
@@ -204,6 +206,22 @@ func TemplateArrangePodToNode(pod v1.Pod) {
 	if err != nil {
 		klog.Error("TemplateArrangePodToNode Error\n")
 	}
+}
+
+func GetPodStatus(pod *v1.Pod) []byte {
+	var resp *http.Response
+	var err error
+	url := config.AC_ServerAddr + ":" + strconv.Itoa(config.AC_ServerPort)
+	url += "/innode/" + pod.Spec.NodeName + "/podstatus/" + pod.UID
+
+	resp, err = http.Get(url)
+	buf, err := io.ReadAll(resp.Body)
+	if err != nil {
+		klog.Error("http get error\n")
+		return nil
+	}
+
+	return buf
 }
 
 func PostEndpoint(endpoint v1.Endpoint) {
