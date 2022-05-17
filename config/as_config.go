@@ -14,7 +14,7 @@ const (
 )
 
 const (
-	AC_ServerAddr = "http://127.0.0.1"
+	AC_ServerAddr = "http://59.78.8.125"
 	AC_ServerPort = 8080
 
 	AC_WatchServices_Path  = "/watch/services"

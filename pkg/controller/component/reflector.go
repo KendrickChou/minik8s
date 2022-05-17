@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"k8s.io/klog"
+	v1 "minik8s.com/minik8s/pkg/api/v1"
 	"minik8s.com/minik8s/pkg/apiclient"
 )
 
@@ -158,4 +159,18 @@ func (r *Reflector) parseJsonAndNotify(jsonObj []byte) {
 		obj.StripKey()
 		r.NotifyChan <- obj
 	}
+}
+
+func GetPodStatusObject(pod *v1.Pod) any {
+	buf := apiclient.GetPodStatus(pod)
+	if buf == nil {
+		return nil
+	}
+
+	obj := PodStatusObject{}
+	jsonErr := json.Unmarshal(buf, &obj)
+	if jsonErr != nil {
+		klog.Error("parse json error\n")
+	}
+	return obj.GetValue()
 }

@@ -41,6 +41,11 @@ type EndpointObject struct {
 	Endpoint v1.Endpoint `json:"value"`
 }
 
+type PodStatusObject struct {
+	DeltaPart
+	PodStatus v1.PodStatus `json:"value"`
+}
+
 func (d *DeltaPart) GetType() string {
 	return d.Type
 }
@@ -63,4 +68,8 @@ func (s *ServiceObject) GetValue() any {
 
 func (ed *EndpointObject) GetValue() any {
 	return ed.Endpoint
+}
+
+func (ps *PodStatusObject) GetValue() any {
+	return ps.PodStatus
 }

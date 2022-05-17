@@ -208,6 +208,22 @@ func TemplateArrangePodToNode(pod v1.Pod) {
 	}
 }
 
+func GetPodStatus(pod *v1.Pod) []byte {
+	var resp *http.Response
+	var err error
+	url := config.AC_ServerAddr + ":" + strconv.Itoa(config.AC_ServerPort)
+	url += "/innode/" + pod.Spec.NodeName + "/podstatus/" + pod.UID
+
+	resp, err = http.Get(url)
+	buf, err := io.ReadAll(resp.Body)
+	if err != nil {
+		klog.Error("http get error\n")
+		return nil
+	}
+
+	return buf
+}
+
 func PostEndpoint(endpoint v1.Endpoint) {
 	var resp *http.Response
 	var err error
