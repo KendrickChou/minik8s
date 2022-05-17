@@ -1,0 +1,17 @@
+{
+    "kind": "dns",
+    "apiversion": "v1",
+    "metadata": {
+        "name": "myFirstDNS",
+        "namespace": "default",
+        "uid": ""
+    },
+    "host" : "dns-test",
+    "paths": [
+        {
+            "path" : "/",
+            "servicename" : "nginx",
+            "port" : 80
+        }
+    ]
+}

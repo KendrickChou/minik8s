@@ -22,6 +22,7 @@ const (
 	AC_WatchNodes_Path     = "/watch/nodes"
 	AC_WatchReplicas_Path  = "/watch/replicas"
 	AC_WatchEndpoints_Path = "/watch/endpoints"
+	AC_WatchDnss_Path      = "/watch/dnss"
 	AC_WatchService_Path   = "/watch/service"
 	AC_WatchPod_Path       = "/watch/pod"
 	AC_WatchReplica_Path   = "/watch/replica"
@@ -29,6 +30,7 @@ const (
 
 	AC_RestServices_Path  = "/services"
 	AC_RestEndpoints_Path = "/endpoints"
+	AC_RestDnss_Path      = "/dnss"
 	AC_RestPods_Path      = "/pods"
 	AC_RestReplicas_Path  = "/replicas"
 	AC_RestNodes_Path     = "/nodes"
@@ -37,6 +39,7 @@ const (
 	AC_RestReplica_Path   = "/replica"
 	AC_RestNode_Path      = "/node"
 	AC_RestEndpoint_Path  = "/endpoint"
+	AC_RestDns_Path       = "/dns"
 
 	AC_Root_Path = "/"
 )
