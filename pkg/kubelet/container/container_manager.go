@@ -3,9 +3,11 @@ package container
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"os"
-	"time"
+	"os/exec"
+	"strings"
 
 	"github.com/docker/docker/api/types"
 	dockerctnr "github.com/docker/docker/api/types/container"
@@ -26,20 +28,17 @@ type ContainerManager interface {
 	ResumeContainer(ctx context.Context, container *v1.Container) error
 	RemoveContainer(ctx context.Context, container *v1.Container) error
 	ListContainers(ctx context.Context) ([]*v1.Container, error)
-	ContainerStatus(ctx context.Context, containerID string) (types.ContainerJSON, error)
+	ContainerStatus(ctx context.Context, containerID string) (types.ContainerJSON, error) // some static status, e.g. IP, Networkmode
 	CreateNetwork(ctx context.Context, name string, CIDR string) (string, error)
 	RemoveNetwork(ctx context.Context, networkID string) error
 	ConnectNetwork(ctx context.Context, networkID string, containerID string) error
 	ListNetwork(ctx context.Context, filter types.NetworkListOptions) ([]types.NetworkResource, error)
+	ContainerStats(ctx context.Context, containerID string) ([]string, error) // some dynamic status, e.g. cpu, mem usage, net
 }
 
 type containerManager struct {
 	dockerClient *client.Client
 }
-
-const (
-	restartTimeout time.Duration = time.Duration(time.Second * 3)
-)
 
 func NewContainerManager() (ContainerManager, error) {
 
@@ -54,10 +53,7 @@ func (manager *containerManager) CreateContainer(ctx context.Context, container 
 	klog.Infof("Create Container %v", container.Name)
 
 	containerConfig := &dockerctnr.Config{}
-	hostConfig := &dockerctnr.HostConfig{
-		// DNS:       []string{constants.DNS},
-		// DNSSearch: []string{constants.DNSSearch},
-	}
+	hostConfig := &dockerctnr.HostConfig{}
 
 	if container.Image != "" {
 		containerConfig.Image = container.Image
@@ -102,7 +98,7 @@ func (manager *containerManager) CreateContainer(ctx context.Context, container 
 		case v1.NeverPullPolicy:
 			// do nothing
 		default:
-			return "", errors.New("Unknown Image Pull Policy")
+			return "", errors.New("unknown image Pull Policy")
 		}
 	}
 	if container.NetworkMode != "" {
@@ -135,7 +131,7 @@ func (manager *containerManager) CreateContainer(ctx context.Context, container 
 
 func (manager *containerManager) StartContainer(ctx context.Context, container *v1.Container) error {
 	klog.Infof("Start Container %v", container.Name)
-	err := manager.dockerClient.ContainerStart(ctx, container.ID, types.ContainerStartOptions{})
+	manager.dockerClient.ContainerStart(ctx, container.ID, types.ContainerStartOptions{})
 
 	out, err := manager.dockerClient.ContainerLogs(ctx, container.ID, types.ContainerLogsOptions{
 		ShowStdout: true,
@@ -233,4 +229,19 @@ func (manager *containerManager) ListNetwork(ctx context.Context, filter types.N
 	}
 
 	return networks, nil
+}
+
+func (manager *containerManager) ContainerStats(ctx context.Context, containerID string) ([]string, error) {
+	command := fmt.Sprintf("docker stats %s --no-stream --format \"{{.CPUPerc}}\t{{.MemPerc}}\"", containerID)
+	cmd := exec.Command("bash", "-c", command)
+	res, err := cmd.CombinedOutput()
+
+	if err != nil {
+		klog.Errorf("Get Container Stats Error: %s", err.Error())
+		return nil, err
+	}
+
+
+
+	return strings.Split(string(res[:(len(res) - 1)]), "\t"), nil
 }

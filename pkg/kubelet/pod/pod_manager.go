@@ -165,7 +165,7 @@ func (pm *podManager) AddPod(pod *v1.Pod) error {
 
 		pod.Spec.InitialContainers[k] = container
 
-		timeoutctx, cancel := context.WithTimeout(context.TODO(), time.Second * 5)
+		timeoutctx, cancel := context.WithTimeout(context.TODO(), time.Second*5)
 		err = pm.containerManager.ConnectNetwork(timeoutctx, pm.weaveNetwork.ID, container.ID)
 		cancel()
 
@@ -332,34 +332,17 @@ func (pm *podManager) PodStatus(UID string) (v1.PodStatus, error) {
 
 	klog.Infof("Inspect Pod %s status", pod.Name)
 
+	pod.Status.ContainerStatuses = []v1.ContainerStatus{}
+
 	// get pause container statuses
 	for k := range pod.Spec.InitialContainers {
 		cntr := pod.Spec.InitialContainers[k]
 		stats, err := pm.containerManager.ContainerStatus(context.TODO(), cntr.ID)
 
-		if err != nil {
-			klog.Errorln(err)
-			pod.Status.ContainerStatuses = append(pod.Status.ContainerStatuses,
-				v1.ContainerStatus{Name: cntr.Name})
-			continue
-		}
+		dynamicStats, err1 := pm.containerManager.ContainerStats(context.TODO(), cntr.ID)
 
-		if cntr.Name == pod.Name + "-" + constants.InitialPauseContainer.Name {
-			pod.Status.PodIP = stats.NetworkSettings.Networks[constants.WeaveNetworkName].IPAddress
-		}
-	}
-
-	// get pod running statuses
-	pod.Status.ContainerStatuses = []v1.ContainerStatus{}
-	pod.Status.Phase = v1.PodRunning
-
-	var pendingNum, runningNum, succeedNum, failedNum int = 0, 0, 0, 0
-
-	for _, cntr := range pod.Spec.Containers {
-		stats, err := pm.containerManager.ContainerStatus(context.TODO(), cntr.ID)
-
-		if err != nil {
-			klog.Errorln(err)
+		if err != nil || err1 != nil || len(dynamicStats) != 2 {
+			klog.Error(err, err1)
 			pod.Status.ContainerStatuses = append(pod.Status.ContainerStatuses,
 				v1.ContainerStatus{Name: cntr.Name})
 			continue
@@ -371,6 +354,46 @@ func (pm *podManager) PodStatus(UID string) (v1.PodStatus, error) {
 			Error:      stats.State.Error,
 			StartedAt:  stats.State.StartedAt,
 			FinishedAt: stats.State.FinishedAt,
+			CPUPerc:   dynamicStats[0],
+			MemPerc:   dynamicStats[1],
+		}
+
+		pod.Status.ContainerStatuses = append(pod.Status.ContainerStatuses,
+			v1.ContainerStatus{
+				Name:  cntr.Name,
+				State: containerState,
+			})
+
+		if cntr.Name == pod.Name+"-"+constants.InitialPauseContainer.Name {
+			pod.Status.PodIP = stats.NetworkSettings.Networks[constants.WeaveNetworkName].IPAddress
+		}
+	}
+
+	// get pod running statuses
+	pod.Status.Phase = v1.PodRunning
+
+	var pendingNum, runningNum, succeedNum, failedNum int = 0, 0, 0, 0
+
+	for _, cntr := range pod.Spec.Containers {
+		stats, err := pm.containerManager.ContainerStatus(context.TODO(), cntr.ID)
+
+		dynamicStats, err1 := pm.containerManager.ContainerStats(context.TODO(), cntr.ID)
+
+		if err != nil || err1 != nil || len(dynamicStats) != 2 {
+			klog.Error(err, err1)
+			pod.Status.ContainerStatuses = append(pod.Status.ContainerStatuses,
+				v1.ContainerStatus{Name: cntr.Name})
+			continue
+		}
+
+		var containerState v1.ContainerState = v1.ContainerState{
+			Status:     stats.State.Status,
+			ExitCode:   stats.State.ExitCode,
+			Error:      stats.State.Error,
+			StartedAt:  stats.State.StartedAt,
+			FinishedAt: stats.State.FinishedAt,
+			CPUPerc:   dynamicStats[0],
+			MemPerc:   dynamicStats[1],
 		}
 
 		pod.Status.ContainerStatuses = append(pod.Status.ContainerStatuses,
