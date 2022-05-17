@@ -67,23 +67,34 @@ func main() {
 	// may some parallel bugs. maybe should not share kl
 
 	// watch pod
-	errChan := make(chan string)
-	go watchingPods(ctx, &kl, errChan)
+	podErr := make(chan string)
+	go watchingPods(ctx, &kl, podErr)
 
 	// start heartbeat
-	go sendHeartBeat(ctx, kl.UID, errChan)
+	heartbeatErr := make(chan string)
+	go sendHeartBeat(ctx, kl.UID, heartbeatErr)
 
 	// start refreshPodStatus periodically
 	go refreshAllPodStatus(ctx, &kl)
 
 	// watch endpoints
-	go watchingEndpoints(ctx, kp, errChan)
+	endpointsErr := make(chan string)
+	go watchingEndpoints(ctx, kp, endpointsErr)
 
 	for {
 		select {
-		case e := <-errChan:
-			klog.Fatalf("Node Failed: %s", e)
-			return
+		case e := <-podErr:
+			klog.Errorf("Node seems Failed: %s", e)
+
+			go watchingPods(ctx, &kl, podErr)
+		case e := <-heartbeatErr:
+			klog.Errorf("Node seems Failed: %s", e)
+
+			go sendHeartBeat(ctx, kl.UID, heartbeatErr)
+		case e := <-endpointsErr:
+			klog.Errorf("Node seems Failed: %s", e)
+
+			go watchingEndpoints(ctx, kp, endpointsErr)
 		}
 	}
 
@@ -94,7 +105,9 @@ func watchingPods(ctx context.Context, kl *kubelet.Kubelet, errChan chan string)
 
 	if err != nil {
 		klog.Errorf("Node %s Watch Pods Failed: %s", kl.UID, err.Error())
-		errChan <- err.Error()
+		// sleep some time before retry
+		time.Sleep(time.Second * time.Duration(constants.ReconnectInterval))
+		errChan <-err.Error()
 		return
 	}
 
@@ -200,6 +213,7 @@ func refreshAllPodStatus(ctx context.Context, kl *kubelet.Kubelet) {
 
 			if err != nil {
 				klog.Errorf("Error When refresh Pod Status: %s", err.Error())
+				continue
 			}
 
 			resp.Body.Close()
@@ -213,8 +227,10 @@ func watchingEndpoints(ctx context.Context, kp kubeproxy.KubeProxy, errChan chan
 	resp, err := http.Get(config.ApiServerAddress + constants.WatchEndpointsRequest())
 
 	if err != nil {
-		klog.Errorf("Node %s Watch Endpoints Failed: %s", err.Error())
-		errChan <- err.Error()
+		klog.Errorf("Node Watch Endpoints Failed: %s", err.Error())
+		// sleep some time before retry
+		time.Sleep(time.Second * time.Duration(constants.ReconnectInterval))
+		errChan <-err.Error()
 		return
 	}
 
@@ -228,7 +244,7 @@ func watchingEndpoints(ctx context.Context, kp kubeproxy.KubeProxy, errChan chan
 
 			if err != nil {
 				klog.Errorf("Watch Endpoints Error: %s", err)
-				errChan <- err.Error()
+				errChan <-err.Error()
 				return
 			}
 
@@ -237,7 +253,7 @@ func watchingEndpoints(ctx context.Context, kp kubeproxy.KubeProxy, errChan chan
 			err = json.Unmarshal(buf, req)
 
 			if err != nil {
-				klog.Error("Unmarshal APIServer Data Failed: %s", err.Error())
+				klog.Errorf("Unmarshal APIServer Data Failed: %s", err.Error())
 			} else {
 				handleEndpointChangeRequest(kp, req)
 			}

@@ -32,6 +32,7 @@ const (
 	HeartBeatInterval        uint64 = 1  //second
 	MaxErrorHeartBeat        int    = 10 // if successively failed over 10 times, close node
 	RefreshPodStatusInterval uint64 = 10
+	ReconnectInterval		 uint64 = 20
 )
 
 const (
