@@ -117,7 +117,7 @@ func getEndpoints() {
 	fmt.Printf("=->%v Endpoints\n", len(kvs))
 	fmt.Printf("%v\t\t\t\t\t%v\t\t\t%v\t\t\t%v\n", "Key", "Name", "Uid", "SubsetLen")
 	for _, kv := range kvs {
-		fmt.Printf("%v\t\t%v\t\t%v\t\t%v\n", kv.Key, kv.Endpoint.Name, kv.Endpoint.UID, len(kv.Endpoint.Subsets))
+		fmt.Printf("%v\t\t%v\t\t%v\t\t%v\n", kv.Key, kv.Endpoint.Name, kv.Endpoint.UID)
 	}
 	fmt.Printf("\n")
 }

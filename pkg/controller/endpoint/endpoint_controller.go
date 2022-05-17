@@ -24,11 +24,10 @@ func NewEndpointController(podInfo *component.Informer, servInfo *component.Info
 }
 
 func (epc *EndpointController) Run() {
+	epc.queue.Init()
+
 	for !(epc.endpointInformer.HasSynced() && epc.podInformer.HasSynced() && epc.serviceInformer.HasSynced()) {
 	}
-
-	epc.syncAll()
-	epc.worker()
 
 	epc.podInformer.AddEventHandler(component.EventHandler{
 		OnAdd:    epc.addPod,
@@ -41,6 +40,9 @@ func (epc *EndpointController) Run() {
 		OnDelete: epc.deleteService,
 		OnUpdate: epc.updateService,
 	})
+
+	epc.syncAll()
+	go epc.worker()
 }
 
 func (epc *EndpointController) syncAll() {
@@ -81,16 +83,24 @@ func (epc *EndpointController) syncEndpoint(service v1.Service) error {
 	if service.Spec.Selector != nil {
 		for _, podObj := range allPods {
 			pod := podObj.(v1.Pod)
+			podStatus := component.GetPodStatusObject(&pod)
+			klog.Info(podStatus)
+			if podStatus == nil || podStatus.(v1.PodStatus).PodIP == "" {
+				continue
+			} else {
+				pod.Status = podStatus.(v1.PodStatus)
+			}
+
 			if v1.MatchLabels(service.Spec.Selector, pod.Labels) {
 				relatedPods = append(relatedPods, pod)
 				if !v1.CheckOwner(pod.OwnerReferences, service.UID) {
-					newOwener := v1.OwnerReference{
+					newOwner := v1.OwnerReference{
 						Name:       service.Name,
 						UID:        service.UID,
 						APIVersion: service.APIVersion,
 						Kind:       service.Kind,
 					}
-					pod.OwnerReferences = append(pod.OwnerReferences, newOwener)
+					pod.OwnerReferences = append(pod.OwnerReferences, newOwner)
 					epc.podInformer.UpdateItem(pod.UID, pod)
 				}
 			}
@@ -127,6 +137,8 @@ func (epc *EndpointController) createEndpoint(service v1.Service, pods []v1.Pod,
 	endpoint.UID = prevID
 	endpoint.ServiceIp = service.Spec.ClusterIP
 
+	endpoint.ServiceIp = "1.2.3.4"
+
 	var subset v1.EndpointSubset
 
 	ipNum := len(pods)
@@ -141,7 +153,12 @@ func (epc *EndpointController) createEndpoint(service v1.Service, pods []v1.Pod,
 	for i := 0; i < portsNum; i++ {
 		ports[i].Name = service.Spec.Ports[i].Name
 		ports[i].Port = service.Spec.Ports[i].TargetPort
-		ports[i].Protocol = service.Spec.Ports[i].Protocol
+		ports[i].ServicePort = service.Spec.Ports[i].Port
+		if service.Spec.Ports[i].Protocol == "" {
+			ports[i].Protocol = "tcp"
+		} else {
+			ports[i].Protocol = service.Spec.Ports[i].Protocol
+		}
 	}
 	subset.Ports = ports
 
@@ -183,6 +200,7 @@ func (epc *EndpointController) enqueueService(service v1.Service) {
 
 func (epc *EndpointController) addService(obj any) {
 	service := obj.(v1.Service)
+	klog.Info("Add Service", service)
 	epc.enqueueService(service)
 }
 
@@ -197,13 +215,27 @@ func (epc *EndpointController) deleteService(obj any) {
 }
 
 func (epc *EndpointController) addPod(obj any) {
-	// do nothing
+	pod := obj.(v1.Pod)
+	klog.Info("Add Pod", pod)
+	if pod.Status.PodIP == "" {
+		return
+	}
+
+	services := epc.getPodMatchService(&pod)
+	for _, service := range services {
+		epc.enqueueService(service)
+	}
 }
 
 func (epc *EndpointController) updatePod(newObj any, oldObj any) {
 	newPod := newObj.(v1.Pod)
 	oldPod := oldObj.(v1.Pod)
 
+	if newPod.Status.PodIP == "" {
+		return
+	}
+
+	// TODO: this kind of status ain't right
 	if newPod.Status.PodIP != oldPod.Status.PodIP {
 		services := epc.getPodMatchService(&oldPod)
 		for _, service := range services {
@@ -214,6 +246,10 @@ func (epc *EndpointController) updatePod(newObj any, oldObj any) {
 
 func (epc *EndpointController) deletePod(obj any) {
 	pod := obj.(v1.Pod)
+	if pod.Status.PodIP == "" {
+		return
+	}
+
 	services := epc.getPodMatchService(&pod)
 	for _, service := range services {
 		epc.enqueueService(service)
