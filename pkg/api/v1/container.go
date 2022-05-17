@@ -15,11 +15,11 @@ type ContainerState struct {
 	// Time at which the container last terminated
 	FinishedAt string `json:"finishedAt,omitempty"`
 
-	CPUUsage string `json:"cpuusage,omitempty"` // cpu usage ratio, e.g. 0.01%
+	CPUPerc string `json:"cpuperc,omitempty"` // cpu usage ratio, e.g. 0.01%
 
 	// MemUsage string `json:"memusage,omitempty"` // mem usage, MEM USAGE / LIMIT, e.g. 4MiB / 7GiB
 
-	MemUsage string `json:"memusage,omitempty"` // mem usage ratio, e.g. 1%
+	MemPerc string `json:"memperc,omitempty"` // mem usage ratio, e.g. 1%
 
 	// NetworkIO string `json:"networkio,omitempty"` // networkio, e.g. 10.6kB / 18.1kB
 }

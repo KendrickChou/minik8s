@@ -232,7 +232,7 @@ func (manager *containerManager) ListNetwork(ctx context.Context, filter types.N
 }
 
 func (manager *containerManager) ContainerStats(ctx context.Context, containerID string) ([]string, error) {
-	command := fmt.Sprintf("docker stats %s --no-stream | grep %s | awk '{print $3, $7}'", containerID, containerID)
+	command := fmt.Sprintf("docker stats %s --no-stream --format \"{{.CPUPerc}}\t{{.MemPerc}}\"", containerID)
 	cmd := exec.Command("bash", "-c", command)
 	res, err := cmd.CombinedOutput()
 
@@ -241,5 +241,7 @@ func (manager *containerManager) ContainerStats(ctx context.Context, containerID
 		return nil, err
 	}
 
-	return strings.Split(string(res), " "), nil
+
+
+	return strings.Split(string(res[:(len(res) - 1)]), "\t"), nil
 }
