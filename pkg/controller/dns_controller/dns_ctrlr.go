@@ -71,7 +71,7 @@ func Run() {
 func handleDNSChanRequest(req *DNSRequest) {
 	switch req.Type {
 	case "PUT":
-		if _, exist := dnsMap[req.Key]; exist {
+		if _, exist := dnsMap[req.Key]; !exist {
 			dnsMap[req.Key] = req.DNS
 			klog.Infof("New DNS Added: Key[%v] Value[...]", req.Key)
 			klog.Infof("Current dns num: %v", len(dnsMap))

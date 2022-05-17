@@ -6,11 +6,11 @@
         "namespace": "default",
         "uid": ""
     },
-    "host" : "dns-test",
+    "host" : "minik8s-dns-test0",
     "paths": [
         {
             "path" : "/",
-            "servicename" : "nginx",
+            "servicename" : "myFirstService",
             "port" : 80
         }
     ]
