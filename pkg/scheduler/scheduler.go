@@ -104,10 +104,16 @@ func Run() {
 func handlePodChanRequest(req *PodRequest) {
 	switch req.Type {
 	case "PUT":
-		podMap[req.Key] = req.Pod
-		klog.Infof("New Pod Added: Key[%v] Value[...]", req.Key)
-		klog.Infof("Current pod num: %v", len(podMap))
-		shed(req.Pod)
+		if _, exist := podMap[req.Key]; exist {
+			podMap[req.Key] = req.Pod
+			klog.Infof("New Pod Added: Key[%v] Value[...]", req.Key)
+			klog.Infof("Current pod num: %v", len(podMap))
+		} else {
+			podMap[req.Key] = req.Pod
+			klog.Infof("Pod Changed: Key[%v] Value[...]", req.Key)
+			klog.Infof("Current pod num: %v", len(podMap))
+			shed(req.Pod)
+		}
 
 	case "DELETE":
 		delete(podMap, req.Key)
@@ -134,7 +140,7 @@ func shed_simple(pod v1.Pod) bool {
 	if pod.Spec.NodeName == "" {
 		min := -1
 		for key, node := range nodeMap {
-			resp, _ := http.Get(config.AC_ServerAddr + ":" + strconv.Itoa(config.AC_ServerPort) + "/" + node.UID + "/pods")
+			resp, _ := http.Get(config.AC_ServerAddr + ":" + strconv.Itoa(config.AC_ServerPort) + "/innode/" + node.UID + "/pods")
 			var pods []PodRequest
 			buf, _ := io.ReadAll(resp.Body)
 			_ = json.Unmarshal(buf, &pods)
@@ -150,9 +156,14 @@ func shed_simple(pod v1.Pod) bool {
 			cli := http.Client{}
 			url := config.AC_ServerAddr + ":" + strconv.Itoa(config.AC_ServerPort)
 			buf, _ := json.Marshal(pod)
-			req, _ := http.NewRequest(http.MethodPut, url+"/"+node.UID+"/"+pod.UID, bytes.NewReader(buf))
+			req, _ := http.NewRequest(http.MethodPut, url+"/innode/"+node.UID+"/pod/"+pod.UID, bytes.NewReader(buf))
 			resp, _ := cli.Do(req)
-			klog.Errorf("Shed ok with pod Key[%v]: appointed NodeName[%v]", key, pod.Spec.NodeName)
+
+			buf, _ = json.Marshal(pod)
+			req, _ = http.NewRequest(http.MethodPut, url+"/pod/"+pod.UID, bytes.NewReader(buf))
+			resp, _ = cli.Do(req)
+
+			klog.Infof("Shed ok with pod Key[%v]: appointed NodeName[%v]", key, pod.Spec.NodeName)
 			return resp.StatusCode == http.StatusOK
 		}
 	}
