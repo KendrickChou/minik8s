@@ -192,6 +192,27 @@ func Rest(id string, value string, objTy ObjType, opTy OpType) []byte {
 	return buf
 }
 
+func TemplateArrangePodToNode(pod v1.Pod) {
+	var resp *http.Response
+	var err error
+	url := config.AC_ServerAddr + ":" + strconv.Itoa(config.AC_ServerPort)
+
+	cli := http.Client{}
+	podBytes, err := json.Marshal(pod)
+	if err != nil {
+		klog.Error("Json marshall error\n")
+	}
+
+	req, _ := http.NewRequest(http.MethodPost, url+"/node/1/pod/"+pod.UID, bytes.NewReader(podBytes))
+	resp, err = cli.Do(req)
+
+	buf, err := io.ReadAll(resp.Body)
+	fmt.Printf(string(buf))
+	if err != nil {
+		klog.Error("TemplateArrangePodToNode Error\n")
+	}
+}
+
 func GetPodStatus(pod *v1.Pod) []byte {
 	var resp *http.Response
 	var err error
@@ -208,7 +229,7 @@ func GetPodStatus(pod *v1.Pod) []byte {
 	return buf
 }
 
-func PostEndpoint(endpoint v1.Endpoint) bool {
+func PostEndpoint(endpoint *v1.Endpoint) string {
 	var resp *http.Response
 	var err error
 	url := config.AC_ServerAddr + ":" + strconv.Itoa(config.AC_ServerPort)
@@ -217,7 +238,7 @@ func PostEndpoint(endpoint v1.Endpoint) bool {
 	epBytes, err := json.Marshal(endpoint)
 	if err != nil {
 		klog.Error("Json marshall error\n")
-		return false
+		return ""
 	}
 
 	req, _ := http.NewRequest(http.MethodPost, url+config.AC_RestEndpoint_Path+"/"+endpoint.UID, bytes.NewReader(epBytes))
@@ -226,17 +247,39 @@ func PostEndpoint(endpoint v1.Endpoint) bool {
 	buf, err := io.ReadAll(resp.Body)
 	if err != nil {
 		klog.Error("Read response error\n")
-		return false
+		return ""
 	}
 
 	var response HttpResponse
 	err = json.Unmarshal(buf, &response)
 	if err != nil {
 		klog.Error("Json unmarshal error\n")
+		return ""
+	}
+
+	if response.Status == "OK" {
+		return response.ID
+	} else {
+		return ""
+	}
+}
+
+func UpdateEndpoint(ep *v1.Endpoint) bool {
+	epByte, err := json.Marshal(ep)
+	if err != nil {
 		return false
 	}
 
-	if response.Status == "ok" {
+	responseBytes := Rest(ep.UID, string(epByte), OBJ_POD, OP_PUT)
+
+	var responseBody HttpResponse
+	err = json.Unmarshal(responseBytes, &responseBody)
+	if err != nil {
+		klog.Error("Json unmarshal error\n")
+		return false
+	}
+
+	if responseBody.Status == "OK" {
 		return true
 	} else {
 		return false
@@ -259,7 +302,7 @@ func PostPod(pod *v1.Pod) string {
 		return ""
 	}
 
-	if responseBody.Status == "ok" {
+	if responseBody.Status == "OK" {
 		return responseBody.ID
 	} else {
 		return ""
@@ -281,7 +324,7 @@ func UpdatePod(pod *v1.Pod) bool {
 		return false
 	}
 
-	if responseBody.Status == "ok" {
+	if responseBody.Status == "OK" {
 		return true
 	} else {
 		return false
@@ -303,7 +346,24 @@ func UpdateReplicaSet(rs *v1.ReplicaSet) bool {
 		return false
 	}
 
-	if responseBody.Status == "ok" {
+	if responseBody.Status == "OK" {
+		return true
+	} else {
+		return false
+	}
+}
+
+func DeleteEndpoint(epID string) bool {
+	responseBytes := Rest(epID, "", OBJ_ENDPOINT, OP_DELETE)
+
+	var responseBody HttpResponse
+	err := json.Unmarshal(responseBytes, &responseBody)
+	if err != nil {
+		klog.Error("Json unmarshal error\n")
+		return false
+	}
+
+	if responseBody.Status == "OK" {
 		return true
 	} else {
 		return false

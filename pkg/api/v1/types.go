@@ -76,3 +76,13 @@ func GetOwnerReplicaSet(pod *Pod) string {
 
 	return ""
 }
+
+func GetOwnerService(owners []OwnerReference) string {
+	for _, owner := range owners {
+		if owner.Kind == "Service" {
+			return owner.UID
+		}
+	}
+
+	return ""
+}
