@@ -75,7 +75,9 @@ func Watch(ctx context.Context, ch chan []byte, ty ObjType) {
 		return
 	}
 	if err != nil {
-		fmt.Printf("error: %v", err)
+		klog.Errorf("error: %v", err)
+		klog.Errorf("Rewatch...\n")
+		go Watch(ctx, ch, ty)
 		return
 	}
 
@@ -87,6 +89,9 @@ func Watch(ctx context.Context, ch chan []byte, ty ObjType) {
 			reader := bufio.NewReader(resp.Body)
 			buf, err := reader.ReadBytes(26)
 			if err != nil {
+				klog.Errorf("error: %v", err)
+				klog.Errorf("Rewatch...\n")
+				go Watch(ctx, ch, ty)
 				return
 			}
 

@@ -483,7 +483,7 @@ func handlePutReplica(c *gin.Context) {
 	buf := make([]byte, c.Request.ContentLength)
 	_, err := c.Request.Body.Read(buf)
 	name := c.Param("name")
-	if etcdTest("/replica/" + name) {
+	if !etcdTest("/replica/" + name) {
 		c.JSON(404, gin.H{"status": "ERR", "error": "No such replica"})
 	} else {
 		err = etcdPut("/replica/"+name, string(buf))

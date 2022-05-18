@@ -2,7 +2,7 @@
     "kind": "pod",
     "apiversion": "v1",
     "metadata": {
-        "name": "myFirstPod",
+        "name": "myFirstPod1",
         "namespace": "default",
         "uid": "",
         "labels": {

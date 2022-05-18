@@ -42,6 +42,8 @@ var addCmd = &cobra.Command{
 			resp = apiclient.Rest("", string(buf), apiclient.OBJ_SERVICE, apiclient.OP_POST)
 		case "dns":
 			resp = apiclient.Rest("", string(buf), apiclient.OBJ_DNS, apiclient.OP_POST)
+		case "replica":
+			resp = apiclient.Rest("", string(buf), apiclient.OBJ_REPLICAS, apiclient.OP_POST)
 		}
 
 		var stat StatusResponse
