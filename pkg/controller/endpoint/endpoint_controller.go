@@ -93,7 +93,7 @@ func (epc *EndpointController) syncEndpoint(service v1.Service) error {
 
 			if v1.MatchLabels(service.Spec.Selector, pod.Labels) {
 				relatedPods = append(relatedPods, pod)
-				if !v1.CheckOwner(pod.OwnerReferences, service.UID) {
+				if v1.CheckOwner(pod.OwnerReferences, service.UID) == -1 {
 					newOwner := v1.OwnerReference{
 						Name:       service.Name,
 						UID:        service.UID,
@@ -163,7 +163,9 @@ func (epc *EndpointController) createEndpoint(service v1.Service, pods []v1.Pod,
 	subset.Ports = ports
 
 	endpoint.Subset = subset
-	apiclient.PostEndpoint(endpoint)
+	if apiclient.PostEndpoint(endpoint) {
+		epc.endpointInformer.AddItem(endpoint.UID, endpoint)
+	}
 }
 
 // get Service by OwnerReferences

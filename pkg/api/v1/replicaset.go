@@ -20,19 +20,19 @@ type ReplicaSetSpec struct {
 // ReplicaSetStatus represents the current status of a ReplicaSet.
 type ReplicaSetStatus struct {
 	// Replicas is the most recently oberved number of replicas.
-	Replicas int32 `json:"replicas"`
+	Replicas int `json:"replicas"`
 
 	// The number of pods that have labels matching the labels of the pod template of the replicaset.
 	// +optional
-	FullyLabeledReplicas int32 `json:"fullyLabeledReplicas,omitempty"`
+	FullyLabeledReplicas int `json:"fullyLabeledReplicas,omitempty"`
 
 	// readyReplicas is the number of pods targeted by this ReplicaSet with a Ready Condition.
 	// +optional
-	ReadyReplicas int32 `json:"readyReplicas,omitempty"`
+	ReadyReplicas int `json:"readyReplicas,omitempty"`
 
 	// The number of available replicas (ready for at least minReadySeconds) for this replica set.
 	// +optional
-	AvailableReplicas int32 `json:"availableReplicas,omitempty"`
+	AvailableReplicas int `json:"availableReplicas,omitempty"`
 
 	// Represents the latest available observations of a replica set's current state.
 	// +optional

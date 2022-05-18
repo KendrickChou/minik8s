@@ -120,3 +120,7 @@ func (inf *Informer) DeleteItem(key string) {
 func (inf *Informer) UpdateItem(key string, obj any) {
 	inf.store.Update(key, obj)
 }
+
+func (inf *Informer) AddItem(key string, obj any) {
+	inf.store.Add(key, obj)
+}
