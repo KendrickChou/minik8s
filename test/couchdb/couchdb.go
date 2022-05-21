@@ -12,9 +12,9 @@ import (
 func main() {
 	dbName := "test-db"
 	docName := "test-doc"
-	fileName := "demo.txt"
+	fileName := "test-doc"
 
-	err := couchdb.CreateDatabase(context.TODO(), dbName)
+	err := couchdb.PutDatabase(context.TODO(), dbName)
 
 	if err != nil {
 		fmt.Print(err.Error())

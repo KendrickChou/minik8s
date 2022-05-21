@@ -6,6 +6,4 @@ import (
 
 type Function struct {
 	couchmeta.CouchMeta
-
-	Attachments string `json:"_attachments"`
 }

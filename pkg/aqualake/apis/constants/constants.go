@@ -25,3 +25,7 @@ func CouchPutFileRequest(db, docId, fileId, rev string) string {
 func CouchGetFileRequest(db, docId, fileId string) string {
 	return config.CouchDBAddr + "/" + db + "/" + docId + "/" + fileId
 }
+
+const (
+	FunctionDBId string = "aqualake-function"
+)

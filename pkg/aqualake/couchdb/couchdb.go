@@ -14,7 +14,7 @@ import (
 	"minik8s.com/minik8s/pkg/aqualake/apis/constants"
 )
 
-func CreateDatabase(ctx context.Context, id string) error {
+func PutDatabase(ctx context.Context, id string) error {
 	req, err := http.NewRequest("PUT", constants.CouchPutDBRequest(id), nil)
 
 	if err != nil {
@@ -90,6 +90,7 @@ func GetDoc(ctx context.Context, db, id string) ([]byte, error) {
 
 // return reversion, error
 func PutDoc(ctx context.Context, db, id, doc string) (string, error) {
+	// var reader io.Reader
 
 	req, err := http.NewRequest("PUT", constants.CouchPutDocRequest(db, id), strings.NewReader(doc))
 
