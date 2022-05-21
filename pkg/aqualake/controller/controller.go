@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"minik8s.com/minik8s/pkg/aqualake/apis/actionchain"
 	"minik8s.com/minik8s/pkg/aqualake/apis/constants"
 	"minik8s.com/minik8s/pkg/aqualake/apis/couchobject"
 	"minik8s.com/minik8s/pkg/aqualake/couchdb"
@@ -132,5 +133,30 @@ func SetUpRouter() *gin.Engine {
 		}
 	})
 
+	router.GET("/trigger/:id", func(ctx *gin.Context) {
+		acId := ctx.Params.ByName("id")
+		bytes, err := couchdb.GetDoc(context.TODO(), constants.ActionDBId, acId)
+
+		if err != nil {
+			ctx.JSON(http.StatusOK, gin.H{"error": err.Error()})
+			return
+		}
+
+		var ac couchobject.ActionChain
+		err = json.Unmarshal(bytes, &ac)
+
+		res, err := triggerActionChain(ac.ActionChain)
+		if err != nil {
+			ctx.JSON(http.StatusOK, gin.H{"error": err.Error()})
+		} else {
+			ctx.JSON(http.StatusOK, gin.H{"result": res})
+		}
+
+	})
+
 	return router
+}
+
+func triggerActionChain(chain actionchain.ActionChain) ([]byte, error) {
+	return nil, nil
 }
