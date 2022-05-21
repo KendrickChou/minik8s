@@ -1,6 +1,7 @@
 package couchdb
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -89,10 +90,10 @@ func GetDoc(ctx context.Context, db, id string) ([]byte, error) {
 }
 
 // return reversion, error
-func PutDoc(ctx context.Context, db, id, doc string) (string, error) {
+func PutDoc(ctx context.Context, db, id string, doc []byte) (string, error) {
 	// var reader io.Reader
 
-	req, err := http.NewRequest("PUT", constants.CouchPutDocRequest(db, id), strings.NewReader(doc))
+	req, err := http.NewRequest("PUT", constants.CouchPutDocRequest(db, id), bytes.NewReader(doc))
 
 	if err != nil {
 		klog.Errorf("Put Doc Failed: %s", err.Error())

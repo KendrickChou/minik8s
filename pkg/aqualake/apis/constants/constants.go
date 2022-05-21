@@ -28,4 +28,5 @@ func CouchGetFileRequest(db, docId, fileId string) string {
 
 const (
 	FunctionDBId string = "aqualake-function"
+	ActionDBId   string = "aqualake-actionchain"
 )
