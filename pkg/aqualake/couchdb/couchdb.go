@@ -14,8 +14,8 @@ import (
 	"minik8s.com/minik8s/pkg/aqualake/apis/constants"
 )
 
-func CreateDatabase(ctx context.Context, name string) error {
-	req, err := http.NewRequest("PUT", constants.CouchPutDBRequest(name), nil)
+func CreateDatabase(ctx context.Context, id string) error {
+	req, err := http.NewRequest("PUT", constants.CouchPutDBRequest(id), nil)
 
 	if err != nil {
 		klog.Errorf("Create Data Base Failed: %s", err.Error())
