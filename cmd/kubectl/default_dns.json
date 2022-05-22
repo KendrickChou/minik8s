@@ -1,0 +1,17 @@
+{
+    "kind": "dns",
+    "apiversion": "v1",
+    "metadata": {
+        "name": "myFirstDNS",
+        "namespace": "default",
+        "uid": ""
+    },
+    "host" : "minik8s-dns-test0",
+    "paths": [
+        {
+            "path" : "/",
+            "servicename" : "myFirstService",
+            "port" : 80
+        }
+    ]
+}

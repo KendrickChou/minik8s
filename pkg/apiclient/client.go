@@ -29,12 +29,14 @@ const (
 	OBJ_ALL_REPLICAS  ObjType = 2
 	OBJ_ALL_ENDPOINTS ObjType = 3
 	OBJ_ALL_NODES     ObjType = 4
+	OBJ_ALL_DNSS      ObjType = 10
 
 	OBJ_POD      ObjType = 5
 	OBJ_SERVICE  ObjType = 6
 	OBJ_REPLICAS ObjType = 7
 	OBJ_ENDPOINT ObjType = 8
 	OBJ_NODE     ObjType = 9
+	OBJ_DNS      ObjType = 11
 
 	OP_GET    OpType = 60
 	OP_POST   OpType = 70
@@ -63,6 +65,8 @@ func Watch(ctx context.Context, ch chan []byte, ty ObjType) {
 		resp, err = http.Get(baseUrl + config.AC_WatchReplicas_Path)
 	case OBJ_ALL_ENDPOINTS:
 		resp, err = http.Get(baseUrl + config.AC_WatchEndpoints_Path)
+	case OBJ_ALL_DNSS:
+		resp, err = http.Get(baseUrl + config.AC_WatchDnss_Path)
 	case OBJ_POD:
 		resp, err = http.Get(baseUrl + config.AC_WatchPod_Path)
 	case OBJ_SERVICE:
@@ -76,7 +80,9 @@ func Watch(ctx context.Context, ch chan []byte, ty ObjType) {
 		return
 	}
 	if err != nil {
-		fmt.Printf("error: %v", err)
+		klog.Errorf("error: %v", err)
+		klog.Errorf("Rewatch...\n")
+		go Watch(ctx, ch, ty)
 		return
 	}
 
@@ -88,6 +94,9 @@ func Watch(ctx context.Context, ch chan []byte, ty ObjType) {
 			reader := bufio.NewReader(resp.Body)
 			buf, err := reader.ReadBytes(26)
 			if err != nil {
+				klog.Errorf("error: %v", err)
+				klog.Errorf("Rewatch...\n")
+				go Watch(ctx, ch, ty)
 				return
 			}
 
@@ -152,6 +161,8 @@ func Rest(id string, value string, objTy ObjType, opTy OpType) []byte {
 		url += config.AC_RestReplicas_Path
 	case OBJ_ALL_ENDPOINTS:
 		url += config.AC_RestEndpoints_Path
+	case OBJ_ALL_DNSS:
+		url += config.AC_RestDnss_Path
 	case OBJ_POD:
 		url += config.AC_RestPod_Path
 	case OBJ_SERVICE:
@@ -160,6 +171,8 @@ func Rest(id string, value string, objTy ObjType, opTy OpType) []byte {
 		url += config.AC_RestReplica_Path
 	case OBJ_ENDPOINT:
 		url += config.AC_RestEndpoint_Path
+	case OBJ_DNS:
+		url += config.AC_RestDns_Path
 	default:
 		klog.Error("Invalid arguments!\n")
 		return nil
