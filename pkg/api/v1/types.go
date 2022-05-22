@@ -41,12 +41,48 @@ func MatchLabels(requirement map[string]string, labels map[string]string) bool {
 	return flag
 }
 
-func CheckOwner(owners []OwnerReference, key string) bool {
-	for _, owner := range owners {
+func CheckOwner(owners []OwnerReference, key string) int {
+	for index, owner := range owners {
 		if owner.UID == key {
-			return true
+			return index
 		}
 	}
 
-	return false
+	return -1
+}
+
+func ComparePodStatus(newStatus *PodStatus, oldStatus *PodStatus) bool {
+	if newStatus.PodIP != oldStatus.PodIP {
+		return false
+	}
+
+	if newStatus.PodNetworkID != oldStatus.PodNetworkID {
+		return false
+	}
+
+	if newStatus.Phase != oldStatus.Phase {
+		return false
+	}
+
+	return true
+}
+
+func GetOwnerReplicaSet(pod *Pod) string {
+	for _, owner := range pod.OwnerReferences {
+		if owner.Kind == "Replica" {
+			return owner.UID
+		}
+	}
+
+	return ""
+}
+
+func GetOwnerService(owners []OwnerReference) string {
+	for _, owner := range owners {
+		if owner.Kind == "Service" {
+			return owner.UID
+		}
+	}
+
+	return ""
 }
