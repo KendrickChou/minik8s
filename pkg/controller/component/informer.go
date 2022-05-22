@@ -124,6 +124,8 @@ func (inf *Informer) DeleteItem(key string) {
 		{
 			flag = apiclient.DeleteEndpoint(key)
 		}
+	default:
+		klog.Warningf("Delete %s not handled", inf.Kind)
 	}
 
 	if flag {
@@ -175,6 +177,8 @@ func (inf *Informer) AddItem(obj any) {
 			ep := obj.(v1.Endpoint)
 			uid = apiclient.PostEndpoint(&ep)
 		}
+	default:
+		klog.Warningf("Add %s not handled", inf.Kind)
 	}
 
 	if uid != "" {
