@@ -1,12 +1,19 @@
 package commands
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"github.com/spf13/cobra"
 	"io"
+	"io/ioutil"
+	"mime/multipart"
+	"minik8s.com/minik8s/config"
+	v1 "minik8s.com/minik8s/pkg/api/v1"
 	"minik8s.com/minik8s/pkg/apiclient"
+	"net/http"
 	"os"
+	"strconv"
 )
 
 var addCmd = &cobra.Command{
@@ -42,6 +49,18 @@ var addCmd = &cobra.Command{
 			resp = apiclient.Rest("", string(buf), apiclient.OBJ_SERVICE, apiclient.OP_POST)
 		case "dns":
 			resp = apiclient.Rest("", string(buf), apiclient.OBJ_DNS, apiclient.OP_POST)
+		case "gpu":
+			var gpuJob v1.GPUJob
+			err := json.Unmarshal(buf, &gpuJob)
+			if err != nil {
+				fmt.Println("输入文件解析失败: ", err)
+				return
+			}
+			uploadFile(gpuJob.Script)
+			for _, up_file := range gpuJob.Files {
+				uploadFile(up_file.Filename)
+			}
+			resp = apiclient.Rest("", string(buf), apiclient.OBJ_GPU, apiclient.OP_POST)
 		case "replica":
 			resp = apiclient.Rest("", string(buf), apiclient.OBJ_REPLICAS, apiclient.OP_POST)
 		}
@@ -64,4 +83,41 @@ func init() {
 	addCmd.Flags().StringP("kind", "k", "pod", "指定创建对象类型")
 
 	rootCmd.AddCommand(addCmd)
+}
+
+func uploadFile(path string) {
+	upfile, err := os.OpenFile(path, os.O_RDONLY, 0666)
+	if err != nil {
+		fmt.Println("文件打开失败：", err)
+	}
+	defer upfile.Close()
+
+	url := config.AC_ServerAddr + ":" + strconv.Itoa(config.AC_ServerPort) + "/upload"
+
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+	part, err := writer.CreateFormFile("file", path)
+	if err != nil {
+		fmt.Println("文件上传失败：", err)
+		return
+	}
+	_, err = io.Copy(part, upfile)
+
+	err = writer.Close()
+	if err != nil {
+		fmt.Println("文件上传失败：", err)
+		return
+	}
+	request, err := http.NewRequest("POST", url, body)
+	request.Header.Set("Content-Type", writer.FormDataContentType())
+
+	client := &http.Client{}
+	resp, err := client.Do(request)
+	defer resp.Body.Close()
+	respBody, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		fmt.Println("文件上传失败：", err)
+		return
+	}
+	fmt.Println(string(respBody))
 }

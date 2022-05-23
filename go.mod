@@ -10,6 +10,7 @@ require (
 	github.com/dchest/uniuri v0.0.0-20200228104902-7aecb25e1fe5
 	github.com/docker/docker v20.10.14+incompatible
 	github.com/gin-gonic/gin v1.7.7
+	github.com/pkg/sftp v1.13.4
 	github.com/spf13/cobra v1.4.0
 	github.com/vishvananda/netlink v1.1.1-0.20210330154013-f5de75959ad5
 	k8s.io/klog/v2 v2.30.0
@@ -19,6 +20,7 @@ require github.com/vishvananda/netns v0.0.0-20210104183010-2eb08e3e575f // indir
 
 require (
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
+	github.com/kr/fs v0.1.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 )
 
@@ -71,7 +73,7 @@ require (
 	go.uber.org/atomic v1.7.0 // indirect
 	go.uber.org/multierr v1.6.0 // indirect
 	go.uber.org/zap v1.17.0 // indirect
-	golang.org/x/crypto v0.0.0-20220411220226-7b82a4e95df4 // indirect
+	golang.org/x/crypto v0.0.0-20220411220226-7b82a4e95df4
 	golang.org/x/net v0.0.0-20211216030914-fe4d6282115f // indirect
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c // indirect
 	golang.org/x/sys v0.0.0-20220412211240-33da011f77ad // indirect

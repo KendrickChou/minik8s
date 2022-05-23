@@ -15,6 +15,7 @@ import (
 	"k8s.io/klog"
 	"minik8s.com/minik8s/config"
 	v1 "minik8s.com/minik8s/pkg/api/v1"
+	"minik8s.com/minik8s/pkg/gpu"
 	"minik8s.com/minik8s/utils/random"
 	"net/http"
 	"strconv"
@@ -694,6 +695,117 @@ func handleWatchEndpoint(c *gin.Context) {
 				}
 				flusher.Flush()
 			}
+		}
+	}
+}
+
+//------------ Endpoint Rest API -----------
+func handleGetGPUs(c *gin.Context) {
+	replicas, _ := etcdGetPrefix("/gpu")
+	c.JSON(200, replicas)
+}
+
+func handleGetGPU(c *gin.Context) {
+	kv, err := etcdGet("/gpu/" + c.Param("name"))
+	if err != nil {
+		c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
+	} else if kv.Type == config.AS_OP_ERROR_String {
+		c.JSON(404, gin.H{"status": "ERR", "error": "No such gpu"})
+	} else {
+		var gj v1.GPUJob
+		err = json.Unmarshal(kv.Value, &gj)
+		if err != nil {
+			c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
+		} else {
+			if len(gj.Output) == 0 && len(gj.Error) == 0 {
+				sshClient := gpu.NewSshClient(config.AS_GPU_LOGIN_ADDR)
+				gj.Output = string(sshClient.RunCmd("cat " + config.AS_GPU_HOMEPATH + gj.JobNum + ".out"))
+				gj.Error = string(sshClient.RunCmd("cat " + config.AS_GPU_HOMEPATH + gj.JobNum + ".err"))
+				klog.Infof("get result: \nOutput: %s\n Error: %s", gj.Output, gj.Error)
+				buf, err := json.Marshal(gj)
+				if err != nil {
+					klog.Error(err)
+				}
+				err = etcdPut("/gpu/"+gj.UID, string(buf))
+				kv.Value = buf
+			}
+			c.JSON(200, kv)
+		}
+	}
+}
+
+func handlePostGPU(c *gin.Context) {
+	buf := make([]byte, c.Request.ContentLength)
+	_, err := c.Request.Body.Read(buf)
+	name := "G" + strconv.Itoa(nextObjNum()) + "-" + random.String(8)
+	var gj v1.GPUJob
+	err = json.Unmarshal(buf, &gj)
+	if err != nil {
+		c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
+		return
+	}
+	gj.UID = name
+
+	sshClient := gpu.NewSshClient(config.AS_GPU_DATA_ADDR)
+	sshClient.UploadFile("./uploads/"+gj.Script, config.AS_GPU_HOMEPATH+gj.Script)
+	for _, up_file := range gj.Files {
+		sshClient.UploadFile("./uploads/"+up_file.Filename, config.AS_GPU_HOMEPATH+up_file.Filename)
+	}
+	sshClient.Close()
+
+	sshClient = gpu.NewSshClient(config.AS_GPU_LOGIN_ADDR)
+	res := sshClient.RunCmd("sbatch " + config.AS_GPU_HOMEPATH + gj.Script)
+	klog.Infof("sbatch result: %v", res)
+	gj.JobNum = string(res[len(res)-9 : len(res)-1])
+
+	buf, _ = json.Marshal(gj)
+	err = etcdPut("/gpu/"+name, string(buf))
+	if err != nil {
+		c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
+	} else {
+
+		c.JSON(200, gin.H{"status": "OK", "id": name})
+	}
+}
+
+func handleDeleteGPU(c *gin.Context) {
+	name := c.Param("name")
+	if !etcdTest("/gpu/" + name) {
+		c.JSON(404, gin.H{"status": "ERR", "error": "No such gpu"})
+	} else {
+		err := etcdDel("/gpu/" + name)
+		if err != nil {
+			c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
+		} else {
+			c.JSON(200, gin.H{"status": "OK"})
+		}
+	}
+}
+
+func handleWatchGPUs(c *gin.Context) {
+	wch, cancel := etcdWatchPrefix("/gpu")
+	flusher, _ := c.Writer.(http.Flusher)
+	for {
+		select {
+		case <-c.Request.Context().Done():
+			klog.Infof("connection closed, cancel watch task...\n")
+			cancel()
+			return
+		case kv := <-wch:
+			info, err := json.Marshal(kv)
+			if err != nil {
+				klog.Infof("json parse error, cancel watch task...\n")
+				cancel()
+				return
+			}
+			_, err = fmt.Fprintf(c.Writer, string(info))
+			_, err = c.Writer.Write([]byte{26})
+			if err != nil {
+				klog.Infof("fail to write to client, cancel watch task...\n")
+				cancel()
+				return
+			}
+			flusher.Flush()
 		}
 	}
 }

@@ -1,9 +1,12 @@
 package apiserver
 
 import (
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"k8s.io/klog"
+	"log"
 	"minik8s.com/minik8s/config"
+	"net/http"
 	"strconv"
 )
 
@@ -81,6 +84,12 @@ func runHttpServer() {
 	r.PUT("/dns/:name", handlePutDNS)
 	r.DELETE("/dns/:name", handleDeleteDNS)
 
+	// gpu
+	r.GET("/gpus", handleGetGPUs)
+	r.GET("/gpu/:name/", handleGetGPU)
+	r.POST("/gpu", handlePostGPU)
+	r.DELETE("/gpu/:name", handleDeleteGPU)
+
 	//clear all
 	r.DELETE("/", handleDeleteAll)
 
@@ -92,6 +101,7 @@ func runHttpServer() {
 	r.GET("/watch/endpoint/:name", handleWatchEndpoint)
 
 	r.GET("/watch/dnss", handleWatchDNSs)
+	r.GET("/watch/gpus", handleWatchGPUs)
 
 	r.GET("/watch/pods", handleWatchPods)
 	r.GET("/watch/pod/:name", handleWatchPod)
@@ -106,6 +116,18 @@ func runHttpServer() {
 
 	//------------------ HEARTBEAT -----------------------
 	r.GET("/heartbeat/:name/:num", handleHeartbeat)
+
+	r.POST("/upload", func(c *gin.Context) {
+		file, _ := c.FormFile("file")
+		log.Println(file.Filename)
+		dst := "./uploads/" + file.Filename
+		err := c.SaveUploadedFile(file, dst)
+		if err != nil {
+			c.String(http.StatusOK, fmt.Sprintf("error: %v", err.Error()))
+			return
+		}
+		c.String(http.StatusOK, fmt.Sprintf("'%s' uploaded!", file.Filename))
+	})
 
 	err := r.Run(":" + strconv.Itoa(config.AS_HttpListenPort))
 	if err != nil {

@@ -1,0 +1,15 @@
+{
+    "kind": "gpu",
+    "apiversion": "v1",
+    "metadata": {
+        "name": "myFirstGPU",
+        "namespace": "default",
+        "uid": ""
+    },
+    "script" : "omp_hello.slurm",
+    "files": [
+        {
+            "filename" : "omp_hello.c"
+        }
+    ]
+}
