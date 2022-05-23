@@ -88,6 +88,7 @@ func runHttpServer() {
 	r.GET("/gpus", handleGetGPUs)
 	r.GET("/gpu/:name/", handleGetGPU)
 	r.POST("/gpu", handlePostGPU)
+	r.PUT("/gpu/:name", handlePutGPU)
 	r.DELETE("/gpu/:name", handleDeleteGPU)
 
 	//clear all
@@ -128,6 +129,8 @@ func runHttpServer() {
 		}
 		c.String(http.StatusOK, fmt.Sprintf("'%s' uploaded!", file.Filename))
 	})
+
+	r.Static("/public", "./uploads")
 
 	err := r.Run(":" + strconv.Itoa(config.AS_HttpListenPort))
 	if err != nil {

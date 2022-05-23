@@ -612,7 +612,7 @@ func handlePutEndpoint(c *gin.Context) {
 	buf := make([]byte, c.Request.ContentLength)
 	_, err := c.Request.Body.Read(buf)
 	name := c.Param("name")
-	if etcdTest("/endpoint/" + name) {
+	if !etcdTest("/endpoint/" + name) {
 		c.JSON(404, gin.H{"status": "ERR", "error": "No such endpoint"})
 	} else {
 		err = etcdPut("/endpoint/"+name, string(buf))
@@ -745,26 +745,41 @@ func handlePostGPU(c *gin.Context) {
 		return
 	}
 	gj.UID = name
-
-	sshClient := gpu.NewSshClient(config.AS_GPU_DATA_ADDR)
-	sshClient.UploadFile("./uploads/"+gj.Script, config.AS_GPU_HOMEPATH+gj.Script)
-	for _, up_file := range gj.Files {
-		sshClient.UploadFile("./uploads/"+up_file.Filename, config.AS_GPU_HOMEPATH+up_file.Filename)
-	}
-	sshClient.Close()
-
-	sshClient = gpu.NewSshClient(config.AS_GPU_LOGIN_ADDR)
-	res := sshClient.RunCmd("sbatch " + config.AS_GPU_HOMEPATH + gj.Script)
-	klog.Infof("sbatch result: %v", res)
-	gj.JobNum = string(res[len(res)-9 : len(res)-1])
+	//
+	//sshClient := gpu.NewSshClient(config.AS_GPU_DATA_ADDR)
+	//sshClient.UploadFile("./uploads/"+gj.Script, config.AS_GPU_HOMEPATH+gj.Script)
+	//for _, up_file := range gj.Files {
+	//	sshClient.UploadFile("./uploads/"+up_file.Filename, config.AS_GPU_HOMEPATH+up_file.Filename)
+	//}
+	//sshClient.Close()
+	//
+	//sshClient = gpu.NewSshClient(config.AS_GPU_LOGIN_ADDR)
+	//res := sshClient.RunCmd("sbatch " + config.AS_GPU_HOMEPATH + gj.Script)
+	//klog.Infof("sbatch result: %v", res)
+	//gj.JobNum = string(res[len(res)-9 : len(res)-1])
 
 	buf, _ = json.Marshal(gj)
 	err = etcdPut("/gpu/"+name, string(buf))
 	if err != nil {
 		c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
 	} else {
-
 		c.JSON(200, gin.H{"status": "OK", "id": name})
+	}
+}
+
+func handlePutGPU(c *gin.Context) {
+	buf := make([]byte, c.Request.ContentLength)
+	_, err := c.Request.Body.Read(buf)
+	name := c.Param("name")
+	if !etcdTest("/gpu/" + name) {
+		c.JSON(404, gin.H{"status": "ERR", "error": "No such gpu job"})
+	} else {
+		err = etcdPut("/gpu/"+name, string(buf))
+		if err != nil {
+			c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
+		} else {
+			c.JSON(200, gin.H{"status": "OK"})
+		}
 	}
 }
 

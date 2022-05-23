@@ -57,7 +57,7 @@ func (sshClient *SshClient) RunCmd(cmd string) []byte {
 
 	runResult, err := session.CombinedOutput(cmd)
 	if err != nil {
-		panic(err)
+		return []byte{}
 	}
 	return runResult
 }

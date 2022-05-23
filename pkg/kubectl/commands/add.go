@@ -56,11 +56,21 @@ var addCmd = &cobra.Command{
 				fmt.Println("输入文件解析失败: ", err)
 				return
 			}
-			uploadFile(gpuJob.Script)
-			for _, up_file := range gpuJob.Files {
-				uploadFile(up_file.Filename)
-			}
 			resp = apiclient.Rest("", string(buf), apiclient.OBJ_GPU, apiclient.OP_POST)
+			var stat StatusResponse
+			err = json.Unmarshal(resp, &stat)
+			if err != nil {
+				fmt.Println("服务器返回信息无效: ", err)
+			} else if stat.Status != "OK" {
+				fmt.Println("创建对象失败：", stat.Error)
+			} else {
+				fmt.Println("成功创建对象，id：", stat.Id)
+				uploadFile(gpuJob.Script, stat.Id+"-"+gpuJob.Script)
+				for _, up_file := range gpuJob.Files {
+					uploadFile(up_file.Filename, stat.Id+"-"+up_file.Filename)
+				}
+			}
+			return
 		case "replica":
 			resp = apiclient.Rest("", string(buf), apiclient.OBJ_REPLICAS, apiclient.OP_POST)
 		}
@@ -85,7 +95,7 @@ func init() {
 	rootCmd.AddCommand(addCmd)
 }
 
-func uploadFile(path string) {
+func uploadFile(path string, newFilename string) {
 	upfile, err := os.OpenFile(path, os.O_RDONLY, 0666)
 	if err != nil {
 		fmt.Println("文件打开失败：", err)
@@ -96,7 +106,7 @@ func uploadFile(path string) {
 
 	body := &bytes.Buffer{}
 	writer := multipart.NewWriter(body)
-	part, err := writer.CreateFormFile("file", path)
+	part, err := writer.CreateFormFile("file", newFilename)
 	if err != nil {
 		fmt.Println("文件上传失败：", err)
 		return
