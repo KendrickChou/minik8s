@@ -1,4 +1,4 @@
-FROM alpine:latest
+FROM ubuntu:latest
 ENV VERSION 1.0
 # 在容器根目录 创建一个 apps 目录
 WORKDIR /apps
@@ -6,5 +6,5 @@ WORKDIR /apps
 COPY ./main /apps/main
 # 设置编码
 ENV LANG C.UTF-8
-# 运行golang程序的命令
-ENTRYPOINT []
+
+CMD ["/bin/bash"]

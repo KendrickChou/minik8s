@@ -1,0 +1,36 @@
+{
+    "kind": "pod",
+    "apiversion": "v1",
+    "metadata": {
+        "name": "myGPUJob1",
+        "namespace": "default",
+        "uid": "",
+        "labels": {
+            "app" : "gpu"
+        }
+    },
+    "spec": {
+        "Containers": [
+            {
+                "Name": "GPUJobTest",
+                "Namespace": "example",
+                "ID": "4a2e3b94e5b5d184001b4a3475e958619bddbe89702b6249336f952adc9c33e4",
+                "Image": "minik8s_gpu_demo:v1.0",
+                "ImagePullPolicy": "IfNotPresent",
+                "Entrypoint": [
+                    "/bin/sh",
+                    "-c",
+                    "/apps/main G1001-Andbr6w7"
+                ],
+                "Mounts": [
+                ]
+            }
+        ]
+    },
+    "Status": {
+        "Phase": "Succeeded",
+        "ContainerStatuses": [
+
+        ]
+    }
+}
