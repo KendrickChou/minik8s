@@ -18,3 +18,5 @@ vendor/
 .vscode/
 
 /go.sum
+
+cmd/apiserver/uploads/
