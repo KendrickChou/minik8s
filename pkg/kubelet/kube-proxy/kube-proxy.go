@@ -17,7 +17,7 @@ import (
 )
 
 type KubeProxy interface {
-	AddEndpoint(ctx context.Context, endpoint v1.Endpoint) error
+	AddEndpoint(ctx context.Context, uid string, endpoint v1.Endpoint) error
 
 	RemoveEndpoint(ctx context.Context, name string) error
 
@@ -25,7 +25,7 @@ type KubeProxy interface {
 }
 
 type kubeProxy struct {
-	endpoints map[string]*v1.Endpoint // key is endpoints name
+	endpoints map[string]*v1.Endpoint // key is endpoints uid
 
 	ipt *iptables.IPTables
 
@@ -54,9 +54,9 @@ func NewKubeProxy() (KubeProxy, error) {
 	return kp, err
 }
 
-func (kp *kubeProxy) AddEndpoint(ctx context.Context, endpoint v1.Endpoint) error {
+func (kp *kubeProxy) AddEndpoint(ctx context.Context, uid string, endpoint v1.Endpoint) error {
 	klog.Infof("Add Endpoint %s", endpoint.Name)
-	_, ok := kp.endpoints[endpoint.Name]
+	_, ok := kp.endpoints[uid]
 
 	if ok {
 		err := fmt.Sprintf("Add endpoint error: endpoint %s already exists", endpoint.Name)
@@ -70,7 +70,7 @@ func (kp *kubeProxy) AddEndpoint(ctx context.Context, endpoint v1.Endpoint) erro
 		return errors.New(err)
 	}
 
-	kp.endpoints[endpoint.Name] = &endpoint
+	kp.endpoints[uid] = &endpoint
 
 	svcChains := []string{}
 	for _, port := range endpoint.Subset.Ports {

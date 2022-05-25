@@ -139,11 +139,11 @@ func watchingPods(ctx context.Context, kl *kubelet.Kubelet, errChan chan string)
 }
 
 func handlePodChangeRequest(kl *kubelet.Kubelet, req *httpresponse.PodChangeRequest) {
+	parsedPath := strings.Split(req.Key, "/")
+	req.Pod.UID = parsedPath[len(parsedPath) - 1]
+	
 	switch req.Type {
 	case "PUT":
-		parsedPath := strings.Split(req.Key, "/")
-		req.Pod.UID = parsedPath[len(parsedPath) - 1]
-		
 		kl.CreatePod(req.Pod)
 	case "DELETE":
 		kl.DeletePod(req.Pod.UID)
@@ -263,11 +263,13 @@ func watchingEndpoints(ctx context.Context, kp kubeproxy.KubeProxy, errChan chan
 
 func handleEndpointChangeRequest(kp kubeproxy.KubeProxy, req *httpresponse.EndpointChangeRequest) {
 	klog.Infof("Receive %s Endpoint %s", req.Type, req.Endpoint.Name)
+	parsedPath := strings.Split(req.Key, "/")
+	uid := parsedPath[len(parsedPath) - 1]
 	switch req.Type {
 	case "PUT":
-		kp.AddEndpoint(context.TODO(), req.Endpoint)
+		kp.AddEndpoint(context.TODO(), uid, req.Endpoint)
 	case "DELETE":
-		kp.RemoveEndpoint(context.TODO(), req.Endpoint.Name)
+		kp.RemoveEndpoint(context.TODO(), uid)
 	default:
 		klog.Errorln("Unknown Pod Change Request Type: %s", req.Type)
 		return
