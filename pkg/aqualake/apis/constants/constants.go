@@ -1,6 +1,14 @@
 package constants
 
-import "minik8s.com/minik8s/pkg/aqualake/apis/config"
+import (
+	"strings"
+
+	"k8s.io/klog"
+	v1 "minik8s.com/minik8s/pkg/api/v1"
+	"minik8s.com/minik8s/pkg/aqualake/apis/config"
+
+	"github.com/dchest/uniuri"
+)
 
 func CouchPutDBRequest(name string) string {
 	return config.CouchDBAddr + "/" + name
@@ -30,3 +38,61 @@ const (
 	FunctionDBId string = "aqualake-function"
 	ActionDBId   string = "aqualake-actionchain"
 )
+
+const (
+	DefaultPoolSetSize = 3
+)
+
+const (
+	PythonEnv string = "python"
+	GoEnv     string = "go"
+
+	PythonContainerName string = "python"
+	GoContainerName     string = "go"
+
+	PythonImageName string = "python-img"
+	GoImageName     string = "go-img"
+)
+
+func NewPodConfig(podtype string) *v1.Pod {
+	podname := "Aqualake-" + podtype + "-" + strings.ToUpper(uniuri.New())
+
+	template := &v1.Pod{
+		TypeMeta: v1.TypeMeta{
+			Kind:       "pod",
+			APIVersion: "v1",
+		},
+		ObjectMeta: v1.ObjectMeta{
+			Name:      podname,
+			Namespace: "default",
+		},
+		Spec: v1.PodSpec{
+			Containers: []*v1.Container{},
+		},
+	}
+
+	switch podtype {
+	case PythonEnv:
+		template.Spec.Containers = append(template.Spec.Containers,
+			&v1.Container{
+				Name:            PythonContainerName,
+				Namespace:       "example",
+				Image:           PythonImageName,
+				ImagePullPolicy: "IfNotPresent",
+			})
+	case GoEnv:
+		template.Spec.Containers = append(template.Spec.Containers,
+			&v1.Container{
+				Name:            GoContainerName,
+				Namespace:       "example",
+				Image:           GoImageName,
+				ImagePullPolicy: "IfNotPresent",
+			})
+	default:
+		klog.Errorf("Unsupported Pod Type %s", podtype)
+	}
+
+	return template
+}
+
+var SupportedEnvs []string = []string{PythonEnv, GoEnv}

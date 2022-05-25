@@ -158,5 +158,6 @@ func SetUpRouter() *gin.Engine {
 }
 
 func triggerActionChain(chain actionchain.ActionChain) ([]byte, error) {
+	
 	return nil, nil
 }
