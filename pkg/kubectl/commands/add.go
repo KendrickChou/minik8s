@@ -73,6 +73,8 @@ var addCmd = &cobra.Command{
 			return
 		case "replica":
 			resp = apiclient.Rest("", string(buf), apiclient.OBJ_REPLICAS, apiclient.OP_POST)
+		case "hpa":
+			resp = apiclient.Rest("", string(buf), apiclient.OBJ_HPA, apiclient.OP_POST)
 		}
 
 		var stat StatusResponse

@@ -31,6 +31,7 @@ const (
 	OBJ_ALL_NODES     ObjType = 4
 	OBJ_ALL_DNSS      ObjType = 10
 	OBJ_ALL_GPUS      ObjType = 12
+	OBJ_ALL_HPAS      ObjType = 15
 
 	OBJ_POD      ObjType = 5
 	OBJ_SERVICE  ObjType = 6
@@ -39,6 +40,7 @@ const (
 	OBJ_NODE     ObjType = 9
 	OBJ_DNS      ObjType = 11
 	OBJ_GPU      ObjType = 13
+	OBJ_HPA      ObjType = 14
 
 	OP_GET    OpType = 60
 	OP_POST   OpType = 70
@@ -65,6 +67,8 @@ func Watch(ctx context.Context, ch chan []byte, ty ObjType) {
 		resp, err = http.Get(baseUrl + config.AC_WatchServices_Path)
 	case OBJ_ALL_REPLICAS:
 		resp, err = http.Get(baseUrl + config.AC_WatchReplicas_Path)
+	case OBJ_ALL_HPAS:
+		resp, err = http.Get(baseUrl + config.AC_WatchHPAs_Path)
 	case OBJ_ALL_ENDPOINTS:
 		resp, err = http.Get(baseUrl + config.AC_WatchEndpoints_Path)
 	case OBJ_ALL_DNSS:
@@ -77,6 +81,8 @@ func Watch(ctx context.Context, ch chan []byte, ty ObjType) {
 		resp, err = http.Get(baseUrl + config.AC_WatchService_Path)
 	case OBJ_REPLICAS:
 		resp, err = http.Get(baseUrl + config.AC_WatchReplica_Path)
+	case OBJ_HPA:
+		resp, err = http.Get(baseUrl + config.AC_WatchHPA_Path)
 	case OBJ_ENDPOINT:
 		resp, err = http.Get(baseUrl + config.AC_WatchEndpoint_Path)
 	default:
@@ -163,6 +169,8 @@ func Rest(id string, value string, objTy ObjType, opTy OpType) []byte {
 		url += config.AC_RestServices_Path
 	case OBJ_ALL_REPLICAS:
 		url += config.AC_RestReplicas_Path
+	case OBJ_ALL_HPAS:
+		url += config.AC_RestHPAs_Path
 	case OBJ_ALL_ENDPOINTS:
 		url += config.AC_RestEndpoints_Path
 	case OBJ_ALL_DNSS:
@@ -175,6 +183,8 @@ func Rest(id string, value string, objTy ObjType, opTy OpType) []byte {
 		url += config.AC_RestService_Path
 	case OBJ_REPLICAS:
 		url += config.AC_RestReplica_Path
+	case OBJ_HPA:
+		url += config.AC_RestHPA_Path
 	case OBJ_ENDPOINT:
 		url += config.AC_RestEndpoint_Path
 	case OBJ_DNS:

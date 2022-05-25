@@ -63,6 +63,13 @@ func runHttpServer() {
 	r.PUT("/replica/:name", handlePutReplica)
 	r.DELETE("/replica/:name", handleDeleteReplica)
 
+	// replica
+	r.GET("/hpas", handleGetHPAs)
+	r.GET("/hpa/:name", handleGetHPA)
+	r.POST("/hpa", handlePostHPA)
+	r.PUT("/hpa/:name", handlePutHPA)
+	r.DELETE("/hpa/:name", handleDeleteHPA)
+
 	// node
 	r.GET("/nodes", handleGetNodes)
 	r.GET("/node/:name/", handleGetNode)
@@ -114,6 +121,9 @@ func runHttpServer() {
 
 	r.GET("/watch/replicas", handleWatchReplicas)
 	r.GET("/watch/replica/:name", handleWatchReplica)
+
+	r.GET("/watch/hpas", handleWatchHPAs)
+	r.GET("/watch/hpa/:name", handleWatchHPA)
 
 	//------------------ HEARTBEAT -----------------------
 	r.GET("/heartbeat/:name/:num", handleHeartbeat)
