@@ -3,6 +3,7 @@ package main
 import (
 	"minik8s.com/minik8s/pkg/controller/component"
 	"minik8s.com/minik8s/pkg/controller/endpoint"
+	"minik8s.com/minik8s/pkg/controller/podautoscaling"
 	rs "minik8s.com/minik8s/pkg/controller/replicaset"
 )
 
@@ -23,11 +24,18 @@ func main() {
 	endpointStopChan := make(chan bool)
 	go endpointInformer.Run(endpointStopChan)
 
+	hpInformer := component.NewInformer("HorizontalPodAutoscaler")
+	hpStopChan := make(chan bool)
+	go hpInformer.Run(hpStopChan)
+
 	rsController := rs.NewReplicaSetController(podInformer, rsInformer)
 	go rsController.Run()
 
 	endpointController := endpoint.NewEndpointController(podInformer, serviceInformer, endpointInformer)
 	go endpointController.Run()
+
+	hpaController := podautoscaling.NewHorizontalController(hpInformer, podInformer, rsInformer)
+	go hpaController.Run()
 
 	for {
 

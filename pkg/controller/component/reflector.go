@@ -33,6 +33,8 @@ func (r *Reflector) list() {
 		objType = apiclient.OBJ_ALL_REPLICAS
 	case "Endpoint":
 		objType = apiclient.OBJ_ALL_ENDPOINTS
+	case "HorizontalPodAutoscaler":
+		objType = apiclient.OBJ_ALL_HPAS
 	}
 
 	objects := apiclient.GetAll(objType)
@@ -89,6 +91,19 @@ func (r *Reflector) list() {
 			epObj.StripKey()
 			r.NotifyChan <- &epObj
 		}
+	case "HorizontalPodAutoscaler":
+		var fmtObjs []HPAObject
+
+		err := json.Unmarshal(objects, &fmtObjs)
+		if err != nil {
+			klog.Error("Reflector parse error\n")
+		}
+
+		for _, epObj := range fmtObjs {
+			epObj.Type = "PUT"
+			epObj.StripKey()
+			r.NotifyChan <- &epObj
+		}
 	}
 }
 
@@ -104,6 +119,8 @@ func (r *Reflector) watch(stopChan chan bool) {
 		objType = apiclient.OBJ_ALL_REPLICAS
 	case "Endpoint":
 		objType = apiclient.OBJ_ALL_ENDPOINTS
+	case "HorizontalPodAutoscaler":
+		objType = apiclient.OBJ_ALL_HPAS
 	}
 
 	ctx, cl := context.WithCancel(context.Background())
@@ -151,6 +168,15 @@ func (r *Reflector) parseJsonAndNotify(jsonObj []byte) {
 		r.NotifyChan <- obj
 	case "Endpoint":
 		obj := &EndpointObject{}
+		err := json.Unmarshal(jsonObj, obj)
+		if err != nil {
+			klog.Error("Reflector parse error\n")
+		}
+
+		obj.StripKey()
+		r.NotifyChan <- obj
+	case "HorizontalPodAutoscaler":
+		obj := &HPAObject{}
 		err := json.Unmarshal(jsonObj, obj)
 		if err != nil {
 			klog.Error("Reflector parse error\n")

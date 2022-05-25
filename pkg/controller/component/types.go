@@ -46,12 +46,17 @@ type PodStatusObject struct {
 	PodStatus v1.PodStatus `json:"value"`
 }
 
-func (d *DeltaPart) GetType() string {
-	return d.Type
+type HPAObject struct {
+	DeltaPart
+	HPA v1.HorizontalPodAutoscaler `json:"value"`
 }
 
-func (d *DeltaPart) GetKey() string {
-	return d.Key
+func (dp *DeltaPart) GetType() string {
+	return dp.Type
+}
+
+func (dp *DeltaPart) GetKey() string {
+	return dp.Key
 }
 
 func (p *PodObject) GetValue() any {
@@ -72,4 +77,8 @@ func (ed *EndpointObject) GetValue() any {
 
 func (ps *PodStatusObject) GetValue() any {
 	return ps.PodStatus
+}
+
+func (h *HPAObject) GetValue() any {
+	return h.HPA
 }

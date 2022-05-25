@@ -126,7 +126,7 @@ func (inf *Informer) DeleteItem(key string) {
 		}
 	case "Pod":
 		{
-			// TODO: delete pod
+			flag = apiclient.DeletePod(key)
 		}
 	default:
 		klog.Warningf("Delete %s not handled", inf.Kind)
@@ -156,6 +156,11 @@ func (inf *Informer) UpdateItem(key string, obj any) {
 		{
 			rs := obj.(v1.ReplicaSet)
 			flag = apiclient.UpdateReplicaSet(&rs)
+		}
+	case "HorizontalPodAutoscaler":
+		{
+			hpa := obj.(v1.HorizontalPodAutoscaler)
+			flag = apiclient.UpdateHorizontalPodAutoscaler(&hpa)
 		}
 	default:
 		klog.Warningf("Update %s not handled", inf.Kind)

@@ -30,6 +30,8 @@ const (
 	OBJ_ALL_ENDPOINTS ObjType = 3
 	OBJ_ALL_NODES     ObjType = 4
 	OBJ_ALL_DNSS      ObjType = 10
+	OBJ_ALL_GPUS      ObjType = 12
+	OBJ_ALL_HPAS      ObjType = 15
 
 	OBJ_POD      ObjType = 5
 	OBJ_SERVICE  ObjType = 6
@@ -37,6 +39,8 @@ const (
 	OBJ_ENDPOINT ObjType = 8
 	OBJ_NODE     ObjType = 9
 	OBJ_DNS      ObjType = 11
+	OBJ_GPU      ObjType = 13
+	OBJ_HPA      ObjType = 14
 
 	OP_GET    OpType = 60
 	OP_POST   OpType = 70
@@ -63,16 +67,22 @@ func Watch(ctx context.Context, ch chan []byte, ty ObjType) {
 		resp, err = http.Get(baseUrl + config.AC_WatchServices_Path)
 	case OBJ_ALL_REPLICAS:
 		resp, err = http.Get(baseUrl + config.AC_WatchReplicas_Path)
+	case OBJ_ALL_HPAS:
+		resp, err = http.Get(baseUrl + config.AC_WatchHPAs_Path)
 	case OBJ_ALL_ENDPOINTS:
 		resp, err = http.Get(baseUrl + config.AC_WatchEndpoints_Path)
 	case OBJ_ALL_DNSS:
 		resp, err = http.Get(baseUrl + config.AC_WatchDnss_Path)
+	case OBJ_ALL_GPUS:
+		resp, err = http.Get(baseUrl + config.AC_WatchGpus_Path)
 	case OBJ_POD:
 		resp, err = http.Get(baseUrl + config.AC_WatchPod_Path)
 	case OBJ_SERVICE:
 		resp, err = http.Get(baseUrl + config.AC_WatchService_Path)
 	case OBJ_REPLICAS:
 		resp, err = http.Get(baseUrl + config.AC_WatchReplica_Path)
+	case OBJ_HPA:
+		resp, err = http.Get(baseUrl + config.AC_WatchHPA_Path)
 	case OBJ_ENDPOINT:
 		resp, err = http.Get(baseUrl + config.AC_WatchEndpoint_Path)
 	default:
@@ -119,6 +129,8 @@ func GetAll(objType ObjType) []byte {
 		url += config.AC_RestReplicas_Path
 	case OBJ_ALL_ENDPOINTS:
 		url += config.AC_RestEndpoints_Path
+	case OBJ_ALL_HPAS:
+		url += config.AC_RestHPAs_Path
 	case OBJ_POD:
 		url += config.AC_RestPod_Path
 	case OBJ_SERVICE:
@@ -127,6 +139,8 @@ func GetAll(objType ObjType) []byte {
 		url += config.AC_RestReplica_Path
 	case OBJ_ENDPOINT:
 		url += config.AC_RestEndpoint_Path
+	case OBJ_HPA:
+		url += config.AC_RestHPA_Path
 	default:
 		klog.Error("Invalid arguments!\n")
 		return nil
@@ -159,20 +173,28 @@ func Rest(id string, value string, objTy ObjType, opTy OpType) []byte {
 		url += config.AC_RestServices_Path
 	case OBJ_ALL_REPLICAS:
 		url += config.AC_RestReplicas_Path
+	case OBJ_ALL_HPAS:
+		url += config.AC_RestHPAs_Path
 	case OBJ_ALL_ENDPOINTS:
 		url += config.AC_RestEndpoints_Path
 	case OBJ_ALL_DNSS:
 		url += config.AC_RestDnss_Path
+	case OBJ_ALL_GPUS:
+		url += config.AC_RestGpus_Path
 	case OBJ_POD:
 		url += config.AC_RestPod_Path
 	case OBJ_SERVICE:
 		url += config.AC_RestService_Path
 	case OBJ_REPLICAS:
 		url += config.AC_RestReplica_Path
+	case OBJ_HPA:
+		url += config.AC_RestHPA_Path
 	case OBJ_ENDPOINT:
 		url += config.AC_RestEndpoint_Path
 	case OBJ_DNS:
 		url += config.AC_RestDns_Path
+	case OBJ_GPU:
+		url += config.AC_RestGpu_Path
 	default:
 		klog.Error("Invalid arguments!\n")
 		return nil
@@ -366,8 +388,47 @@ func UpdateReplicaSet(rs *v1.ReplicaSet) bool {
 	}
 }
 
+func UpdateHorizontalPodAutoscaler(hpa *v1.HorizontalPodAutoscaler) bool {
+	rsByte, err := json.Marshal(hpa)
+	if err != nil {
+		return false
+	}
+
+	responseBytes := Rest(hpa.UID, string(rsByte), OBJ_HPA, OP_PUT)
+
+	var responseBody HttpResponse
+	err = json.Unmarshal(responseBytes, &responseBody)
+	if err != nil {
+		klog.Error("Json unmarshal error\n")
+		return false
+	}
+
+	if responseBody.Status == "OK" {
+		return true
+	} else {
+		return false
+	}
+}
+
 func DeleteEndpoint(epID string) bool {
 	responseBytes := Rest(epID, "", OBJ_ENDPOINT, OP_DELETE)
+
+	var responseBody HttpResponse
+	err := json.Unmarshal(responseBytes, &responseBody)
+	if err != nil {
+		klog.Error("Json unmarshal error\n")
+		return false
+	}
+
+	if responseBody.Status == "OK" {
+		return true
+	} else {
+		return false
+	}
+}
+
+func DeletePod(podID string) bool {
+	responseBytes := Rest(podID, "", OBJ_POD, OP_DELETE)
 
 	var responseBody HttpResponse
 	err := json.Unmarshal(responseBytes, &responseBody)
