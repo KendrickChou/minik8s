@@ -55,6 +55,10 @@ type Container struct {
 	Mounts []Mount `json:"Mounts,omitempty"`
 
 	NetworkMode string `json:"-"`
+
+	DNS string `json:"-"`
+
+	DNSSearch string `json:"-"`
 }
 
 type ContainerStatus struct {
