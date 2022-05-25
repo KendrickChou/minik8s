@@ -83,11 +83,11 @@ func (epc *EndpointController) syncEndpoint(service v1.Service) error {
 			pod := podObj.(v1.Pod)
 
 			// check podStatus
-			podStatus := component.GetPodStatusObject(&pod)
-			if podStatus == nil || podStatus.(v1.PodStatus).PodIP == "" {
+			podStatus := component.GetPodStatus(&pod)
+			if podStatus == nil || podStatus.PodIP == "" {
 				continue
 			} else {
-				pod.Status = podStatus.(v1.PodStatus)
+				pod.Status = *podStatus
 			}
 
 			ownerServiceID := v1.GetOwnerService(pod.OwnerReferences)
@@ -289,13 +289,8 @@ func (epc *EndpointController) updatePod(newObj any, oldObj any) {
 	}
 
 	// If the pod has no IP, it can't be arranged to service
-	newPodStatusObj := component.GetPodStatusObject(&newPod)
-	if newPodStatusObj == nil {
-		klog.Error("Can't get status of Pod ", newPod.Name)
-	}
-
-	newPodStatus := newPodStatusObj.(v1.PodStatus)
-	if newPodStatus.PodIP != "" {
+	newPodStatus := component.GetPodStatus(&newPod)
+	if newPodStatus != nil && newPodStatus.PodIP != "" {
 		services := epc.getPodMatchService(&newPod)
 
 		for _, s := range services {

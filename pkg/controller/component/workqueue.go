@@ -4,9 +4,29 @@ import (
 	"sync"
 )
 
+type set map[any]struct{}
+
+func (s set) has(item any) bool {
+	_, exists := s[item]
+	return exists
+}
+
+func (s set) insert(item any) {
+	s[item] = struct{}{}
+}
+
+func (s set) delete(item any) {
+	delete(s, item)
+}
+
+func (s set) len() int {
+	return len(s)
+}
+
 type WorkQueue struct {
-	queue []any
-	cond  *sync.Cond
+	queue      []any
+	processing set
+	cond       *sync.Cond
 }
 
 func (q *WorkQueue) Init() {
@@ -51,4 +71,22 @@ func (q *WorkQueue) Fetch() any {
 	obj := q.Top()
 	q.Pop()
 	return obj
+}
+
+func (q *WorkQueue) Process(key string) bool {
+	q.cond.L.Lock()
+	if q.processing.has(key) {
+		q.cond.L.Unlock()
+		return false
+	} else {
+		q.processing.insert(key)
+		q.cond.L.Unlock()
+		return true
+	}
+}
+
+func (q *WorkQueue) Done(key string) {
+	q.cond.L.Lock()
+	q.processing.delete(key)
+	q.cond.L.Unlock()
 }

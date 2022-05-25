@@ -124,6 +124,10 @@ func (inf *Informer) DeleteItem(key string) {
 		{
 			flag = apiclient.DeleteEndpoint(key)
 		}
+	case "Pod":
+		{
+			// TODO: delete pod
+		}
 	default:
 		klog.Warningf("Delete %s not handled", inf.Kind)
 	}

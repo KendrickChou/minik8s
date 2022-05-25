@@ -72,6 +72,11 @@ func (rsc *ReplicaSetController) syncReplicaSet(key string) error {
 		return nil
 	}
 	rs := rsItem.(v1.ReplicaSet)
+	if rs.Status.Replicas == -1 {
+		klog.Infof("ReplicaSet %s has been taken control by HPA", rs.Name)
+		return nil
+	}
+
 	replicaNum := 0
 	matchedNotOwnedPods := make([]v1.Pod, 0)
 	ownedPods := make([]v1.Pod, 0)
@@ -273,15 +278,13 @@ func (rsc *ReplicaSetController) updatePod(newObj, oldObj any) {
 		rsc.enqueueRS(rs)
 	}
 
-	newPodStatusObj := component.GetPodStatusObject(&newPod)
-	oldPodStatusObj := component.GetPodStatusObject(&oldPod)
-	if newPodStatusObj == nil || oldPodStatusObj == nil {
+	newPodStatus := component.GetPodStatus(&newPod)
+	oldPodStatus := component.GetPodStatus(&oldPod)
+	if newPodStatus == nil || oldPodStatus == nil {
 		klog.Error("Can't get status of Pod")
 	}
 
-	newPodStatus := newPodStatusObj.(v1.PodStatus)
-	oldPodStatus := newPodStatusObj.(v1.PodStatus)
-	if !v1.ComparePodStatus(&newPodStatus, &oldPodStatus) {
+	if !v1.ComparePodStatus(newPodStatus, oldPodStatus) {
 		rsc.enqueueRS(rs)
 	}
 }

@@ -226,7 +226,7 @@ func TemplateArrangePodToNode(pod v1.Pod) {
 	}
 }
 
-func GetPodStatus(pod *v1.Pod) []byte {
+func GetPodStatusHttp(pod *v1.Pod) []byte {
 	var resp *http.Response
 	var err error
 	url := config.AC_ServerAddr + ":" + strconv.Itoa(config.AC_ServerPort)

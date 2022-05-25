@@ -24,8 +24,8 @@ type CrossVersionObjectReference struct {
 }
 
 type MetricSpec struct {
-	Type     MetricSourceType      `json:"type"`
-	Resource *ResourceMetricSource `json:"resource,omitempty"`
+	Type     MetricSourceType     `json:"type"`
+	Resource ResourceMetricSource `json:"resource,omitempty"`
 }
 
 // MetricSourceType miniK8s only support "Resource"
@@ -40,11 +40,12 @@ type ResourceMetricSource struct {
 	Target MetricTarget `json:"target"`
 }
 
+// MetricTarget type can only be "Utilization" in miniK8s
 type MetricTarget struct {
-	Type               MetricTargetType `json:"type"`
-	Value              *string          `json:"value,omitempty"`
-	AverageValue       *string          `json:"averageValue,omitempty"`
-	AverageUtilization *int             `json:"averageUtilization,omitempty"`
+	Type MetricTargetType `json:"type"`
+	//Value              *string          `json:"value,omitempty"`
+	//AverageValue       *string          `json:"averageValue,omitempty"`
+	AverageUtilization int `json:"averageUtilization,omitempty"`
 }
 
 // MetricTargetType specifies the type of metric being targeted, and should be either
@@ -70,11 +71,11 @@ type HPAScalingRules struct {
 	// - For scale up: 0 (i.e. no stabilization is done).
 	// - For scale down: 300 (i.e. the stabilization window is 300 seconds long).
 	// +optional
-	StabilizationWindowSeconds *int `json:"stabilizationWindowSeconds,omitempty"`
+	StabilizationWindowSeconds int `json:"stabilizationWindowSeconds,omitempty"`
 	// selectPolicy is used to specify which policy should be used.
 	// If not set, the default value Max is used.
 	// +optional
-	SelectPolicy *ScalingPolicySelect `json:"selectPolicy,omitempty"`
+	SelectPolicy ScalingPolicySelect `json:"selectPolicy,omitempty"`
 	// policies is a list of potential scaling polices which can be used during scaling.
 	// At least one policy must be specified, otherwise the HPAScalingRules will be discarded as invalid
 	// +listType=atomic
@@ -118,13 +119,7 @@ type HPAScalingPolicy struct {
 }
 
 type HorizontalPodAutoscalerStatus struct {
-	LastScaleTime   time.Time      `json:"lastScaleTime,omitempty"`
-	CurrentReplicas int            `json:"currentReplicas,omitempty"`
-	DesiredReplicas int            `json:"desiredReplicas,omitempty"`
-	CurrentMetrics  []MetricStatus `json:"currentMetrics"`
-}
-
-type MetricStatus struct {
-	Type     MetricSourceType      `json:"type"`
-	Resource *ResourceMetricSource `json:"resource,omitempty"`
+	LastScaleTime   time.Time `json:"lastScaleTime,omitempty"`
+	CurrentReplicas int       `json:"currentReplicas,omitempty"`
+	DesiredReplicas int       `json:"desiredReplicas,omitempty"`
 }

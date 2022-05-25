@@ -161,8 +161,8 @@ func (r *Reflector) parseJsonAndNotify(jsonObj []byte) {
 	}
 }
 
-func GetPodStatusObject(pod *v1.Pod) any {
-	buf := apiclient.GetPodStatus(pod)
+func GetPodStatus(pod *v1.Pod) *v1.PodStatus {
+	buf := apiclient.GetPodStatusHttp(pod)
 	if buf == nil {
 		return nil
 	}
@@ -172,5 +172,11 @@ func GetPodStatusObject(pod *v1.Pod) any {
 	if jsonErr != nil {
 		klog.Error("parse json error\n")
 	}
-	return obj.GetValue()
+
+	if obj.GetValue() == nil {
+		return nil
+	}
+
+	podStatus := obj.GetValue().(v1.PodStatus)
+	return &podStatus
 }
