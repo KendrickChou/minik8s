@@ -1,10 +1,8 @@
 package rs
 
 import (
-	"fmt"
 	"k8s.io/klog"
 	v1 "minik8s.com/minik8s/pkg/api/v1"
-	"minik8s.com/minik8s/pkg/apiclient"
 	"minik8s.com/minik8s/pkg/controller/component"
 )
 
@@ -23,6 +21,8 @@ func NewReplicaSetController(podInfo *component.Informer, rsInfo *component.Info
 
 // Run begins watching and syncing.
 func (rsc *ReplicaSetController) Run() {
+	rsc.queue.Init()
+
 	for !(rsc.rsInformer.HasSynced() && rsc.podInformer.HasSynced()) {
 	}
 
@@ -38,7 +38,16 @@ func (rsc *ReplicaSetController) Run() {
 		OnUpdate: rsc.updatePod,
 	})
 
-	rsc.worker()
+	rsc.syncAll()
+	go rsc.worker()
+}
+
+func (rsc *ReplicaSetController) syncAll() {
+	rss := rsc.rsInformer.List()
+	for _, item := range rss {
+		rs := item.(v1.ReplicaSet)
+		rsc.enqueueRS(&rs)
+	}
 }
 
 func (rsc *ReplicaSetController) worker() {
@@ -48,7 +57,6 @@ func (rsc *ReplicaSetController) worker() {
 
 func (rsc *ReplicaSetController) processNextWorkItem() bool {
 	key := rsc.queue.Fetch().(string)
-
 	err := rsc.syncReplicaSet(key)
 	if err != nil {
 		klog.Error("syncReplicaSet error\n")
@@ -58,41 +66,102 @@ func (rsc *ReplicaSetController) processNextWorkItem() bool {
 
 func (rsc *ReplicaSetController) syncReplicaSet(key string) error {
 	pods := rsc.podInformer.List()
-	rs := rsc.rsInformer.GetItem(key).(v1.ReplicaSet)
-
-	// TODO: sync logic
+	rsItem := rsc.rsInformer.GetItem(key)
+	if rsItem == nil {
+		klog.Error("Can't find replicaSet with uid ", key)
+		return nil
+	}
+	rs := rsItem.(v1.ReplicaSet)
+	replicaNum := 0
+	matchedNotOwnedPods := make([]v1.Pod, 0)
+	ownedPods := make([]v1.Pod, 0)
 	for _, item := range pods {
 		pod := item.(v1.Pod)
-		var own, labelMatch bool
 
-		// check ownerReferences
-		for _, ownerRef := range pod.OwnerReferences {
-			own = ownerRef.UID == rs.UID
+		if v1.CheckOwner(pod.OwnerReferences, rs.UID) >= 0 {
+			ownedPods = append(ownedPods, pod)
+			replicaNum++
+		} else if v1.MatchSelector(rs.Spec.Selector, pod.Labels) {
+			matchedNotOwnedPods = append(matchedNotOwnedPods, pod)
 		}
-
-		labelMatch = v1.MatchSelector(rs.Spec.Selector, pod.Labels)
-
-		if own && !labelMatch {
-			// TODO: change pod ownerReference
-		}
-
-		// TODO: handle cases when labels match but ownerReference not set
 	}
 
-	// following codes are just for template use
-	fmt.Println(pods)
-
-	var requestedPod v1.Pod
-	requestedPod.Kind = "Pod"
-	requestedPod.APIVersion = rs.APIVersion
-	requestedPod.Spec = rs.Spec.Template.Spec
-	requestedPod.ObjectMeta = rs.Spec.Template.ObjectMeta
-
-	for i := 0; i < rs.Spec.Replicas; i++ {
-		apiclient.TemplateArrangePodToNode(requestedPod)
+	rs.Status.Replicas = replicaNum
+	if replicaNum != rs.Spec.Replicas {
+		if replicaNum < rs.Spec.Replicas {
+			rsc.increaseReplica(replicaNum, &rs, matchedNotOwnedPods)
+		} else {
+			rsc.decreaseReplica(replicaNum, &rs, ownedPods)
+		}
 	}
 
 	return nil
+}
+
+func (rsc *ReplicaSetController) decreaseReplica(realReplicaNum int, rs *v1.ReplicaSet, ownedPods []v1.Pod) {
+	for i := 0; i < rs.Spec.Replicas-realReplicaNum; i++ {
+		pod := ownedPods[i]
+		index := v1.CheckOwner(pod.OwnerReferences, rs.UID)
+		pod.OwnerReferences = append(pod.OwnerReferences[:index], pod.OwnerReferences[index+1:]...)
+
+		rsc.podInformer.UpdateItem(pod.UID, pod)
+		rs.Status.Replicas--
+	}
+
+	rsc.rsInformer.UpdateItem(rs.UID, *rs)
+}
+
+func (rsc *ReplicaSetController) increaseReplica(realReplicaNum int, rs *v1.ReplicaSet, matchedNotOwnedPods []v1.Pod) {
+	podsLen := len(matchedNotOwnedPods)
+	expectedIncrease := rs.Spec.Replicas - realReplicaNum
+	var length int
+	if expectedIncrease > podsLen {
+		length = podsLen
+	} else {
+		length = expectedIncrease
+	}
+
+	for i := 0; i < length; i++ {
+		pod := matchedNotOwnedPods[i]
+		if v1.GetOwnerReplicaSet(&pod) != "" {
+			continue
+		}
+
+		ref := v1.OwnerReference{
+			Name:       rs.Name,
+			APIVersion: rs.APIVersion,
+			UID:        rs.UID,
+			Kind:       rs.Kind,
+		}
+		pod.OwnerReferences = append(pod.OwnerReferences, ref)
+
+		rsc.podInformer.UpdateItem(pod.UID, pod)
+		rs.Status.Replicas++
+	}
+
+	for i := 0; i < expectedIncrease-length; i++ {
+		pod := v1.Pod{
+			ObjectMeta: rs.Spec.Template.ObjectMeta,
+			Spec:       rs.Spec.Template.Spec,
+		}
+		pod.Kind = "Pod"
+		pod.APIVersion = rs.APIVersion
+		pod.UID = ""
+
+		ref := v1.OwnerReference{
+			Name:       rs.Name,
+			APIVersion: rs.APIVersion,
+			UID:        rs.UID,
+			Kind:       rs.Kind,
+		}
+		pod.OwnerReferences = append(pod.OwnerReferences, ref)
+
+		rsc.podInformer.AddItem(pod)
+		rs.Status.Replicas++
+	}
+
+	klog.Infof("Intentionally Update ReplicaSet %s, replica: %d", rs.Name, rs.Status.Replicas)
+	rsc.rsInformer.UpdateItem(rs.UID, *rs)
 }
 
 // return replicaSets that matches the pod, while there
@@ -114,28 +183,64 @@ func (rsc *ReplicaSetController) getPodReplicaSet(pod *v1.Pod) []v1.ReplicaSet {
 	return result
 }
 
-func (rsc *ReplicaSetController) enqueueRS(rs v1.ReplicaSet) {
+func (rsc *ReplicaSetController) getPodOwnerReplicaSet(pod *v1.Pod) *v1.ReplicaSet {
+	rsUID := v1.GetOwnerReplicaSet(pod)
+
+	if rsUID != "" {
+		rsItem := rsc.rsInformer.GetItem(rsUID)
+
+		if rsItem != nil {
+			rs := rsItem.(v1.ReplicaSet)
+			return &rs
+		}
+	}
+
+	return nil
+}
+
+func (rsc *ReplicaSetController) enqueueRS(rs *v1.ReplicaSet) {
+	klog.Info("Enqueue ReplicaSet ", rs.Name)
 	key := rs.UID
 	rsc.queue.Push(key)
 }
 
-/*
-addRS 在有 ReplicaSet 被创建（Informer 发现从前未出现过的 ReplicaSet）时被调用。
-*/
 func (rsc *ReplicaSetController) addRS(obj any) {
 	rs := obj.(v1.ReplicaSet)
-	rsc.enqueueRS(rs)
+	klog.Info("AddReplicaSet ", rs.Name)
+	rsc.enqueueRS(&rs)
 }
 
 func (rsc *ReplicaSetController) updateRS(newObj any, oldObj any) {
 	newRS := newObj.(v1.ReplicaSet)
+	oldRS := oldObj.(v1.ReplicaSet)
+	klog.Info("UpdateReplicaSet ", newRS.Name)
 
-	rsc.enqueueRS(newRS)
+	// replica num changes
+	if newRS.Spec.Replicas != oldRS.Spec.Replicas {
+		rsc.enqueueRS(&newRS)
+	}
+
+	// ReplicaSet Selector changes
+	if len(newRS.Spec.Selector.MatchLabels) != len(oldRS.Spec.Selector.MatchLabels) ||
+		!v1.MatchLabels(newRS.Spec.Selector.MatchLabels, oldRS.Spec.Selector.MatchLabels) {
+		rsc.enqueueRS(&newRS)
+	}
 }
 
 func (rsc *ReplicaSetController) deleteRS(obj any) {
 	rs := obj.(v1.ReplicaSet)
-	rsc.enqueueRS(rs)
+	klog.Info("Delete ReplicaSet ", rs.Name)
+
+	pods := rsc.podInformer.List()
+	for _, item := range pods {
+		pod := item.(v1.Pod)
+		ownerIndex := v1.CheckOwner(pod.OwnerReferences, rs.UID)
+
+		if ownerIndex >= 0 {
+			pod.OwnerReferences = append(pod.OwnerReferences[:ownerIndex], pod.OwnerReferences[ownerIndex+1:]...)
+			rsc.podInformer.UpdateItem(pod.UID, pod)
+		}
+	}
 }
 
 func (rsc *ReplicaSetController) addPod(obj any) {
@@ -144,16 +249,39 @@ func (rsc *ReplicaSetController) addPod(obj any) {
 	rss := rsc.getPodReplicaSet(&pod)
 
 	for _, rs := range rss {
-		rsc.enqueueRS(rs)
+		rsc.enqueueRS(&rs)
 	}
 }
 
 func (rsc *ReplicaSetController) updatePod(newObj, oldObj any) {
 	newPod := newObj.(v1.Pod)
+	oldPod := oldObj.(v1.Pod)
 
-	rss := rsc.getPodReplicaSet(&newPod)
+	rs := rsc.getPodOwnerReplicaSet(&oldPod)
+	if rs == nil {
+		rss := rsc.getPodReplicaSet(&newPod)
 
-	for _, rs := range rss {
+		for _, tmpRS := range rss {
+			rsc.enqueueRS(&tmpRS)
+		}
+
+		return
+	}
+
+	if len(newPod.Labels) != len(oldPod.Labels) ||
+		!v1.MatchLabels(newPod.Labels, oldPod.Labels) {
+		rsc.enqueueRS(rs)
+	}
+
+	newPodStatusObj := component.GetPodStatusObject(&newPod)
+	oldPodStatusObj := component.GetPodStatusObject(&oldPod)
+	if newPodStatusObj == nil || oldPodStatusObj == nil {
+		klog.Error("Can't get status of Pod")
+	}
+
+	newPodStatus := newPodStatusObj.(v1.PodStatus)
+	oldPodStatus := newPodStatusObj.(v1.PodStatus)
+	if !v1.ComparePodStatus(&newPodStatus, &oldPodStatus) {
 		rsc.enqueueRS(rs)
 	}
 }
@@ -161,9 +289,10 @@ func (rsc *ReplicaSetController) updatePod(newObj, oldObj any) {
 func (rsc *ReplicaSetController) deletePod(obj any) {
 	pod := obj.(v1.Pod)
 
-	rss := rsc.getPodReplicaSet(&pod)
-
-	for _, rs := range rss {
+	rs := rsc.getPodOwnerReplicaSet(&pod)
+	if rs != nil {
 		rsc.enqueueRS(rs)
+	} else {
+		klog.Error("Pod %s has no owner", pod.Name)
 	}
 }

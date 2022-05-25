@@ -74,6 +74,13 @@ func runHttpServer() {
 	r.PUT("/endpoint/:name", handlePutEndpoint)
 	r.DELETE("/endpoint/:name", handleDeleteEndpoint)
 
+	// dns
+	r.GET("/dnss", handleGetDNSs)
+	r.GET("/dns/:name/", handleGetDNS)
+	r.POST("/dns", handlePostDNS)
+	r.PUT("/dns/:name", handlePutDNS)
+	r.DELETE("/dns/:name", handleDeleteDNS)
+
 	//clear all
 	r.DELETE("/", handleDeleteAll)
 
@@ -83,6 +90,8 @@ func runHttpServer() {
 
 	r.GET("/watch/endpoints", handleWatchEndpoints)
 	r.GET("/watch/endpoint/:name", handleWatchEndpoint)
+
+	r.GET("/watch/dnss", handleWatchDNSs)
 
 	r.GET("/watch/pods", handleWatchPods)
 	r.GET("/watch/pod/:name", handleWatchPod)

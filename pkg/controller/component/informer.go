@@ -1,8 +1,9 @@
 package component
 
 import (
-	"fmt"
 	"k8s.io/klog"
+	v1 "minik8s.com/minik8s/pkg/api/v1"
+	"minik8s.com/minik8s/pkg/apiclient"
 )
 
 type EventHandler struct {
@@ -59,7 +60,6 @@ func (inf *Informer) Run(stopChan chan bool) {
 		select {
 		case delta := <-inf.notifyChan:
 			{
-				fmt.Println("delta", delta.GetType(), delta.GetValue())
 				switch delta.GetType() {
 				case "PUT", "POST":
 					oldObj, exist := inf.store.Get(delta.GetKey())
@@ -75,10 +75,14 @@ func (inf *Informer) Run(stopChan chan bool) {
 						}
 					}
 				case "DELETE":
-					inf.store.Delete(delta.GetKey())
+					obj, exist := inf.store.Get(delta.GetKey())
 
-					for _, handler := range inf.Handlers {
-						handler.OnDelete(delta.GetValue())
+					if exist {
+						for _, handler := range inf.Handlers {
+							handler.OnDelete(obj)
+						}
+
+						inf.store.Delete(delta.GetKey())
 					}
 				default:
 					klog.Error("invalid delta type\n")
@@ -114,9 +118,72 @@ func (inf *Informer) GetItem(key string) any {
 }
 
 func (inf *Informer) DeleteItem(key string) {
-	inf.store.Delete(key)
+	var flag bool
+	switch inf.Kind {
+	case "Endpoint":
+		{
+			flag = apiclient.DeleteEndpoint(key)
+		}
+	default:
+		klog.Warningf("Delete %s not handled", inf.Kind)
+	}
+
+	if flag {
+		inf.store.Delete(key)
+	} else {
+		klog.Errorf("Delete %s failed", key)
+	}
 }
 
 func (inf *Informer) UpdateItem(key string, obj any) {
-	inf.store.Update(key, obj)
+	var flag bool
+	switch inf.Kind {
+	case "Pod":
+		{
+			pod := obj.(v1.Pod)
+			flag = apiclient.UpdatePod(&pod)
+		}
+	case "Endpoint":
+		{
+			ep := obj.(v1.Endpoint)
+			flag = apiclient.UpdateEndpoint(&ep)
+		}
+	case "ReplicaSet":
+		{
+			rs := obj.(v1.ReplicaSet)
+			flag = apiclient.UpdateReplicaSet(&rs)
+		}
+	default:
+		klog.Warningf("Update %s not handled", inf.Kind)
+	}
+
+	if flag {
+		inf.store.Update(key, obj)
+	} else {
+		klog.Errorf("Update %s failed", key)
+	}
+}
+
+func (inf *Informer) AddItem(obj any) {
+	var uid string
+	switch inf.Kind {
+	case "Pod":
+		{
+			pod := obj.(v1.Pod)
+			uid = apiclient.PostPod(&pod)
+		}
+	case "Endpoint":
+		{
+			ep := obj.(v1.Endpoint)
+			uid = apiclient.PostEndpoint(&ep)
+		}
+	default:
+		klog.Warningf("Add %s not handled", inf.Kind)
+	}
+
+	if uid != "" {
+		inf.store.Add(uid, obj)
+	} else {
+		klog.Error("Add Object failed ", obj)
+	}
 }

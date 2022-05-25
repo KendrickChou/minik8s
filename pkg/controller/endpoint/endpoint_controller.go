@@ -3,7 +3,6 @@ package endpoint
 import (
 	"k8s.io/klog"
 	v1 "minik8s.com/minik8s/pkg/api/v1"
-	"minik8s.com/minik8s/pkg/apiclient"
 	"minik8s.com/minik8s/pkg/controller/component"
 )
 
@@ -68,7 +67,6 @@ func (epc *EndpointController) processNextWorkItem() bool {
 	}
 
 	service := item.(v1.Service)
-	klog.Info("processing Service ", service.Name)
 	err := epc.syncEndpoint(service)
 	if err != nil {
 		klog.Error("syncEndpoint error\n")
@@ -83,17 +81,20 @@ func (epc *EndpointController) syncEndpoint(service v1.Service) error {
 	if service.Spec.Selector != nil {
 		for _, podObj := range allPods {
 			pod := podObj.(v1.Pod)
+
+			// check podStatus
 			podStatus := component.GetPodStatusObject(&pod)
-			klog.Info(podStatus)
 			if podStatus == nil || podStatus.(v1.PodStatus).PodIP == "" {
 				continue
 			} else {
 				pod.Status = podStatus.(v1.PodStatus)
 			}
 
-			if v1.MatchLabels(service.Spec.Selector, pod.Labels) {
-				relatedPods = append(relatedPods, pod)
-				if !v1.CheckOwner(pod.OwnerReferences, service.UID) {
+			ownerServiceID := v1.GetOwnerService(pod.OwnerReferences)
+			labelMatchFlag := v1.MatchLabels(service.Spec.Selector, pod.Labels)
+
+			if ownerServiceID == "" {
+				if labelMatchFlag {
 					newOwner := v1.OwnerReference{
 						Name:       service.Name,
 						UID:        service.UID,
@@ -101,15 +102,28 @@ func (epc *EndpointController) syncEndpoint(service v1.Service) error {
 						Kind:       service.Kind,
 					}
 					pod.OwnerReferences = append(pod.OwnerReferences, newOwner)
+
+					epc.podInformer.UpdateItem(pod.UID, pod)
+
+					relatedPods = append(relatedPods, pod)
+				}
+			} else if ownerServiceID == service.UID {
+				if labelMatchFlag {
+					relatedPods = append(relatedPods, pod)
+				} else {
+					// the pod is owned by the service but the labels don't match the selector
+					index := v1.CheckOwner(pod.OwnerReferences, service.UID)
+					pod.OwnerReferences = append(pod.OwnerReferences[:index], pod.OwnerReferences[index+1:]...)
+
 					epc.podInformer.UpdateItem(pod.UID, pod)
 				}
 			}
 		}
 	}
 
-	if len(relatedPods) == 0 {
+	noRelated := len(relatedPods) == 0
+	if noRelated {
 		klog.Info("Service ", service.Name, " has no related pods\n")
-		return nil
 	}
 
 	// check if there are existing endpoints
@@ -117,15 +131,18 @@ func (epc *EndpointController) syncEndpoint(service v1.Service) error {
 	UID := ""
 	for _, obj := range eps {
 		ep := obj.(v1.Endpoint)
-		if ep.Name == service.Name {
+		if v1.GetOwnerService(ep.OwnerReferences) == service.UID {
 			UID = ep.UID
-			epc.endpointInformer.DeleteItem(ep.UID)
 			break
 		}
 	}
 
-	// create new endpoint
-	epc.createEndpoint(service, relatedPods, UID)
+	if !noRelated {
+		epc.createEndpoint(service, relatedPods, UID)
+	} else if UID != "" {
+		epc.endpointInformer.DeleteItem(UID)
+	}
+
 	return nil
 }
 
@@ -136,6 +153,15 @@ func (epc *EndpointController) createEndpoint(service v1.Service, pods []v1.Pod,
 	endpoint.ObjectMeta.Name = service.ObjectMeta.Name
 	endpoint.UID = prevID
 	endpoint.ServiceIp = service.Spec.ClusterIP
+
+	owner := v1.OwnerReference{
+		Name:       service.Name,
+		Kind:       service.Kind,
+		APIVersion: service.APIVersion,
+		UID:        service.UID,
+	}
+	endpoint.OwnerReferences = make([]v1.OwnerReference, 1)
+	endpoint.OwnerReferences[0] = owner
 
 	endpoint.ServiceIp = "1.2.3.4"
 
@@ -163,19 +189,26 @@ func (epc *EndpointController) createEndpoint(service v1.Service, pods []v1.Pod,
 	subset.Ports = ports
 
 	endpoint.Subset = subset
-	apiclient.PostEndpoint(endpoint)
+	if prevID == "" {
+		epc.endpointInformer.AddItem(endpoint)
+	} else {
+		epc.endpointInformer.UpdateItem(endpoint.UID, endpoint)
+	}
 }
 
 // get Service by OwnerReferences
-func (epc *EndpointController) getPodOwnerService(pod *v1.Pod) []v1.Service {
-	var result []v1.Service
-	for _, owner := range pod.OwnerReferences {
-		service := epc.serviceInformer.GetItem(owner.UID)
-		if service != nil {
-			result = append(result, service.(v1.Service))
+func (epc *EndpointController) getPodOwnerService(pod *v1.Pod) *v1.Service {
+	serviceUID := v1.GetOwnerService(pod.OwnerReferences)
+	if serviceUID != "" {
+		item := epc.serviceInformer.GetItem(serviceUID)
+
+		if item != nil {
+			service := item.(v1.Service)
+			return &service
 		}
 	}
-	return result
+
+	return nil
 }
 
 func (epc *EndpointController) getPodMatchService(pod *v1.Pod) []v1.Service {
@@ -193,37 +226,54 @@ func (epc *EndpointController) getPodMatchService(pod *v1.Pod) []v1.Service {
 	return result
 }
 
-func (epc *EndpointController) enqueueService(service v1.Service) {
+func (epc *EndpointController) enqueueService(service *v1.Service) {
 	key := service.UID
 	epc.queue.Push(key)
 }
 
 func (epc *EndpointController) addService(obj any) {
 	service := obj.(v1.Service)
-	klog.Info("Add Service", service)
-	epc.enqueueService(service)
+	epc.enqueueService(&service)
 }
 
 func (epc *EndpointController) updateService(newObj any, oldObj any) {
-	service := newObj.(v1.Service)
-	epc.enqueueService(service)
+	// FIX: add newService to workQueue without checking the attributes
+	newService := newObj.(v1.Service)
+	epc.enqueueService(&newService)
 }
 
 func (epc *EndpointController) deleteService(obj any) {
 	service := obj.(v1.Service)
-	epc.enqueueService(service)
+
+	eps := epc.endpointInformer.List()
+	for _, item := range eps {
+		ep := item.(v1.Endpoint)
+		if v1.GetOwnerService(ep.OwnerReferences) == service.UID {
+			epc.endpointInformer.DeleteItem(ep.UID)
+			break
+		}
+	}
+
+	pods := epc.podInformer.List()
+	for _, item := range pods {
+		pod := item.(v1.Pod)
+		index := v1.CheckOwner(pod.OwnerReferences, service.UID)
+		if index >= 0 {
+			pod.OwnerReferences = append(pod.OwnerReferences[:index], pod.OwnerReferences[index+1:]...)
+			epc.podInformer.UpdateItem(pod.UID, pod)
+		}
+	}
 }
 
 func (epc *EndpointController) addPod(obj any) {
 	pod := obj.(v1.Pod)
-	klog.Info("Add Pod", pod)
 	if pod.Status.PodIP == "" {
 		return
 	}
 
 	services := epc.getPodMatchService(&pod)
 	for _, service := range services {
-		epc.enqueueService(service)
+		epc.enqueueService(&service)
 	}
 }
 
@@ -231,27 +281,36 @@ func (epc *EndpointController) updatePod(newObj any, oldObj any) {
 	newPod := newObj.(v1.Pod)
 	oldPod := oldObj.(v1.Pod)
 
-	if newPod.Status.PodIP == "" {
-		return
+	service := epc.getPodOwnerService(&oldPod)
+	if service != nil {
+		epc.enqueueService(service)
+	} else {
+		klog.Infof("Update Pod %s, which has no owner", oldPod.Name)
 	}
 
-	// TODO: this kind of status ain't right
-	if newPod.Status.PodIP != oldPod.Status.PodIP {
-		services := epc.getPodMatchService(&oldPod)
-		for _, service := range services {
-			epc.enqueueService(service)
+	// If the pod has no IP, it can't be arranged to service
+	newPodStatusObj := component.GetPodStatusObject(&newPod)
+	if newPodStatusObj == nil {
+		klog.Error("Can't get status of Pod ", newPod.Name)
+	}
+
+	newPodStatus := newPodStatusObj.(v1.PodStatus)
+	if newPodStatus.PodIP != "" {
+		services := epc.getPodMatchService(&newPod)
+
+		for _, s := range services {
+			epc.enqueueService(&s)
 		}
 	}
 }
 
 func (epc *EndpointController) deletePod(obj any) {
 	pod := obj.(v1.Pod)
-	if pod.Status.PodIP == "" {
-		return
-	}
 
-	services := epc.getPodMatchService(&pod)
-	for _, service := range services {
+	service := epc.getPodOwnerService(&pod)
+	if service != nil {
 		epc.enqueueService(service)
+	} else {
+		klog.Infof("Delete Pod %s, which has no owner", pod.Name)
 	}
 }
