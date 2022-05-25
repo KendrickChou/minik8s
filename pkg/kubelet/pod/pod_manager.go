@@ -59,7 +59,8 @@ func NewPodManager() PodManager {
 
 	network, err := pm.containerManager.ListNetwork(context.TODO(),
 		types.NetworkListOptions{
-			Filters: filters.NewArgs(filters.Arg("name", "weave"))})
+			Filters: filters.NewArgs(filters.Arg("name", "weave")),
+		})
 
 	if err != nil {
 		klog.Errorf("Get Weave Network Error: %s", err.Error())
