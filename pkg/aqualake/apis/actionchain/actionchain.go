@@ -1,5 +1,12 @@
 package actionchain
 
+const (
+	ACT_TASK   = 0
+	ACT_CHOICE = 1
+)
+
+type ActionType int
+
 type ActionChain struct {
 	StartAt string `json:"StartAt"`
 
@@ -8,7 +15,7 @@ type ActionChain struct {
 
 type Action struct {
 	// Task / Choice
-	Type string `json:"Type"`
+	Type ActionType `json:"Type"`
 
 	// e.g. GO, Python, C++...
 	Env string `json:"Env"`

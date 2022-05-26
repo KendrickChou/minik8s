@@ -78,13 +78,14 @@ func Run() {
 
 	//handle watch results
 	for {
-		klog.Infof("selecting chan...\n")
+		klog.Infof("\nselecting chan...\n")
 		select {
 		case rawBytes := <-podChan:
 			req := &PodRequest{}
 			err := json.Unmarshal(rawBytes, req)
 
 			if err != nil {
+
 				klog.Error("Unmarshal Pod Change Req Failed: %v", err)
 			} else {
 				handlePodChanRequest(req)
@@ -147,7 +148,7 @@ func handleNodeChanRequest(req *NodeRequest) {
 }
 
 func shed_simple(pod v1.Pod) bool {
-	klog.Infof("Scheduling Pod: UID[%v] NodeName[%v]", pod.UID, pod.Spec.NodeName)
+	klog.Infof("\nScheduling Pod: UID[%v] NodeName[%v]", pod.UID, pod.Spec.NodeName)
 	if pod.Spec.NodeName == "" {
 		min := -1
 		for _, node := range nodeMap {

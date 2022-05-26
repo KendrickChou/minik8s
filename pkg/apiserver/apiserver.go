@@ -1,6 +1,9 @@
 package apiserver
 
+import "minik8s.com/minik8s/utils/random"
+
 func Run() {
+	random.Init()
 	initEtcd()
 	defer closeEtcd()
 	runHttpServer()

@@ -6,4 +6,6 @@ import (
 
 type Function struct {
 	couchmeta.CouchMeta
+
+	ReturnType string
 }

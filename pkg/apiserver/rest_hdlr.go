@@ -79,7 +79,7 @@ func handlePutService(c *gin.Context) {
 func handleDeleteService(c *gin.Context) {
 	name := c.Param("name")
 
-	if etcdTest("/service/" + name) {
+	if !etcdTest("/service/" + name) {
 		c.JSON(404, gin.H{"status": "ERR", "error": "No such service"})
 	} else {
 		err := etcdDel("/service/" + name)
@@ -235,7 +235,8 @@ func handleWatchPods(c *gin.Context) {
 				cancel()
 				return
 			}
-			_, err = fmt.Fprintf(c.Writer, string(info))
+			//_, err = fmt.Fprintf(c.Writer, string(info))
+			c.Writer.Write(info)
 			_, err = c.Writer.Write([]byte{26})
 			if err != nil {
 				klog.Infof("fail to write to client, cancel watch task...\n")
@@ -267,7 +268,8 @@ func handleWatchPod(c *gin.Context) {
 					cancel()
 					return
 				}
-				_, err = fmt.Fprintf(c.Writer, string(info))
+				c.Writer.Write(info)
+				_, err = c.Writer.Write([]byte{26})
 				if err != nil {
 					klog.Infof("fail to write to client, cancel watch task...\n")
 					cancel()
@@ -394,6 +396,27 @@ func handlePutPodStatusByNode(c *gin.Context) {
 		if err != nil {
 			c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
 		} else {
+			var kv KV
+			var pod v1.Pod
+			var podStatus v1.PodStatus
+			kv, err = etcdGet("/pod/" + pname)
+			err = json.Unmarshal(kv.Value, &pod)
+			if err != nil {
+				c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
+				return
+			}
+			err = json.Unmarshal(buf, &podStatus)
+			if err != nil {
+				c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
+				return
+			}
+			pod.Status = podStatus
+			podBuf, err := json.Marshal(pod)
+			if err != nil {
+				c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
+				return
+			}
+			err = etcdPut("/pod/"+pname, string(podBuf))
 			c.JSON(200, gin.H{"status": "OK"})
 		}
 	}

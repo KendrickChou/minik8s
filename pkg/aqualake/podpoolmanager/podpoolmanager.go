@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"time"
 
-	set "github.com/deckarep/golang-set"
 	"k8s.io/klog"
 	v1 "minik8s.com/minik8s/pkg/api/v1"
 	"minik8s.com/minik8s/pkg/apiclient"
@@ -14,37 +13,17 @@ import (
 	"minik8s.com/minik8s/pkg/kubectl/commands"
 )
 
-type PodPoolManager interface {
-	GetPod(podEnv string) *v1.Pod 
+type PodPoolManager struct {
+	pp map[string][]*v1.Pod
 }
 
-type podPoolManager struct {
-	PodPool map[string]set.Set
-}
-
-func NewPodPoolManager() PodPoolManager {
-	ppm := &podPoolManager{
-		PodPool: make(map[string]set.Set),
-	}
-
-	for _, env := range constants.SupportedEnvs {
-		ppm.PodPool[env] = set.NewSet()
-
-		for i := 0; i < constants.DefaultPoolSetSize; i++ {
-			pod, err := newGenericPod(env)
-
-			if err != nil {
-				klog.Errorf("Init Pod Pool Error: %s", err)
-				continue
-			}
-
-			ppm.PodPool[env].Add(pod)
-		}
+func NewPodPoolManager() *PodPoolManager {
+	ppm := &PodPoolManager{
+		pp: make(map[string][]*v1.Pod),
 	}
 
 	return ppm
 }
-
 
 func newGenericPod(env string) (*v1.Pod, error) {
 	pod := constants.NewPodConfig(env)
@@ -52,7 +31,10 @@ func newGenericPod(env string) (*v1.Pod, error) {
 	resp := apiclient.Rest("", string(buf), apiclient.OBJ_POD, apiclient.OP_POST)
 
 	var stat commands.StatusResponse
-	json.Unmarshal(resp, &stat)
+	err := json.Unmarshal(resp, &stat)
+	if err != nil {
+		return nil, err
+	}
 
 	if stat.Status != "OK" {
 		errInfo := fmt.Sprintf("Init Pod %s Error: %s", pod.ObjectMeta.Name, stat.Error)
@@ -94,6 +76,11 @@ func newGenericPod(env string) (*v1.Pod, error) {
 	return nil, errors.New(errInfo)
 }
 
-func (ppm *podPoolManager) GetPod(podEnv string) *v1.Pod {
-
+func (ppm *PodPoolManager) GetPod(podEnv string) (*v1.Pod, error) {
+	pod, err := newGenericPod(podEnv)
+	if err != nil {
+		return nil, err
+	}
+	ppm.pp[podEnv] = append(ppm.pp[podEnv], pod)
+	return pod, err
 }
