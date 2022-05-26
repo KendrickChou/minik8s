@@ -21,7 +21,7 @@ type KubeProxy interface {
 
 	RemoveEndpoint(ctx context.Context, name string) error
 
-	UpdateEndpoint(ctx context.Context, endpoint v1.Endpoint) error
+	UpdateEndpoint(ctx context.Context, uid string, endpoint v1.Endpoint) error
 }
 
 type kubeProxy struct {
@@ -174,7 +174,7 @@ func (kp *kubeProxy) RemoveEndpoint(ctx context.Context, name string) error {
 	return nil
 }
 
-func (kp *kubeProxy) UpdateEndpoint(ctx context.Context, endpoint v1.Endpoint) error {
+func (kp *kubeProxy) UpdateEndpoint(ctx context.Context, uid string, endpoint v1.Endpoint) error {
 	klog.Infof("Update Endpoint %s", endpoint.Name)
 
 	err := kp.RemoveEndpoint(context.TODO(), endpoint.Name)
@@ -183,7 +183,7 @@ func (kp *kubeProxy) UpdateEndpoint(ctx context.Context, endpoint v1.Endpoint) e
 		return err
 	}
 
-	err = kp.AddEndpoint(context.TODO(), endpoint)
+	_ = kp.AddEndpoint(context.TODO(), uid, endpoint)
 
 	return nil
 }

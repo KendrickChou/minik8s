@@ -262,7 +262,7 @@ func watchingEndpoints(ctx context.Context, kp kubeproxy.KubeProxy, errChan chan
 }
 
 func handleEndpointChangeRequest(kp kubeproxy.KubeProxy, req *httpresponse.EndpointChangeRequest) {
-	klog.Infof("Receive %s Endpoint %s", req.Type, req.Endpoint.Name)
+	klog.Infof("Receive %s Endpoint %s, Key %s", req.Type, req.Endpoint.Name, req.Key)
 	parsedPath := strings.Split(req.Key, "/")
 	uid := parsedPath[len(parsedPath) - 1]
 	switch req.Type {
