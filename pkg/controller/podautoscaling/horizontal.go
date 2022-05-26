@@ -92,6 +92,7 @@ func (hpaC *HorizontalController) worker() {
 func (hpaC *HorizontalController) processNextWorkItem() bool {
 	key := hpaC.queue.Fetch().(string)
 	if !hpaC.queue.Process(key) {
+		klog.Infof("HPA %s is being processed", key)
 		return true
 	}
 
@@ -174,22 +175,30 @@ func (hpaC *HorizontalController) autoScaleReplicaSet(hpa *v1.HorizontalPodAutos
 			return errors.New("unsupported metric type")
 		}
 
-		var totalUtilization float64 = 0
+		totalUtilization := 0.0
+		avgUtil := 0.0
 		if metric.Resource.Name == "cpu" {
 			for _, pod := range pods {
 				totalUtilization = totalUtilization + hpaC.calcPodCpuUtilization(&pod)
 			}
+			avgUtil = totalUtilization
 		} else if metric.Resource.Name == "memory" {
 			for _, pod := range pods {
 				totalUtilization = totalUtilization + hpaC.calcPodMemoryUtilization(&pod)
 			}
+			avgUtil = totalUtilization / float64(len(pods))
 		} else {
-			return errors.New("unsupported resource type")
+			klog.Info("unsupported resource type")
+			continue
 		}
 
-		avgUtil := totalUtilization / float64(len(pods))
+		if metric.Resource.Target.AverageUtilization == 0 {
+			klog.Warning("resource utilization cannot be 0")
+			continue
+		}
 
-		expectation := int(math.Ceil(float64(hpa.Status.CurrentReplicas) * (avgUtil / float64(metric.Resource.Target.AverageUtilization))))
+		proportion := avgUtil / float64(metric.Resource.Target.AverageUtilization)
+		expectation := int(math.Ceil(float64(hpa.Status.CurrentReplicas) * proportion))
 		if expectation > expectReplica {
 			expectReplica = expectation
 		}
@@ -208,6 +217,8 @@ func (hpaC *HorizontalController) autoScaleReplicaSet(hpa *v1.HorizontalPodAutos
 	var rule *v1.HPAScalingRules
 	if hpa.Status.CurrentReplicas == expectReplica {
 		klog.Infof("%s don't need scaling", rs.Name)
+		hpaC.queue.Done(hpa.UID)
+		return nil
 	} else if hpa.Status.CurrentReplicas > expectReplica {
 		// scale down
 		if hpa.Spec.Behavior != nil && hpa.Spec.Behavior.ScaleDown != nil {
@@ -231,11 +242,13 @@ func (hpaC *HorizontalController) scale(hpa *v1.HorizontalPodAutoscaler, scaling
 	duration := time.Since(hpa.Status.LastScaleTime)
 	if int(duration.Seconds()) < scalingRule.StabilizationWindowSeconds {
 		klog.Info("scaling canceled because of stabilization window")
+		hpaC.queue.Done(hpa.UID)
 		return nil
 	}
 
 	if scalingRule.SelectPolicy == v1.DisabledPolicySelect {
 		klog.Info("autoscaling disabled")
+		hpaC.queue.Done(hpa.UID)
 		return nil
 	}
 
