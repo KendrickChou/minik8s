@@ -14,14 +14,15 @@ import (
 	"minik8s.com/minik8s/pkg/aqualake/apis/podserver"
 )
 
-const FunctionPath string = "/root/aqualake/function.py"
+// const FunctionPath string = "/root/aqualake/function.py"
+const FunctionPath string = "/root/functions"
 
 var FunctionName string
 
 func setUpRouter() *gin.Engine {
 	router := gin.Default()
 
-	router.PUT("/installfunction", func(ctx *gin.Context) {
+	router.POST("/installfunction", func(ctx *gin.Context) {
 		buf, err := ioutil.ReadAll(ctx.Request.Body)
 
 		var installFuncResp podserver.InstallFuncResp
@@ -65,7 +66,7 @@ func setUpRouter() *gin.Engine {
 		ctx.JSON(http.StatusOK, installFuncResp)
 	})
 
-	router.PUT("/trigger", func(ctx *gin.Context) {
+	router.POST("/trigger", func(ctx *gin.Context) {
 		var triggerResp podserver.TriggerResp
 
 		if FunctionName != "" {
@@ -88,7 +89,7 @@ func setUpRouter() *gin.Engine {
 			return
 		}
 
-		triggerResp.Ret = callPythonFunction(triggerReq.Args)
+		triggerResp.Ret = CallPythonFunction(triggerReq.Args)
 
 		ctx.JSON(http.StatusOK, triggerResp)
 	})
@@ -112,10 +113,12 @@ func main() {
 	r.Run(string(ip) + ":" + config.PodServePort)
 }
 
-func callPythonFunction(args interface{}) interface{} {
+func CallPythonFunction(args interface{}) interface{} {
 	module := ImportModule(FunctionPath, "function")
 	function := module.GetAttrString(FunctionName)
 	func_args := convertArgToPythonObj(args)
+
+	klog.Info(function, func_args)
 
 	res := function.Call(func_args, python.Py_None)
 
@@ -162,10 +165,7 @@ func convertPythonObjToRet(pyObj *python.PyObject) interface{} {
 	} else if python.PyTuple_Check(pyObj) {
 		return pyObj.Repr().String()
 	} else if python.PyBool_Check(pyObj) {
-		if pyObj.IsTrue() {
-			return true
-		}
-		return false
+		return pyObj.IsTrue()
 	}
 	return nil
 }
