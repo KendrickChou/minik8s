@@ -35,7 +35,7 @@ type Pod struct {
 
 	Spec PodSpec `json:"spec,omitempty"`
 
-	Status PodStatus `json:"-"`
+	Status PodStatus `json:"status,omitempty"`
 }
 
 type PodSpec struct {

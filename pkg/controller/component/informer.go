@@ -191,7 +191,22 @@ func (inf *Informer) AddItem(obj any) {
 	}
 
 	if uid != "" {
-		inf.store.Add(uid, obj)
+		switch inf.Kind {
+		case "Pod":
+			{
+				pod := obj.(v1.Pod)
+				pod.UID = uid
+				inf.store.Add(uid, pod)
+			}
+		case "Endpoint":
+			{
+				ep := obj.(v1.Endpoint)
+				ep.UID = uid
+				inf.store.Add(uid, ep)
+			}
+		default:
+			klog.Warningf("Add %s not handled", inf.Kind)
+		}
 	} else {
 		klog.Error("Add Object failed ", obj)
 	}

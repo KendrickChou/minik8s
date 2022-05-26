@@ -19,8 +19,9 @@ type ObjType int8
 type OpType int8
 
 type HttpResponse struct {
-	ID     string `json:"id"`
-	Status string `json:"status"`
+	ID     string `json:"id,omitempty"`
+	Status string `json:"status,omitempty"`
+	Error  string `json:"error,omitempty"`
 }
 
 const (
@@ -248,6 +249,7 @@ func TemplateArrangePodToNode(pod v1.Pod) {
 	}
 }
 
+// GetPodStatusHttp deprecated
 func GetPodStatusHttp(pod *v1.Pod) []byte {
 	var resp *http.Response
 	var err error
@@ -305,7 +307,7 @@ func UpdateEndpoint(ep *v1.Endpoint) bool {
 		return false
 	}
 
-	responseBytes := Rest(ep.UID, string(epByte), OBJ_POD, OP_PUT)
+	responseBytes := Rest(ep.UID, string(epByte), OBJ_ENDPOINT, OP_PUT)
 
 	var responseBody HttpResponse
 	err = json.Unmarshal(responseBytes, &responseBody)

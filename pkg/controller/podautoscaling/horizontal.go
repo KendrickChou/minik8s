@@ -321,7 +321,9 @@ func (hpaC *HorizontalController) periodicallyScale(hpa *v1.HorizontalPodAutosca
 		}
 		podTemplate.Kind = "Pod"
 		podTemplate.APIVersion = rs.APIVersion
+		podTemplate.ObjectMeta = rs.Spec.Template.ObjectMeta
 		podTemplate.UID = ""
+		podTemplate.Name = podTemplate.Name + "-"
 
 		ref := v1.OwnerReference{
 			Name:       rs.Name,
@@ -343,6 +345,7 @@ func (hpaC *HorizontalController) periodicallyScale(hpa *v1.HorizontalPodAutosca
 			}
 
 			for j := 0; j < numInPeriod; j++ {
+				podTemplate.Name += strconv.Itoa(i)
 				hpaC.podInformer.AddItem(podTemplate)
 				hpa.Status.CurrentReplicas++
 				hpa.Status.LastScaleTime = time.Now()
@@ -361,13 +364,8 @@ func (hpaC *HorizontalController) periodicallyScale(hpa *v1.HorizontalPodAutosca
 }
 
 func (hpaC *HorizontalController) calcPodCpuUtilization(pod *v1.Pod) float64 {
-	podStatus := component.GetPodStatus(pod)
-	if podStatus == nil {
-		return -1
-	}
-
 	var utilization float64 = 0
-	for _, cs := range podStatus.ContainerStatuses {
+	for _, cs := range pod.Status.ContainerStatuses {
 		utilStr := cs.State.CPUPerc
 		utilStr = utilStr[0 : len(utilStr)-1]
 		cpuUtil, err := strconv.ParseFloat(utilStr, 64)
@@ -382,13 +380,9 @@ func (hpaC *HorizontalController) calcPodCpuUtilization(pod *v1.Pod) float64 {
 }
 
 func (hpaC *HorizontalController) calcPodMemoryUtilization(pod *v1.Pod) float64 {
-	podStatus := component.GetPodStatus(pod)
-	if podStatus == nil {
-		return -1
-	}
 
 	var utilization float64 = 0
-	for _, cs := range podStatus.ContainerStatuses {
+	for _, cs := range pod.Status.ContainerStatuses {
 		utilStr := cs.State.MemPerc
 		utilStr = utilStr[0 : len(utilStr)-1]
 		memoryUtil, err := strconv.ParseFloat(utilStr, 64)
@@ -399,7 +393,7 @@ func (hpaC *HorizontalController) calcPodMemoryUtilization(pod *v1.Pod) float64 
 		utilization = utilization + memoryUtil
 	}
 
-	return utilization / float64(len(podStatus.ContainerStatuses))
+	return utilization / float64(len(pod.Status.ContainerStatuses))
 }
 
 func (hpaC *HorizontalController) enqueueHPA(hpa *v1.HorizontalPodAutoscaler) {

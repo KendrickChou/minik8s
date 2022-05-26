@@ -187,6 +187,7 @@ func (r *Reflector) parseJsonAndNotify(jsonObj []byte) {
 	}
 }
 
+// GetPodStatus deprecated
 func GetPodStatus(pod *v1.Pod) *v1.PodStatus {
 	buf := apiclient.GetPodStatusHttp(pod)
 	if buf == nil {

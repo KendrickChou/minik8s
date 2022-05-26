@@ -27,7 +27,7 @@ const (
 	AC_WatchPods_Path      = "/watch/pods"
 	AC_WatchNodes_Path     = "/watch/nodes"
 	AC_WatchReplicas_Path  = "/watch/replicas"
-	AC_WatchHPAs_Path      = "/watch/hpa"
+	AC_WatchHPAs_Path      = "/watch/hpas"
 	AC_WatchEndpoints_Path = "/watch/endpoints"
 	AC_WatchDnss_Path      = "/watch/dnss"
 	AC_WatchGpus_Path      = "/watch/gpus"

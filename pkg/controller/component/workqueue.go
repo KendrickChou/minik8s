@@ -32,6 +32,7 @@ type WorkQueue struct {
 func (q *WorkQueue) Init() {
 	q.queue = make([]any, 0)
 	q.cond = sync.NewCond(new(sync.Mutex))
+	q.processing = map[any]struct{}{}
 }
 
 func (q *WorkQueue) Pop() {

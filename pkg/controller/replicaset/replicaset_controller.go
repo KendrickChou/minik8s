@@ -4,6 +4,7 @@ import (
 	"k8s.io/klog"
 	v1 "minik8s.com/minik8s/pkg/api/v1"
 	"minik8s.com/minik8s/pkg/controller/component"
+	"strconv"
 )
 
 type ReplicaSetController struct {
@@ -151,7 +152,9 @@ func (rsc *ReplicaSetController) increaseReplica(realReplicaNum int, rs *v1.Repl
 		}
 		pod.Kind = "Pod"
 		pod.APIVersion = rs.APIVersion
+		pod.ObjectMeta = rs.Spec.Template.ObjectMeta
 		pod.UID = ""
+		pod.Name = pod.Name + "-" + strconv.Itoa(i)
 
 		ref := v1.OwnerReference{
 			Name:       rs.Name,
@@ -278,13 +281,7 @@ func (rsc *ReplicaSetController) updatePod(newObj, oldObj any) {
 		rsc.enqueueRS(rs)
 	}
 
-	newPodStatus := component.GetPodStatus(&newPod)
-	oldPodStatus := component.GetPodStatus(&oldPod)
-	if newPodStatus == nil || oldPodStatus == nil {
-		klog.Error("Can't get status of Pod")
-	}
-
-	if !v1.ComparePodStatus(newPodStatus, oldPodStatus) {
+	if !v1.ComparePodStatus(&newPod.Status, &oldPod.Status) {
 		rsc.enqueueRS(rs)
 	}
 }
