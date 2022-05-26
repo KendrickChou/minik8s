@@ -69,7 +69,7 @@ func ComparePodStatus(newStatus *PodStatus, oldStatus *PodStatus) bool {
 
 func GetOwnerReplicaSet(pod *Pod) string {
 	for _, owner := range pod.OwnerReferences {
-		if owner.Kind == "Replica" {
+		if owner.Kind == "ReplicaSet" {
 			return owner.UID
 		}
 	}

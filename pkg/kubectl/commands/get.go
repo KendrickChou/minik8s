@@ -67,9 +67,13 @@ func getPods() {
 		return
 	}
 	fmt.Printf("=->%v Pods\n", len(kvs))
-	fmt.Printf("%v\t\t\t\t%v\t\t\t%v\t\t\t%v\n", "Key", "Name", "Uid", "Status")
+	fmt.Printf("%v\t\t\t\t%v\t\t\t%v\t\t\t%v\n", "Key", "Name", "Uid", "OwnerReferences")
 	for _, kv := range kvs {
-		fmt.Printf("%v\t\t%v\t\t%v\t\t%v\n", kv.Key, kv.Pod.Name, kv.Pod.UID, kv.Pod.Status.Phase)
+		fmt.Printf("%v\t\t%v\t\t%v\t\t", kv.Key, kv.Pod.Name, kv.Pod.UID)
+		for _, owner := range kv.Pod.OwnerReferences {
+			fmt.Printf("%v: %v, ", owner.Kind, owner.UID)
+		}
+		fmt.Printf("\n")
 	}
 	fmt.Printf("\n")
 }

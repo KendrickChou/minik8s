@@ -58,7 +58,13 @@ func (rsc *ReplicaSetController) worker() {
 
 func (rsc *ReplicaSetController) processNextWorkItem() bool {
 	key := rsc.queue.Fetch().(string)
+	if !rsc.queue.Process(key) {
+		klog.Infof("ReplicaSet %s is being processed", key)
+		return true
+	}
+
 	err := rsc.syncReplicaSet(key)
+	rsc.queue.Done(key)
 	if err != nil {
 		klog.Error("syncReplicaSet error\n")
 	}
@@ -83,7 +89,6 @@ func (rsc *ReplicaSetController) syncReplicaSet(key string) error {
 	ownedPods := make([]v1.Pod, 0)
 	for _, item := range pods {
 		pod := item.(v1.Pod)
-
 		if v1.CheckOwner(pod.OwnerReferences, rs.UID) >= 0 {
 			ownedPods = append(ownedPods, pod)
 			replicaNum++
@@ -91,6 +96,17 @@ func (rsc *ReplicaSetController) syncReplicaSet(key string) error {
 			matchedNotOwnedPods = append(matchedNotOwnedPods, pod)
 		}
 	}
+
+	// ---debug---
+	//fmt.Printf("ownedPods: ")
+	//for _, pod := range ownedPods {
+	//	fmt.Printf("%v ", pod.UID)
+	//}
+	//fmt.Printf("\nmatchedNotOwnedPods: ")
+	//for _, pod := range matchedNotOwnedPods {
+	//	fmt.Printf("%v ", pod.UID)
+	//}
+	//fmt.Printf("\n")
 
 	rs.Status.Replicas = replicaNum
 	if replicaNum != rs.Spec.Replicas {
@@ -105,11 +121,11 @@ func (rsc *ReplicaSetController) syncReplicaSet(key string) error {
 }
 
 func (rsc *ReplicaSetController) decreaseReplica(realReplicaNum int, rs *v1.ReplicaSet, ownedPods []v1.Pod) {
-	for i := 0; i < rs.Spec.Replicas-realReplicaNum; i++ {
+	for i := 0; i < realReplicaNum-rs.Spec.Replicas; i++ {
 		pod := ownedPods[i]
 		index := v1.CheckOwner(pod.OwnerReferences, rs.UID)
+		klog.Infof("remove Pod %s's OwnerReference ReplicaSet %s", pod.UID, rs.UID)
 		pod.OwnerReferences = append(pod.OwnerReferences[:index], pod.OwnerReferences[index+1:]...)
-
 		rsc.podInformer.UpdateItem(pod.UID, pod)
 		rs.Status.Replicas--
 	}
@@ -165,10 +181,9 @@ func (rsc *ReplicaSetController) increaseReplica(realReplicaNum int, rs *v1.Repl
 		pod.OwnerReferences = append(pod.OwnerReferences, ref)
 
 		rsc.podInformer.AddItem(pod)
+
 		rs.Status.Replicas++
 	}
-
-	klog.Infof("Intentionally Update ReplicaSet %s, replica: %d", rs.Name, rs.Status.Replicas)
 	rsc.rsInformer.UpdateItem(rs.UID, *rs)
 }
 
@@ -207,37 +222,37 @@ func (rsc *ReplicaSetController) getPodOwnerReplicaSet(pod *v1.Pod) *v1.ReplicaS
 }
 
 func (rsc *ReplicaSetController) enqueueRS(rs *v1.ReplicaSet) {
-	klog.Info("Enqueue ReplicaSet ", rs.Name)
 	key := rs.UID
 	rsc.queue.Push(key)
 }
 
 func (rsc *ReplicaSetController) addRS(obj any) {
 	rs := obj.(v1.ReplicaSet)
-	klog.Info("AddReplicaSet ", rs.Name)
+	klog.Info("add ReplicaSet ", rs.UID)
 	rsc.enqueueRS(&rs)
 }
 
 func (rsc *ReplicaSetController) updateRS(newObj any, oldObj any) {
 	newRS := newObj.(v1.ReplicaSet)
 	oldRS := oldObj.(v1.ReplicaSet)
-	klog.Info("UpdateReplicaSet ", newRS.Name)
 
 	// replica num changes
 	if newRS.Spec.Replicas != oldRS.Spec.Replicas {
+		klog.Info("update ReplicaSet ", newRS.UID)
 		rsc.enqueueRS(&newRS)
 	}
 
 	// ReplicaSet Selector changes
 	if len(newRS.Spec.Selector.MatchLabels) != len(oldRS.Spec.Selector.MatchLabels) ||
 		!v1.MatchLabels(newRS.Spec.Selector.MatchLabels, oldRS.Spec.Selector.MatchLabels) {
+		klog.Info("update ReplicaSet ", newRS.UID)
 		rsc.enqueueRS(&newRS)
 	}
 }
 
 func (rsc *ReplicaSetController) deleteRS(obj any) {
 	rs := obj.(v1.ReplicaSet)
-	klog.Info("Delete ReplicaSet ", rs.Name)
+	klog.Info("delete ReplicaSet ", rs.UID)
 
 	pods := rsc.podInformer.List()
 	for _, item := range pods {
@@ -257,6 +272,7 @@ func (rsc *ReplicaSetController) addPod(obj any) {
 	rss := rsc.getPodReplicaSet(&pod)
 
 	for _, rs := range rss {
+		klog.Infof("enqueue ReplicaSet %s when add Pod %s", rs.UID, pod.UID)
 		rsc.enqueueRS(&rs)
 	}
 }
@@ -265,25 +281,29 @@ func (rsc *ReplicaSetController) updatePod(newObj, oldObj any) {
 	newPod := newObj.(v1.Pod)
 	oldPod := oldObj.(v1.Pod)
 
+	needAttention := len(newPod.Labels) != len(oldPod.Labels) || !v1.MatchLabels(newPod.Labels, oldPod.Labels) ||
+		!v1.ComparePodStatus(&newPod.Status, &oldPod.Status)
+
+	if !needAttention {
+		return
+	}
+
 	rs := rsc.getPodOwnerReplicaSet(&oldPod)
 	if rs == nil {
+		klog.Info(oldPod)
 		rss := rsc.getPodReplicaSet(&newPod)
 
 		for _, tmpRS := range rss {
+			klog.Infof("enqueue ReplicaSet %s when update Pod %s", tmpRS.UID, newPod.UID)
 			rsc.enqueueRS(&tmpRS)
 		}
 
 		return
-	}
-
-	if len(newPod.Labels) != len(oldPod.Labels) ||
-		!v1.MatchLabels(newPod.Labels, oldPod.Labels) {
+	} else {
+		klog.Infof("enqueue ReplicaSet %s when update Pod %s", rs.UID, newPod.UID)
 		rsc.enqueueRS(rs)
 	}
 
-	if !v1.ComparePodStatus(&newPod.Status, &oldPod.Status) {
-		rsc.enqueueRS(rs)
-	}
 }
 
 func (rsc *ReplicaSetController) deletePod(obj any) {
@@ -291,8 +311,9 @@ func (rsc *ReplicaSetController) deletePod(obj any) {
 
 	rs := rsc.getPodOwnerReplicaSet(&pod)
 	if rs != nil {
+		klog.Infof("enqueue ReplicaSet %s when delete Pod %s", rs.UID, pod.UID)
 		rsc.enqueueRS(rs)
 	} else {
-		klog.Error("Pod %s has no owner", pod.Name)
+		klog.Infof("delete Pod %s, which has no owner ReplicaSet", pod.UID)
 	}
 }

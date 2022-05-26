@@ -51,34 +51,34 @@ type HPAObject struct {
 	HPA v1.HorizontalPodAutoscaler `json:"value"`
 }
 
-func (dp *DeltaPart) GetType() string {
+func (dp DeltaPart) GetType() string {
 	return dp.Type
 }
 
-func (dp *DeltaPart) GetKey() string {
+func (dp DeltaPart) GetKey() string {
 	return dp.Key
 }
 
-func (p *PodObject) GetValue() any {
+func (p PodObject) GetValue() any {
 	return p.Pod
 }
 
-func (rs *ReplicaSetObject) GetValue() any {
+func (rs ReplicaSetObject) GetValue() any {
 	return rs.ReplicaSet
 }
 
-func (s *ServiceObject) GetValue() any {
+func (s ServiceObject) GetValue() any {
 	return s.Service
 }
 
-func (ed *EndpointObject) GetValue() any {
+func (ed EndpointObject) GetValue() any {
 	return ed.Endpoint
 }
 
-func (ps *PodStatusObject) GetValue() any {
+func (ps PodStatusObject) GetValue() any {
 	return ps.PodStatus
 }
 
-func (h *HPAObject) GetValue() any {
+func (h HPAObject) GetValue() any {
 	return h.HPA
 }

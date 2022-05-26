@@ -10,8 +10,8 @@ import (
 
 type Reflector struct {
 	// object type the reflector list/watch
-	Kind       string
-	NotifyChan chan Delta
+	Kind           string
+	transportQueue *WorkQueue
 }
 
 // Run list and watch
@@ -50,7 +50,7 @@ func (r *Reflector) list() {
 		for _, podObj := range fmtObjs {
 			podObj.Type = "PUT"
 			podObj.StripKey()
-			r.NotifyChan <- &podObj
+			r.transportQueue.Push(podObj)
 		}
 	case "ReplicaSet":
 		var fmtObjs []ReplicaSetObject
@@ -63,7 +63,7 @@ func (r *Reflector) list() {
 		for _, rsObj := range fmtObjs {
 			rsObj.Type = "PUT"
 			rsObj.StripKey()
-			r.NotifyChan <- &rsObj
+			r.transportQueue.Push(rsObj)
 		}
 	case "Service":
 		var fmtObjs []ServiceObject
@@ -76,7 +76,7 @@ func (r *Reflector) list() {
 		for _, serviceObj := range fmtObjs {
 			serviceObj.Type = "PUT"
 			serviceObj.StripKey()
-			r.NotifyChan <- &serviceObj
+			r.transportQueue.Push(serviceObj)
 		}
 	case "Endpoint":
 		var fmtObjs []EndpointObject
@@ -89,7 +89,7 @@ func (r *Reflector) list() {
 		for _, epObj := range fmtObjs {
 			epObj.Type = "PUT"
 			epObj.StripKey()
-			r.NotifyChan <- &epObj
+			r.transportQueue.Push(epObj)
 		}
 	case "HorizontalPodAutoscaler":
 		var fmtObjs []HPAObject
@@ -99,10 +99,10 @@ func (r *Reflector) list() {
 			klog.Error("Reflector parse error\n")
 		}
 
-		for _, epObj := range fmtObjs {
-			epObj.Type = "PUT"
-			epObj.StripKey()
-			r.NotifyChan <- &epObj
+		for _, hpaObj := range fmtObjs {
+			hpaObj.Type = "PUT"
+			hpaObj.StripKey()
+			r.transportQueue.Push(hpaObj)
 		}
 	}
 }
@@ -147,7 +147,7 @@ func (r *Reflector) parseJsonAndNotify(jsonObj []byte) {
 		}
 
 		obj.StripKey()
-		r.NotifyChan <- obj
+		r.transportQueue.Push(*obj)
 	case "ReplicaSet":
 		obj := &ReplicaSetObject{}
 		err := json.Unmarshal(jsonObj, obj)
@@ -156,7 +156,7 @@ func (r *Reflector) parseJsonAndNotify(jsonObj []byte) {
 		}
 
 		obj.StripKey()
-		r.NotifyChan <- obj
+		r.transportQueue.Push(*obj)
 	case "Service":
 		obj := &ServiceObject{}
 		err := json.Unmarshal(jsonObj, obj)
@@ -165,7 +165,7 @@ func (r *Reflector) parseJsonAndNotify(jsonObj []byte) {
 		}
 
 		obj.StripKey()
-		r.NotifyChan <- obj
+		r.transportQueue.Push(*obj)
 	case "Endpoint":
 		obj := &EndpointObject{}
 		err := json.Unmarshal(jsonObj, obj)
@@ -174,7 +174,7 @@ func (r *Reflector) parseJsonAndNotify(jsonObj []byte) {
 		}
 
 		obj.StripKey()
-		r.NotifyChan <- obj
+		r.transportQueue.Push(*obj)
 	case "HorizontalPodAutoscaler":
 		obj := &HPAObject{}
 		err := json.Unmarshal(jsonObj, obj)
@@ -183,7 +183,7 @@ func (r *Reflector) parseJsonAndNotify(jsonObj []byte) {
 		}
 
 		obj.StripKey()
-		r.NotifyChan <- obj
+		r.transportQueue.Push(*obj)
 	}
 }
 

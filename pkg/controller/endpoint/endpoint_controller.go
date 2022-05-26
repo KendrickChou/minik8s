@@ -59,9 +59,6 @@ func (epc *EndpointController) worker() {
 
 func (epc *EndpointController) processNextWorkItem() bool {
 	key := epc.queue.Fetch().(string)
-	if !epc.queue.Process(key) {
-		return true
-	}
 
 	item := epc.serviceInformer.GetItem(key)
 	if item == nil {
@@ -69,8 +66,12 @@ func (epc *EndpointController) processNextWorkItem() bool {
 		return true
 	}
 
+	if !epc.queue.Process(key) {
+		return true
+	}
 	service := item.(v1.Service)
 	err := epc.syncEndpoint(service)
+	epc.queue.Done(key)
 	if err != nil {
 		klog.Error("syncEndpoint error\n")
 		return false
@@ -146,7 +147,6 @@ func (epc *EndpointController) syncEndpoint(service v1.Service) error {
 		epc.endpointInformer.DeleteItem(UID)
 	}
 
-	epc.queue.Done(service.UID)
 	return nil
 }
 
@@ -337,6 +337,6 @@ func (epc *EndpointController) deletePod(obj any) {
 		klog.Infof("enqueue Service %s when delete Pod %s", service.UID, pod.UID)
 		epc.enqueueService(service)
 	} else {
-		klog.Infof("Delete Pod %s, which has no owner", pod.Name)
+		klog.Infof("delete Pod %s, which has no owner Service", pod.UID)
 	}
 }
