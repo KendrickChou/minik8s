@@ -3,9 +3,14 @@ package actionchain
 const (
 	ACT_TASK   = 0
 	ACT_CHOICE = 1
+
+	VAR_INT    = 0
+	VAR_STRING = 1
+	VAR_BOOL   = 2
 )
 
 type ActionType int
+type VarType int
 
 type ActionChain struct {
 	StartAt string `json:"StartAt"`
@@ -36,8 +41,7 @@ type Action struct {
 type Choice struct {
 	Variable string `json:"Variable"`
 
-	// int64 / bool / string
-	VarType string `json:"VarType"`
+	Type VarType `json:"Type"`
 
 	NumericEqual int64 `json:"NumericEqual"`
 

@@ -17,7 +17,7 @@ func main() {
 		StartAt: "Begin",
 		Chain: map[string]actionchain.Action{
 			"Begin": {
-				Type:     "Task",
+				Type:     actionchain.ACT_TASK,
 				Env:      "Python",
 				Function: funcId,
 				End:      true,

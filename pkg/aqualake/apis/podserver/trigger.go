@@ -1,11 +1,12 @@
 package podserver
 
 type TriggerReq struct {
-	Args interface{}
+	Args interface{} `json:"Args"`
 }
 
 type TriggerResp struct {
-	Ret interface{}
+	//Ret json.RawMessage `json:"Ret"`
+	Ret interface{} `json:"Ret"`
 
-	Err string
+	Err string `json:"Err"`
 }

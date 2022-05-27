@@ -10,6 +10,8 @@ import (
 	"minik8s.com/minik8s/pkg/aqualake/apis/podserver"
 	"minik8s.com/minik8s/pkg/aqualake/podpoolmanager"
 	"net/http"
+	"reflect"
+	"strconv"
 	"strings"
 )
 
@@ -26,10 +28,14 @@ func NewInvoker() *Invoker {
 }
 
 func (ivk *Invoker) InvokeActionChain(chain actionchain.ActionChain, arg interface{}) error {
-	currAction := chain.Chain[chain.StartAt]
+	currActionName := chain.StartAt
+	currActionArg := arg
 	for {
-		/*ret*/ _, err := ivk.invokeAction(currAction, arg)
+		currAction := chain.Chain[currActionName]
+		klog.Infof("Invoking Action Chain, currAction is %v", currActionName)
+		ret, err := ivk.invokeAction(currAction, currActionArg)
 		if err != nil {
+			klog.Errorf("Invoke Action Chain error, action returns a internal error: %v", err)
 			return err
 		}
 		if currAction.End {
@@ -38,8 +44,40 @@ func (ivk *Invoker) InvokeActionChain(chain actionchain.ActionChain, arg interfa
 		if currAction.Type == actionchain.ACT_TASK {
 			currAction = chain.Chain[currAction.Next]
 		} else {
-			for _, _ = range currAction.Choices {
-
+			for _, choice := range currAction.Choices {
+				if strings.HasPrefix(choice.Variable, "$.") {
+					varName := strings.TrimPrefix(choice.Variable, "$.")
+					if reflect.TypeOf(ret).Kind() == reflect.Map {
+						ret = ret.(map[string]interface{})[varName]
+					} else {
+						return errors.New("return value is not a map")
+					}
+				} else if strings.HasPrefix(choice.Variable, "$") {
+					index, _ := strconv.Atoi(strings.TrimPrefix(choice.Variable, "$"))
+					if reflect.TypeOf(ret).Kind() == reflect.Array {
+						ret = ret.([]interface{})[index]
+					} else {
+						return errors.New("return value is not a array")
+					}
+				}
+				switch choice.Type {
+				case actionchain.VAR_INT:
+					i := reflect.ValueOf(ret).Int()
+					if choice.NumericEqual == i {
+						currActionName = choice.Next
+						currActionArg = ret
+					}
+				case actionchain.VAR_STRING:
+					i := reflect.ValueOf(ret).String()
+					if choice.StringEqual == i {
+						currActionName = choice.Next
+					}
+				case actionchain.VAR_BOOL:
+					i := reflect.ValueOf(ret).Bool()
+					if choice.BooleanEqual == i {
+						currActionName = choice.Next
+					}
+				}
 			}
 		}
 	}
