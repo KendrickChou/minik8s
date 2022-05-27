@@ -23,6 +23,7 @@ type GetPodResponse struct {
 
 type PodEntry struct {
 	PodIP string
+	NeedInstall bool
 	mtx   sync.Mutex
 }
 
@@ -58,7 +59,7 @@ func newGenericPodEntry(env string) (*PodEntry, error) {
 	}
 
 	// wait pod IP ready
-	for iter := 0; iter < 10; iter++ {
+	for iter := 0; iter < 20; iter++ {
 		time.Sleep(3 * time.Second)
 
 		resp = apiclient.Rest(pod.UID, "", apiclient.OBJ_POD, apiclient.OP_GET)
@@ -74,7 +75,7 @@ func newGenericPodEntry(env string) (*PodEntry, error) {
 
 		if pod.Status.PodIP != "" {
 			klog.Infof("Pod %s is Ready to go", pod.ObjectMeta.Name)
-			return &PodEntry{PodIP: pod.Status.PodIP, mtx: sync.Mutex{}}, nil
+			return &PodEntry{PodIP: pod.Status.PodIP, NeedInstall: true, mtx: sync.Mutex{}}, nil
 		}
 	}
 
@@ -100,5 +101,7 @@ func (ppm *PodPoolManager) GetPod(action actionchain.Action) (*PodEntry, error) 
 }
 
 func (ppm *PodPoolManager) FreePod(pe *PodEntry) {
-	pe.mtx.Unlock()
+	if pe != nil{
+		pe.mtx.Unlock()
+	}
 }

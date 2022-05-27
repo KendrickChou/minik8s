@@ -33,7 +33,7 @@ func (ivk *Invoker) InvokeActionChain(chain actionchain.ActionChain, arg interfa
 	currActionArg := arg
 	for {
 		currAction := chain.Chain[currActionName]
-		klog.Infof("Invoking Action Chain, currAction is %v", currActionName)
+		klog.Infof("Invoking Action Chain, currAction is %v", currAction)
 		ret, err := ivk.invokeAction(currAction, currActionArg)
 		if err != nil {
 			klog.Errorf("Invoke Action Chain error, action returns a internal error: %v", err)
@@ -43,11 +43,12 @@ func (ivk *Invoker) InvokeActionChain(chain actionchain.ActionChain, arg interfa
 			return ret, nil
 		}
 		if currAction.Type == actionchain.ACT_TASK {
-			currAction = chain.Chain[currAction.Next]
-			currActionArg = ret
+			currActionName = currAction.Next
+			currActionArg = append([]interface{}{}, ret)
 		} else {
 			f := false
 			for _, choice := range currAction.Choices {
+				klog.Infof("Scanning choice: %v", choice)
 				if strings.HasPrefix(choice.Variable, "$.") {
 					varName := strings.TrimPrefix(choice.Variable, "$.")
 					if reflect.TypeOf(ret).Kind() == reflect.Map {
@@ -64,25 +65,25 @@ func (ivk *Invoker) InvokeActionChain(chain actionchain.ActionChain, arg interfa
 					}
 				}
 				switch choice.Type {
-				case actionchain.VAR_INT:
-					i := reflect.ValueOf(ret).Int()
+				case actionchain.VAR_FLOAT:
+					i := reflect.ValueOf(ret).Float()
 					if choice.NumericEqual == i {
 						currActionName = choice.Next
-						currActionArg = ret
+						currActionArg = append([]interface{}{}, i)
 						f = true
 					}
 				case actionchain.VAR_STRING:
 					i := reflect.ValueOf(ret).String()
 					if choice.StringEqual == i {
 						currActionName = choice.Next
-						currActionArg = ret
+						currActionArg = append([]interface{}{}, i)
 						f = true
 					}
 				case actionchain.VAR_BOOL:
 					i := reflect.ValueOf(ret).Bool()
 					if choice.BooleanEqual == i {
 						currActionName = choice.Next
-						currActionArg = ret
+						currActionArg = append([]interface{}{}, i)
 						f = true
 					}
 				}
@@ -102,31 +103,36 @@ func (ivk *Invoker) invokeAction(action actionchain.Action, arg interface{}) (in
 		return nil, err
 	}
 
-	var installReq podserver.InstallFuncReq
-	installReq.Name = action.Function
-	installReq.Url = constants.CouchGetFileRequest(constants.FunctionDBId, action.Function, action.Function)
-	installBuf, _ := json.Marshal(installReq)
-	resp, err := http.Post(podEntry.PodIP+"/installfunction",
-		"application/json; charset=utf-8",
-		bytes.NewReader(installBuf))
-	if err != nil {
-		klog.Errorf("install function err: %v", err)
-		return nil, err
+	if podEntry.NeedInstall{
+		var installReq podserver.InstallFuncReq
+		installReq.Name = action.Function
+		installReq.Url = constants.CouchGetFileRequest(constants.FunctionDBId, action.Function, action.Function)
+		installBuf, _ := json.Marshal(installReq)
+		klog.Infof("install function request: %s", installBuf)
+		resp, err := http.Post("http://"+podEntry.PodIP+":8698/installfunction",
+			"application/json; charset=utf-8",
+			bytes.NewReader(installBuf))
+		if err != nil {
+			klog.Errorf("install function err: %v", err)
+			return nil, err
+		}
+		buf, _ := io.ReadAll(resp.Body)
+		klog.Infof("install function response: %s", buf)
+		podEntry.NeedInstall = false
 	}
-	buf, _ := io.ReadAll(resp.Body)
-	klog.Infof("install function response: %s", buf)
 
 	var triggerReq podserver.TriggerReq
 	triggerReq.Args = arg
 	triggerBuf, _ := json.Marshal(triggerReq)
-	resp, err = http.Post(podEntry.PodIP+"/trigger",
+	klog.Infof("trigger function request: %s", triggerBuf)
+	resp, err := http.Post("http://"+podEntry.PodIP+":8698/trigger",
 		"application/json; charset=utf-8",
 		bytes.NewReader(triggerBuf))
 	if err != nil {
 		klog.Errorf("trigger function err: %v", err)
 		return nil, err
 	}
-	buf, _ = io.ReadAll(resp.Body)
+	buf, _ := io.ReadAll(resp.Body)
 	klog.Infof("trigger function response: %s", buf)
 
 	var triggerResp podserver.TriggerResp

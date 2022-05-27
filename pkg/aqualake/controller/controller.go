@@ -158,11 +158,11 @@ func SetUpRouter() *gin.Engine {
 			ctx.JSON(500, gin.H{"error": err.Error()})
 			return
 		} else {
-			err = ivk.InvokeActionChain(ac.ActionChain, arg)
+			ret, err := ivk.InvokeActionChain(ac.ActionChain, arg)
 			if err != nil {
 				ctx.JSON(500, gin.H{"error": err.Error()})
 			} else {
-				ctx.JSON(http.StatusOK, gin.H{"staus": "OK"})
+				ctx.JSON(http.StatusOK, gin.H{"staus": "OK", "result": ret})
 			}
 		}
 	})

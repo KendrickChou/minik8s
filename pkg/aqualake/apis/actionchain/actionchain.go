@@ -4,7 +4,7 @@ const (
 	ACT_TASK   = 0
 	ACT_CHOICE = 1
 
-	VAR_INT    = 0
+	VAR_FLOAT    = 0
 	VAR_STRING = 1
 	VAR_BOOL   = 2
 )
@@ -43,11 +43,11 @@ type Choice struct {
 
 	Type VarType `json:"Type"`
 
-	NumericEqual int64 `json:"NumericEqual"`
+	NumericEqual float64 `json:"NumericEqual,omitempty"`
 
-	BooleanEqual bool `json:"BooleanEqual"`
+	BooleanEqual bool `json:"BooleanEqual,omitempty"`
 
-	StringEqual string `json:"StringEqual"`
+	StringEqual string `json:"StringEqual,omitempty"`
 
 	Next string `json:"Next"`
 }
