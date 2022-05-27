@@ -7,6 +7,7 @@ import (
 	"io"
 	"k8s.io/klog"
 	"minik8s.com/minik8s/pkg/aqualake/apis/actionchain"
+	"minik8s.com/minik8s/pkg/aqualake/apis/constants"
 	"minik8s.com/minik8s/pkg/aqualake/apis/podserver"
 	"minik8s.com/minik8s/pkg/aqualake/podpoolmanager"
 	"net/http"
@@ -90,9 +91,14 @@ func (ivk *Invoker) invokeAction(action actionchain.Action, arg interface{}) (in
 	if err != nil {
 		return nil, err
 	}
+
+	var installReq podserver.InstallFuncReq
+	installReq.Name = action.Function
+	installReq.Url = constants.CouchGetFileRequest(constants.FunctionDBId, action.Function, action.Function)
+	installBuf, _ := json.Marshal(installReq)
 	resp, err := http.Post(pod.Status.PodIP+"/installfunction",
 		"application/json; charset=utf-8",
-		strings.NewReader(action.Function))
+		bytes.NewReader(installBuf))
 	if err != nil {
 		klog.Errorf("install function err: %v", err)
 		return nil, err
