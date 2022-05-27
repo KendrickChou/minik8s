@@ -27,6 +27,7 @@ type WorkQueue struct {
 	queue      []any
 	processing set
 	cond       *sync.Cond
+	mtx        sync.Mutex
 }
 
 func (q *WorkQueue) Init() {
@@ -75,19 +76,18 @@ func (q *WorkQueue) Fetch() any {
 }
 
 func (q *WorkQueue) Process(key string) bool {
-	q.cond.L.Lock()
+	q.mtx.Lock()
+	defer q.mtx.Unlock()
 	if q.processing.has(key) {
-		q.cond.L.Unlock()
 		return false
 	} else {
 		q.processing.insert(key)
-		q.cond.L.Unlock()
 		return true
 	}
 }
 
 func (q *WorkQueue) Done(key string) {
-	q.cond.L.Lock()
+	q.mtx.Lock()
 	q.processing.delete(key)
-	q.cond.L.Unlock()
+	q.mtx.Unlock()
 }

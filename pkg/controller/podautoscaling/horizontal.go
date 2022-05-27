@@ -74,12 +74,13 @@ func (hpaC *HorizontalController) Run() {
 
 func (hpaC *HorizontalController) periodicallyScaleAll() {
 	for {
+		time.Sleep(time.Second * 15)
+		klog.Info("periodically scale")
 		hpas := hpaC.hpaInformer.List()
 		for _, item := range hpas {
 			hpa := item.(v1.HorizontalPodAutoscaler)
 			hpaC.enqueueHPA(&hpa)
 		}
-		time.Sleep(time.Second * 15)
 	}
 }
 
@@ -98,7 +99,7 @@ func (hpaC *HorizontalController) processNextWorkItem() bool {
 
 	err := hpaC.reconcileAutoScaler(key)
 	if err != nil {
-		klog.Error("reconcileAutoScaler error, item key ", err.Error())
+		klog.Error(err.Error())
 		return false
 	}
 	return true
@@ -116,7 +117,7 @@ func (hpaC *HorizontalController) getTargetReplicaSet(hpa *v1.HorizontalPodAutos
 	return nil
 }
 
-func (hpaC *HorizontalController) getRSRelatedPods(rs *v1.ReplicaSet) []v1.Pod {
+func (hpaC *HorizontalController) getRSOwnedPods(rs *v1.ReplicaSet) []v1.Pod {
 	relatedPods := make([]v1.Pod, 0)
 	pods := hpaC.podInformer.List()
 	for _, item := range pods {
@@ -157,7 +158,7 @@ func (hpaC *HorizontalController) reconcileAutoScaler(key string) error {
 			hpaC.rsInformer.UpdateItem(targetRS.UID, *targetRS)
 		}
 
-		relatedPods := hpaC.getRSRelatedPods(targetRS)
+		relatedPods := hpaC.getRSOwnedPods(targetRS)
 		hpa.Status.CurrentReplicas = len(relatedPods)
 		return hpaC.autoScaleReplicaSet(&hpa, targetRS, relatedPods)
 	} else {
@@ -235,6 +236,7 @@ func (hpaC *HorizontalController) autoScaleReplicaSet(hpa *v1.HorizontalPodAutos
 		}
 	}
 
+	klog.Infof("rule: %v", rule)
 	return hpaC.scale(hpa, rule, pods, rs)
 }
 
@@ -296,6 +298,7 @@ func (hpaC *HorizontalController) periodicallyScale(hpa *v1.HorizontalPodAutosca
 		max = policy.Value / 100 * hpa.Status.CurrentReplicas
 	}
 
+	klog.Infof("HPA %s, desired: %v, current: %v", hpa.UID, hpa.Status.DesiredReplicas, hpa.Status.CurrentReplicas)
 	if hpa.Status.DesiredReplicas < hpa.Status.CurrentReplicas {
 		// delete pods
 		delta := hpa.Status.CurrentReplicas - hpa.Status.DesiredReplicas
@@ -315,6 +318,7 @@ func (hpaC *HorizontalController) periodicallyScale(hpa *v1.HorizontalPodAutosca
 					continue
 				}
 
+				klog.Infof("delete Pod %s", podUIDs[i])
 				hpaC.podInformer.DeleteItem(podUIDs[i])
 				hpa.Status.CurrentReplicas--
 				hpa.Status.LastScaleTime = time.Now()
@@ -327,53 +331,110 @@ func (hpaC *HorizontalController) periodicallyScale(hpa *v1.HorizontalPodAutosca
 			}
 		}
 	} else {
+		hpaC.masterCurrentPods(max, policy, hpa, rs)
 		// create pods
-		podTemplate := v1.Pod{
-			ObjectMeta: rs.Spec.Template.ObjectMeta,
-			Spec:       rs.Spec.Template.Spec,
-		}
-		podTemplate.Kind = "Pod"
-		podTemplate.APIVersion = rs.APIVersion
-		podTemplate.ObjectMeta = rs.Spec.Template.ObjectMeta
-		podTemplate.UID = ""
-		podTemplate.Name = podTemplate.Name + "-"
-
-		ref := v1.OwnerReference{
-			Name:       rs.Name,
-			APIVersion: rs.APIVersion,
-			UID:        rs.UID,
-			Kind:       rs.Kind,
-		}
-		podTemplate.OwnerReferences = append(podTemplate.OwnerReferences, ref)
-
-		delta := hpa.Status.DesiredReplicas - hpa.Status.CurrentReplicas
-		leftToAdd := delta
-
-		for i := 0; i < delta; {
-			numInPeriod := max
-			endFlag := false
-			if max > leftToAdd {
-				numInPeriod = leftToAdd
-				endFlag = true
-			}
-
-			for j := 0; j < numInPeriod; j++ {
-				podTemplate.Name += strconv.Itoa(i)
-				hpaC.podInformer.AddItem(podTemplate)
-				hpa.Status.CurrentReplicas++
-				hpa.Status.LastScaleTime = time.Now()
-				i++
-			}
-
-			if !endFlag {
-				leftToAdd -= max
-				time.Sleep(time.Duration(policy.PeriodSeconds) * time.Second)
-			}
-		}
+		hpaC.createPods(max, policy, hpa, rs)
 	}
 
 	hpaC.hpaInformer.UpdateItem(hpa.UID, *hpa)
 	hpaC.queue.Done(hpa.UID)
+}
+
+func (hpaC *HorizontalController) masterCurrentPods(max int, policy *v1.HPAScalingPolicy, hpa *v1.HorizontalPodAutoscaler, rs *v1.ReplicaSet) {
+	pods := hpaC.podInformer.List()
+	readyPods := make([]v1.Pod, 0)
+	for _, item := range pods {
+		pod := item.(v1.Pod)
+		if v1.GetOwnerReplicaSet(&pod) == "" && v1.MatchSelector(rs.Spec.Selector, pod.Labels) {
+			readyPods = append(readyPods, pod)
+		}
+	}
+
+	totalReady := len(readyPods)
+	expectNum := hpa.Status.DesiredReplicas - hpa.Status.CurrentReplicas
+	var delta int
+	if totalReady < expectNum {
+		delta = totalReady
+	} else {
+		delta = expectNum
+	}
+
+	leftToAdd := delta
+
+	for i := 0; i < delta; {
+		numInPeriod := max
+		endFlag := false
+		if max > leftToAdd {
+			numInPeriod = leftToAdd
+			endFlag = true
+		}
+
+		for j := 0; j < numInPeriod; j++ {
+			pod := readyPods[i]
+			ref := v1.OwnerReference{
+				Name:       rs.Name,
+				APIVersion: rs.APIVersion,
+				UID:        rs.UID,
+				Kind:       rs.Kind,
+			}
+			pod.OwnerReferences = append(pod.OwnerReferences, ref)
+			hpaC.podInformer.UpdateItem(pod.UID, pod)
+
+			hpa.Status.CurrentReplicas++
+			hpa.Status.LastScaleTime = time.Now()
+			i++
+		}
+
+		if !endFlag {
+			leftToAdd -= max
+			time.Sleep(time.Duration(policy.PeriodSeconds) * time.Second)
+		}
+	}
+}
+
+func (hpaC *HorizontalController) createPods(max int, policy *v1.HPAScalingPolicy, hpa *v1.HorizontalPodAutoscaler, rs *v1.ReplicaSet) {
+	podTemplate := v1.Pod{
+		ObjectMeta: rs.Spec.Template.ObjectMeta,
+		Spec:       rs.Spec.Template.Spec,
+	}
+	podTemplate.Kind = "Pod"
+	podTemplate.APIVersion = rs.APIVersion
+	podTemplate.ObjectMeta = rs.Spec.Template.ObjectMeta
+	podTemplate.UID = ""
+	podTemplate.Name = podTemplate.Name + "-"
+
+	ref := v1.OwnerReference{
+		Name:       rs.Name,
+		APIVersion: rs.APIVersion,
+		UID:        rs.UID,
+		Kind:       rs.Kind,
+	}
+	podTemplate.OwnerReferences = append(podTemplate.OwnerReferences, ref)
+
+	delta := hpa.Status.DesiredReplicas - hpa.Status.CurrentReplicas
+	leftToAdd := delta
+
+	for i := 0; i < delta; {
+		numInPeriod := max
+		endFlag := false
+		if max > leftToAdd {
+			numInPeriod = leftToAdd
+			endFlag = true
+		}
+
+		for j := 0; j < numInPeriod; j++ {
+			podTemplate.Name += strconv.Itoa(i)
+			hpaC.podInformer.AddItem(podTemplate)
+			hpa.Status.CurrentReplicas++
+			hpa.Status.LastScaleTime = time.Now()
+			i++
+		}
+
+		if !endFlag {
+			leftToAdd -= max
+			time.Sleep(time.Duration(policy.PeriodSeconds) * time.Second)
+		}
+	}
 }
 
 func (hpaC *HorizontalController) calcPodCpuUtilization(pod *v1.Pod) float64 {
@@ -424,11 +485,13 @@ func (hpaC *HorizontalController) updateHPA(newObj any, oldObj any) {
 		return
 	}
 
+	klog.Infof("update HPA %s", newHPA.UID)
 	hpaC.enqueueHPA(&newHPA)
 }
 
 func (hpaC *HorizontalController) addHPA(obj any) {
 	hpa := obj.(v1.HorizontalPodAutoscaler)
+	klog.Infof("add HPA %s", hpa.UID)
 	hpaC.enqueueHPA(&hpa)
 }
 

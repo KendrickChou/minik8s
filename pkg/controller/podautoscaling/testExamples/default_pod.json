@@ -1,0 +1,41 @@
+{
+  "kind": "pod",
+  "apiversion": "v1",
+  "metadata": {
+    "name": "thePod",
+    "namespace": "default",
+    "uid": "",
+    "labels": {
+      "app" : "nginx"
+    }
+  },
+  "spec": {
+    "Containers": [
+      {
+        "Name": "myFirstContainer",
+        "Namespace": "example",
+        "ID": "4a2e3b94e5b5d184001b4a3475e958619bddbe89702b6249336f952adc9c33e4",
+        "Image": "nginx:latest",
+        "ImagePullPolicy": "IfNotPresent",
+        "Entrypoint": [
+        ],
+        "Mounts": [
+        ]
+      }
+    ]
+  },
+  "Status": {
+    "Phase": "Succeeded",
+    "ContainerStatuses": [
+      {
+        "Name": "containerStatus",
+        "State": {
+          "status": "running",
+          "exitCode": 0,
+          "cpuperc": "22.5%",
+          "memperc": "26.5%"
+        }
+      }
+    ]
+  }
+}

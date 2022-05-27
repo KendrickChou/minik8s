@@ -97,12 +97,12 @@ func Watch(ctx context.Context, ch chan []byte, ty ObjType) {
 		return
 	}
 
+	reader := bufio.NewReader(resp.Body)
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		default:
-			reader := bufio.NewReader(resp.Body)
 			buf, err := reader.ReadBytes(26)
 			if err != nil {
 				klog.Errorf("error: %v", err)

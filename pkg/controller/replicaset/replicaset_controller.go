@@ -89,10 +89,11 @@ func (rsc *ReplicaSetController) syncReplicaSet(key string) error {
 	ownedPods := make([]v1.Pod, 0)
 	for _, item := range pods {
 		pod := item.(v1.Pod)
-		if v1.CheckOwner(pod.OwnerReferences, rs.UID) >= 0 {
+		ownerRS := v1.GetOwnerReplicaSet(&pod)
+		if ownerRS == rs.UID {
 			ownedPods = append(ownedPods, pod)
 			replicaNum++
-		} else if v1.MatchSelector(rs.Spec.Selector, pod.Labels) {
+		} else if ownerRS == "" && v1.MatchSelector(rs.Spec.Selector, pod.Labels) {
 			matchedNotOwnedPods = append(matchedNotOwnedPods, pod)
 		}
 	}
@@ -238,6 +239,12 @@ func (rsc *ReplicaSetController) updateRS(newObj any, oldObj any) {
 
 	// replica num changes
 	if newRS.Spec.Replicas != oldRS.Spec.Replicas {
+		klog.Info("update ReplicaSet ", newRS.UID)
+		rsc.enqueueRS(&newRS)
+	}
+
+	// get control back from HPA
+	if oldRS.Status.Replicas == -1 && newRS.Status.Replicas >= 0 {
 		klog.Info("update ReplicaSet ", newRS.UID)
 		rsc.enqueueRS(&newRS)
 	}
