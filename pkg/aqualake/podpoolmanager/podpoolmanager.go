@@ -13,6 +13,12 @@ import (
 	"minik8s.com/minik8s/pkg/kubectl/commands"
 )
 
+type GetPodResponse struct {
+	Key  string `json:"key"`
+	Pod  v1.Pod `json:"value"`
+	Type string `json:"type"`
+}
+
 type PodPoolManager struct {
 	pp map[string][]*v1.Pod
 }
@@ -46,27 +52,21 @@ func newGenericPod(env string) (*v1.Pod, error) {
 
 	// wait pod IP ready
 	for iter := 0; iter < 10; iter++ {
-		time.Sleep(3)
+		time.Sleep(3 * time.Second)
 
-		resp = apiclient.GetPodStatus(pod)
+		resp = apiclient.Rest(pod.UID, "", apiclient.OBJ_POD, apiclient.OP_GET)
 
-		if resp == nil {
-			errInfo := "GetPodStatus Response nil"
-			klog.Error(errInfo)
-			return nil, errors.New(errInfo)
-		}
-
-		var podStatus v1.PodStatus
-		err := json.Unmarshal(resp, &podStatus)
+		var getPodResp GetPodResponse
+		err = json.Unmarshal(resp, &getPodResp)
 
 		if err != nil {
-			klog.Errorf("Unmarshal GetPodStatus Request Error")
+			klog.Errorf("Unmarshal GetPodRequest Error")
 			return nil, err
 		}
+		*pod = getPodResp.Pod
 
-		if podStatus.PodIP != "" {
+		if pod.Status.PodIP != "" {
 			klog.Infof("Pod %s is Ready to go", pod.ObjectMeta.Name)
-			pod.Status = podStatus
 			return pod, nil
 		}
 	}

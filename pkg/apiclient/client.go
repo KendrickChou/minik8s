@@ -96,13 +96,22 @@ func Watch(ctx context.Context, ch chan []byte, ty ObjType) {
 		return
 	}
 
+	reader := bufio.NewReader(resp.Body)
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		default:
-			reader := bufio.NewReader(resp.Body)
 			buf, err := reader.ReadBytes(26)
+			//var buf []byte
+			//b := make([]byte, 1)
+			//for {
+			//	_, _ = resp.Body.Read(b)
+			//	buf = append(buf, b[0])
+			//	if b[0] == 26 {
+			//		break
+			//	}
+			//}
 			if err != nil {
 				klog.Errorf("error: %v", err)
 				klog.Errorf("Rewatch...\n")
@@ -111,6 +120,7 @@ func Watch(ctx context.Context, ch chan []byte, ty ObjType) {
 			}
 
 			buf[len(buf)-1] = '\n'
+			klog.Infof("buf: %s\n", buf)
 			ch <- buf
 		}
 	}
@@ -197,7 +207,7 @@ func Rest(id string, value string, objTy ObjType, opTy OpType) []byte {
 	}
 	switch opTy {
 	case OP_GET:
-		resp, err = http.Get(url)
+		resp, err = http.Get(url + "/" + id)
 	case OP_PUT:
 		cli := http.Client{}
 		req, _ := http.NewRequest(http.MethodPut, url+"/"+id, strings.NewReader(value))

@@ -50,7 +50,7 @@ const (
 	PythonContainerName string = "python"
 	GoContainerName     string = "go"
 
-	PythonImageName string = "python-img"
+	PythonImageName string = "aqualake-python"
 	GoImageName     string = "go-img"
 )
 
