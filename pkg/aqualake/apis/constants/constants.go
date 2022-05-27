@@ -50,8 +50,8 @@ const (
 	PythonContainerName string = "python"
 	GoContainerName     string = "go"
 
-	PythonImageName string = "aqualake-python:latest"
-	GoImageName     string = "aqualake-go:latest"
+	PythonImageName string = "docker.io/kendrickchou/aqualake-python:latest"
+	GoImageName     string = "docker.io/kendrickchou/aqualake-go:latest"
 )
 
 func NewPodConfig(podtype string) *v1.Pod {

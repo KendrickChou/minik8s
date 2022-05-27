@@ -1,6 +1,7 @@
 package podpoolmanager
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -22,14 +23,18 @@ type GetPodResponse struct {
 }
 
 type PodEntry struct {
-	PodIP string
+	PodIP       string
 	NeedInstall bool
-	mtx   sync.Mutex
+	uid         string
+	cancel      context.CancelFunc
+	mtx         sync.Mutex
 }
 
 type PodPoolManager struct {
 	pp map[string][]*PodEntry
 }
+
+var bigLock sync.Mutex
 
 func NewPodPoolManager() *PodPoolManager {
 	ppm := &PodPoolManager{
@@ -75,7 +80,7 @@ func newGenericPodEntry(env string) (*PodEntry, error) {
 
 		if pod.Status.PodIP != "" {
 			klog.Infof("Pod %s is Ready to go", pod.ObjectMeta.Name)
-			return &PodEntry{PodIP: pod.Status.PodIP, NeedInstall: true, mtx: sync.Mutex{}}, nil
+			return &PodEntry{PodIP: pod.Status.PodIP, NeedInstall: true, mtx: sync.Mutex{}, uid: pod.UID, cancel: func() {}}, nil
 		}
 	}
 
@@ -87,6 +92,11 @@ func newGenericPodEntry(env string) (*PodEntry, error) {
 func (ppm *PodPoolManager) GetPod(action actionchain.Action) (*PodEntry, error) {
 	for _, pe := range ppm.pp[action.Function] {
 		if pe.mtx.TryLock() {
+			klog.Infof("reuse podIP %v, reset delete timer..", pe.PodIP)
+			pe.cancel()
+			newCtx, cancel := context.WithCancel(context.Background())
+			go ppm.DeletePodAfter5Minute(newCtx, pe, action)
+			pe.cancel = cancel
 			return pe, nil
 		}
 	}
@@ -95,13 +105,48 @@ func (ppm *PodPoolManager) GetPod(action actionchain.Action) (*PodEntry, error) 
 	if err != nil {
 		return nil, err
 	}
+	bigLock.Lock()
 	ppm.pp[action.Function] = append(ppm.pp[action.Function], pe)
+	bigLock.Unlock()
 	pe.mtx.Lock()
+	ctx, cancel := context.WithCancel(context.Background())
+	go ppm.DeletePodAfter5Minute(ctx, pe, action)
+	pe.cancel = cancel
 	return pe, err
 }
 
 func (ppm *PodPoolManager) FreePod(pe *PodEntry) {
-	if pe != nil{
+	if pe != nil {
 		pe.mtx.Unlock()
 	}
+}
+
+func (ppm *PodPoolManager) DeletePodAfter5Minute(ctx context.Context, pe *PodEntry, action actionchain.Action) {
+	if pe != nil {
+		for {
+			select {
+			case <-ctx.Done():
+				klog.Infof("ctx canceled, delete task..")
+				return
+			case <-time.After(5 * time.Minute):
+				ppm.DeletePod(pe, action)
+			}
+		}
+	}
+}
+func (ppm *PodPoolManager) CancelDeletePod(pe *PodEntry) {
+	pe.cancel()
+}
+
+func (ppm *PodPoolManager) DeletePod(pe *PodEntry, action actionchain.Action) {
+	bigLock.Lock()
+	for i, podEntry := range ppm.pp[action.Function] {
+		if podEntry == pe {
+			_ = apiclient.Rest(pe.uid, "", apiclient.OBJ_POD, apiclient.OP_DELETE)
+			ppm.pp[action.Function] = append(ppm.pp[action.Function][:i], ppm.pp[action.Function][i+1:]...)
+			break
+		}
+		i++
+	}
+	bigLock.Unlock()
 }

@@ -98,12 +98,19 @@ func (ivk *Invoker) InvokeActionChain(chain actionchain.ActionChain, arg interfa
 
 func (ivk *Invoker) invokeAction(action actionchain.Action, arg interface{}) (interface{}, error) {
 	podEntry, err := ivk.ppm.GetPod(action)
-	defer ivk.ppm.FreePod(podEntry)
+	defer func() {
+		ivk.ppm.FreePod(podEntry)
+		if err != nil {
+			klog.Infof("something wrong with podIP %v, forget it...", podEntry.PodIP)
+			ivk.ppm.CancelDeletePod(podEntry)
+			ivk.ppm.DeletePod(podEntry, action)
+		}
+	}()
 	if err != nil {
 		return nil, err
 	}
 
-	if podEntry.NeedInstall{
+	if podEntry.NeedInstall {
 		var installReq podserver.InstallFuncReq
 		installReq.Name = action.Function
 		installReq.Url = constants.CouchGetFileRequest(constants.FunctionDBId, action.Function, action.Function)
