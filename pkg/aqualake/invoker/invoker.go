@@ -28,7 +28,7 @@ func NewInvoker() *Invoker {
 	return ivk
 }
 
-func (ivk *Invoker) InvokeActionChain(chain actionchain.ActionChain, arg interface{}) error {
+func (ivk *Invoker) InvokeActionChain(chain actionchain.ActionChain, arg interface{}) (interface{}, error) {
 	currActionName := chain.StartAt
 	currActionArg := arg
 	for {
@@ -37,28 +37,30 @@ func (ivk *Invoker) InvokeActionChain(chain actionchain.ActionChain, arg interfa
 		ret, err := ivk.invokeAction(currAction, currActionArg)
 		if err != nil {
 			klog.Errorf("Invoke Action Chain error, action returns a internal error: %v", err)
-			return err
+			return nil, err
 		}
 		if currAction.End {
-			return nil
+			return ret, nil
 		}
 		if currAction.Type == actionchain.ACT_TASK {
 			currAction = chain.Chain[currAction.Next]
+			currActionArg = ret
 		} else {
+			f := false
 			for _, choice := range currAction.Choices {
 				if strings.HasPrefix(choice.Variable, "$.") {
 					varName := strings.TrimPrefix(choice.Variable, "$.")
 					if reflect.TypeOf(ret).Kind() == reflect.Map {
 						ret = ret.(map[string]interface{})[varName]
 					} else {
-						return errors.New("return value is not a map")
+						return nil, errors.New("return value is not a map")
 					}
 				} else if strings.HasPrefix(choice.Variable, "$") {
 					index, _ := strconv.Atoi(strings.TrimPrefix(choice.Variable, "$"))
 					if reflect.TypeOf(ret).Kind() == reflect.Array {
 						ret = ret.([]interface{})[index]
 					} else {
-						return errors.New("return value is not a array")
+						return nil, errors.New("return value is not a array")
 					}
 				}
 				switch choice.Type {
@@ -67,18 +69,26 @@ func (ivk *Invoker) InvokeActionChain(chain actionchain.ActionChain, arg interfa
 					if choice.NumericEqual == i {
 						currActionName = choice.Next
 						currActionArg = ret
+						f = true
 					}
 				case actionchain.VAR_STRING:
 					i := reflect.ValueOf(ret).String()
 					if choice.StringEqual == i {
 						currActionName = choice.Next
+						currActionArg = ret
+						f = true
 					}
 				case actionchain.VAR_BOOL:
 					i := reflect.ValueOf(ret).Bool()
 					if choice.BooleanEqual == i {
 						currActionName = choice.Next
+						currActionArg = ret
+						f = true
 					}
 				}
+			}
+			if !f {
+				return nil, errors.New("no choice")
 			}
 		}
 	}
@@ -86,8 +96,8 @@ func (ivk *Invoker) InvokeActionChain(chain actionchain.ActionChain, arg interfa
 }
 
 func (ivk *Invoker) invokeAction(action actionchain.Action, arg interface{}) (interface{}, error) {
-	env := action.Env
-	pod, err := ivk.ppm.GetPod(env)
+	podEntry, err := ivk.ppm.GetPod(action)
+	defer ivk.ppm.FreePod(podEntry)
 	if err != nil {
 		return nil, err
 	}
@@ -96,7 +106,7 @@ func (ivk *Invoker) invokeAction(action actionchain.Action, arg interface{}) (in
 	installReq.Name = action.Function
 	installReq.Url = constants.CouchGetFileRequest(constants.FunctionDBId, action.Function, action.Function)
 	installBuf, _ := json.Marshal(installReq)
-	resp, err := http.Post(pod.Status.PodIP+"/installfunction",
+	resp, err := http.Post(podEntry.PodIP+"/installfunction",
 		"application/json; charset=utf-8",
 		bytes.NewReader(installBuf))
 	if err != nil {
@@ -109,7 +119,7 @@ func (ivk *Invoker) invokeAction(action actionchain.Action, arg interface{}) (in
 	var triggerReq podserver.TriggerReq
 	triggerReq.Args = arg
 	triggerBuf, _ := json.Marshal(triggerReq)
-	resp, err = http.Post(pod.Status.PodIP+"/trigger",
+	resp, err = http.Post(podEntry.PodIP+"/trigger",
 		"application/json; charset=utf-8",
 		bytes.NewReader(triggerBuf))
 	if err != nil {

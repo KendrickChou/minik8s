@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"minik8s.com/minik8s/pkg/aqualake/apis/actionchain"
+	"sync"
 	"time"
 
 	"k8s.io/klog"
@@ -19,19 +21,24 @@ type GetPodResponse struct {
 	Type string `json:"type"`
 }
 
+type PodEntry struct {
+	PodIP string
+	mtx   sync.Mutex
+}
+
 type PodPoolManager struct {
-	pp map[string][]*v1.Pod
+	pp map[string][]*PodEntry
 }
 
 func NewPodPoolManager() *PodPoolManager {
 	ppm := &PodPoolManager{
-		pp: make(map[string][]*v1.Pod),
+		pp: make(map[string][]*PodEntry),
 	}
 
 	return ppm
 }
 
-func newGenericPod(env string) (*v1.Pod, error) {
+func newGenericPodEntry(env string) (*PodEntry, error) {
 	pod := constants.NewPodConfig(env)
 	buf, _ := json.Marshal(pod)
 	resp := apiclient.Rest("", string(buf), apiclient.OBJ_POD, apiclient.OP_POST)
@@ -67,7 +74,7 @@ func newGenericPod(env string) (*v1.Pod, error) {
 
 		if pod.Status.PodIP != "" {
 			klog.Infof("Pod %s is Ready to go", pod.ObjectMeta.Name)
-			return pod, nil
+			return &PodEntry{PodIP: pod.Status.PodIP, mtx: sync.Mutex{}}, nil
 		}
 	}
 
@@ -76,11 +83,22 @@ func newGenericPod(env string) (*v1.Pod, error) {
 	return nil, errors.New(errInfo)
 }
 
-func (ppm *PodPoolManager) GetPod(podEnv string) (*v1.Pod, error) {
-	pod, err := newGenericPod(podEnv)
+func (ppm *PodPoolManager) GetPod(action actionchain.Action) (*PodEntry, error) {
+	for _, pe := range ppm.pp[action.Function] {
+		if pe.mtx.TryLock() {
+			return pe, nil
+		}
+	}
+
+	pe, err := newGenericPodEntry(action.Env)
 	if err != nil {
 		return nil, err
 	}
-	ppm.pp[podEnv] = append(ppm.pp[podEnv], pod)
-	return pod, err
+	ppm.pp[action.Function] = append(ppm.pp[action.Function], pe)
+	pe.mtx.Lock()
+	return pe, err
+}
+
+func (ppm *PodPoolManager) FreePod(pe *PodEntry) {
+	pe.mtx.Unlock()
 }
