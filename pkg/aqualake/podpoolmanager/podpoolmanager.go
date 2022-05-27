@@ -128,7 +128,7 @@ func (ppm *PodPoolManager) DeletePodAfter5Minute(ctx context.Context, pe *PodEnt
 			case <-ctx.Done():
 				klog.Infof("ctx canceled, delete task..")
 				return
-			case <-time.After(5 * time.Minute):
+			case <-time.After(3 * time.Minute):
 				ppm.DeletePod(pe, action)
 			}
 		}
@@ -142,6 +142,7 @@ func (ppm *PodPoolManager) DeletePod(pe *PodEntry, action actionchain.Action) {
 	bigLock.Lock()
 	for i, podEntry := range ppm.pp[action.Function] {
 		if podEntry == pe {
+			klog.Infof("forget podIP %v for action %v", pe.PodIP, action)
 			_ = apiclient.Rest(pe.uid, "", apiclient.OBJ_POD, apiclient.OP_DELETE)
 			ppm.pp[action.Function] = append(ppm.pp[action.Function][:i], ppm.pp[action.Function][i+1:]...)
 			break
