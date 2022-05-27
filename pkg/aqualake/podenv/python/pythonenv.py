@@ -25,13 +25,16 @@ def install_func():
             mimetype='application/json'
         )
         return response
+
     content = request.get_json()
 
     global func_name
     func_name = content['Name']
     url = content['Url']
-    os.system('wget -O /root/aqualake/function.py ' + url)
-    os.system('pipreqs .')
+    
+    os.popen('wget --auth-no-challenge --user admin --password 1234  -O /root/aqualake/function.py ' + url).read()
+    os.popen('pipreqs /root/aqualake')
+    os.popen('pip install -r /root/aqualake/requirements.txt')
 
     response = app.response_class(
         response=json.dumps(resp),
@@ -57,9 +60,7 @@ def trigger():
         )
         return response
 
-    print(content)
     args = content["Args"]
-    print(args)
 
     module = import_module("function")
     function = getattr(module, func_name)
@@ -76,5 +77,5 @@ def trigger():
 if __name__ == '__main__':
     ip = os.popen("cat /etc/hosts | awk 'END{print $1}'").read()
     ip = ip.replace('\n','\0')
-    print("**", ip, "**")
+    # print("**", ip, "**")
     app.run(host=ip, port=8698)
