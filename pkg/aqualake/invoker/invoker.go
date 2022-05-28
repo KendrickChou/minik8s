@@ -48,7 +48,7 @@ func (ivk *Invoker) InvokeActionChain(chain actionchain.ActionChain, arg interfa
 		} else {
 			f := false
 			for _, choice := range currAction.Choices {
-				klog.Infof("Scanning choice: %v", choice)
+				//klog.Infof("Scanning choice: %v", choice)
 				if strings.HasPrefix(choice.Variable, "$.") {
 					varName := strings.TrimPrefix(choice.Variable, "$.")
 					if reflect.TypeOf(ret).Kind() == reflect.Map {
@@ -115,7 +115,7 @@ func (ivk *Invoker) invokeAction(action actionchain.Action, arg interface{}) (in
 		installReq.Name = action.Function
 		installReq.Url = constants.CouchGetFileRequest(constants.FunctionDBId, action.Function, action.Function)
 		installBuf, _ := json.Marshal(installReq)
-		klog.Infof("install function request: %s", installBuf)
+		//klog.Infof("install function request: %s", installBuf)
 		resp, err := http.Post("http://"+podEntry.PodIP+":8698/installfunction",
 			"application/json; charset=utf-8",
 			bytes.NewReader(installBuf))
@@ -123,15 +123,15 @@ func (ivk *Invoker) invokeAction(action actionchain.Action, arg interface{}) (in
 			klog.Errorf("install function err: %v", err)
 			return nil, err
 		}
-		buf, _ := io.ReadAll(resp.Body)
-		klog.Infof("install function response: %s", buf)
+		_, _ = io.ReadAll(resp.Body)
+		//klog.Infof("install function response: %s", buf)
 		podEntry.NeedInstall = false
 	}
 
 	var triggerReq podserver.TriggerReq
 	triggerReq.Args = arg
 	triggerBuf, _ := json.Marshal(triggerReq)
-	klog.Infof("trigger function request: %s", triggerBuf)
+	//klog.Infof("trigger function request: %s", triggerBuf)
 	resp, err := http.Post("http://"+podEntry.PodIP+":8698/trigger",
 		"application/json; charset=utf-8",
 		bytes.NewReader(triggerBuf))
@@ -140,7 +140,7 @@ func (ivk *Invoker) invokeAction(action actionchain.Action, arg interface{}) (in
 		return nil, err
 	}
 	buf, _ := io.ReadAll(resp.Body)
-	klog.Infof("trigger function response: %s", buf)
+	//klog.Infof("trigger function response: %s", buf)
 
 	var triggerResp podserver.TriggerResp
 	err = json.Unmarshal(buf, &triggerResp)

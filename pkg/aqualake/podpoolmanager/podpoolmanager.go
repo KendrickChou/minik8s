@@ -42,6 +42,10 @@ type PodPoolManager struct {
 func NewPodPoolManager() *PodPoolManager {
 	ppm := &PodPoolManager{
 		pp: make(map[string][]*PodEntry),
+		scale: make(map[string]int),
+		scaleSigChan: make(map[string]chan int),
+		cancels: make(map[string][]context.CancelFunc),
+		readyPodChan: make(map[string]chan *PodEntry),
 	}
 	ppm.scale["python"] = 3
 	ppm.readyPodChan["python"] = make(chan *PodEntry, 0)
@@ -59,8 +63,7 @@ func (ppm *PodPoolManager) provider(ctx context.Context, env string) {
 	for {
 		select {
 		case <-ctx.Done():
-			ppm.scale[env]--
-			klog.Infof("Scaling: reduce provider for env: %v, current scale: %d", env, ppm.scale[env])
+			klog.Infof("Provider: exit...")
 			return
 		default:
 			pod, err := newGenericPodEntry(env)
@@ -78,12 +81,26 @@ func (ppm *PodPoolManager) scaler(env string) {
 		select {
 		case <-time.After(time.Minute * 2):
 			ppm.bigLock.Lock()
-			s := ppm.scale[env]/2 + 1
-			i := 0
-			for i = 0; i < s; i++ {
-				ppm.cancels[env][i]()
+			s := (ppm.scale[env] + 1)/2
+			if s > 0{
+				i := 0
+				for i = 0; i < s; i++ {
+					ppm.scale[env]--
+					klog.Infof("Scaling: reduce provider for env: %v, current scale: %d", env, ppm.scale[env])
+					ppm.cancels[env][i]()
+				}
+				ppm.cancels[env] = append([]context.CancelFunc{}, ppm.cancels[env][i:]...)
+			}else{
+				clear := false
+				for !clear{
+					select{
+					case podEntry := <- ppm.readyPodChan[env]:
+						deregisterPod(podEntry)
+					default:
+						clear = true
+					}
+				}
 			}
-			ppm.cancels[env] = append([]context.CancelFunc{}, ppm.cancels[env][i:]...)
 			ppm.bigLock.Unlock()
 		case <-ppm.scaleSigChan[env]:
 			ppm.bigLock.Lock()
@@ -154,6 +171,7 @@ func (ppm *PodPoolManager) GetPod(action actionchain.Action) (*PodEntry, error) 
 			return pe, nil
 		}
 	}
+	needMorePod := true
 	for {
 		select {
 		case pe = <-ppm.readyPodChan[action.Env]:
@@ -166,7 +184,11 @@ func (ppm *PodPoolManager) GetPod(action actionchain.Action) (*PodEntry, error) 
 			pe.cancel = cancel
 			return pe, nil
 		default:
-			ppm.scaleSigChan[action.Env] <- 1
+			klog.Infof("no pod is ready for env: %v", action.Env)
+			if needMorePod{
+				needMorePod = false
+				ppm.scaleSigChan[action.Env] <- 1
+			}
 			time.Sleep(10 * time.Second)
 		}
 	}
