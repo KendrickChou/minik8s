@@ -20,7 +20,7 @@
                 "Entrypoint": [
                     "/bin/bash",
                     "-c",
-                    "/apps/main G1001-Andbr6w7"
+                    "/apps/main 59.78.8.125:8080 G1001-Andbr6w7"
                 ],
                 "Mounts": [
                 ]

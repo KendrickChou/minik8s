@@ -99,12 +99,12 @@ func (ivk *Invoker) InvokeActionChain(chain actionchain.ActionChain, arg interfa
 func (ivk *Invoker) invokeAction(action actionchain.Action, arg interface{}) (interface{}, error) {
 	podEntry, err := ivk.ppm.GetPod(action)
 	defer func() {
-		ivk.ppm.FreePod(podEntry)
 		if err != nil {
 			klog.Infof("something wrong with podIP %v, forget it...", podEntry.PodIP)
 			ivk.ppm.CancelDeletePod(podEntry)
 			ivk.ppm.DeletePod(podEntry, action)
 		}
+		ivk.ppm.FreePod(podEntry)
 	}()
 	if err != nil {
 		return nil, err
