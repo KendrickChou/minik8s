@@ -79,7 +79,7 @@ func handlePutService(c *gin.Context) {
 func handleDeleteService(c *gin.Context) {
 	name := c.Param("name")
 
-	if etcdTest("/service/" + name) {
+	if !etcdTest("/service/" + name) {
 		c.JSON(404, gin.H{"status": "ERR", "error": "No such service"})
 	} else {
 		err := etcdDel("/service/" + name)
@@ -235,7 +235,8 @@ func handleWatchPods(c *gin.Context) {
 				cancel()
 				return
 			}
-			_, err = fmt.Fprintf(c.Writer, string(info))
+			//_, err = fmt.Fprintf(c.Writer, string(info))
+			c.Writer.Write(info)
 			_, err = c.Writer.Write([]byte{26})
 			if err != nil {
 				klog.Infof("fail to write to client, cancel watch task...\n")
@@ -267,7 +268,8 @@ func handleWatchPod(c *gin.Context) {
 					cancel()
 					return
 				}
-				_, err = fmt.Fprintf(c.Writer, string(info))
+				c.Writer.Write(info)
+				_, err = c.Writer.Write([]byte{26})
 				if err != nil {
 					klog.Infof("fail to write to client, cancel watch task...\n")
 					cancel()
@@ -394,6 +396,27 @@ func handlePutPodStatusByNode(c *gin.Context) {
 		if err != nil {
 			c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
 		} else {
+			var kv KV
+			var pod v1.Pod
+			var podStatus v1.PodStatus
+			kv, err = etcdGet("/pod/" + pname)
+			err = json.Unmarshal(kv.Value, &pod)
+			if err != nil {
+				c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
+				return
+			}
+			err = json.Unmarshal(buf, &podStatus)
+			if err != nil {
+				c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
+				return
+			}
+			pod.Status = podStatus
+			podBuf, err := json.Marshal(pod)
+			if err != nil {
+				c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
+				return
+			}
+			err = etcdPut("/pod/"+pname, string(podBuf))
 			c.JSON(200, gin.H{"status": "OK"})
 		}
 	}
@@ -544,6 +567,134 @@ func handleWatchReplica(c *gin.Context) {
 		c.JSON(404, gin.H{"status": "ERR", "error": "No such replica"})
 	} else {
 		wch, cancel := etcdWatch("/replica" + name)
+		flusher, _ := c.Writer.(http.Flusher)
+		for {
+			select {
+			case <-c.Request.Context().Done():
+				klog.Infof("connection closed, cancel watch task...\n")
+				cancel()
+				return
+			case kv := <-wch:
+				info, err := json.Marshal(kv)
+				if err != nil {
+					klog.Infof("json parse error, cancel watch task...\n")
+					cancel()
+					return
+				}
+				_, err = fmt.Fprintf(c.Writer, string(info))
+				_, err = c.Writer.Write([]byte{26})
+				if err != nil {
+					klog.Infof("fail to write to client, cancel watch task...\n")
+					cancel()
+					return
+				}
+				flusher.Flush()
+			}
+		}
+	}
+}
+
+//------------ HPA Rest API -----------
+func handleGetHPAs(c *gin.Context) {
+	replicas, _ := etcdGetPrefix("/hpa")
+	c.JSON(200, replicas)
+}
+
+func handleGetHPA(c *gin.Context) {
+	kv, err := etcdGet("/hpa/" + c.Param("name"))
+	if err != nil {
+		c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
+	} else if kv.Type == config.AS_OP_ERROR_String {
+		c.JSON(404, gin.H{"status": "ERR", "error": "No such hpa"})
+	} else {
+		c.JSON(200, kv)
+	}
+}
+
+func handlePostHPA(c *gin.Context) {
+	buf := make([]byte, c.Request.ContentLength)
+	_, err := c.Request.Body.Read(buf)
+	name := "H" + strconv.Itoa(nextObjNum()) + "-" + random.String(8)
+	var hpa v1.HorizontalPodAutoscaler
+	err = json.Unmarshal(buf, &hpa)
+	if err != nil {
+		c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
+		return
+	}
+	hpa.UID = name
+	buf, _ = json.Marshal(hpa)
+	err = etcdPut("/hpa/"+name, string(buf))
+	if err != nil {
+		c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
+	} else {
+		c.JSON(200, gin.H{"status": "OK", "id": name})
+	}
+}
+
+func handlePutHPA(c *gin.Context) {
+	buf := make([]byte, c.Request.ContentLength)
+	_, err := c.Request.Body.Read(buf)
+	name := c.Param("name")
+	if !etcdTest("/hpa/" + name) {
+		c.JSON(404, gin.H{"status": "ERR", "error": "No such hpa"})
+	} else {
+		err = etcdPut("/hpa/"+name, string(buf))
+		if err != nil {
+			c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
+		} else {
+			c.JSON(200, gin.H{"status": "OK"})
+		}
+	}
+}
+
+func handleDeleteHPA(c *gin.Context) {
+	name := c.Param("name")
+	if !etcdTest("/hpa/" + name) {
+		c.JSON(404, gin.H{"status": "ERR", "error": "No such hpa"})
+	} else {
+		err := etcdDel("/hpa/" + name)
+		if err != nil {
+			c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
+		} else {
+			c.JSON(200, gin.H{"status": "OK"})
+		}
+	}
+}
+
+func handleWatchHPAs(c *gin.Context) {
+	wch, cancel := etcdWatchPrefix("/hpa")
+	flusher, _ := c.Writer.(http.Flusher)
+	for {
+		select {
+		case <-c.Request.Context().Done():
+			klog.Infof("connection closed, cancel watch task...\n")
+			cancel()
+			return
+		case kv := <-wch:
+			info, err := json.Marshal(kv)
+			if err != nil {
+				klog.Infof("json parse error, cancel watch task...\n")
+				cancel()
+				return
+			}
+			_, err = fmt.Fprintf(c.Writer, string(info))
+			_, err = c.Writer.Write([]byte{26})
+			if err != nil {
+				klog.Infof("fail to write to client, cancel watch task...\n")
+				cancel()
+				return
+			}
+			flusher.Flush()
+		}
+	}
+}
+
+func handleWatchHPA(c *gin.Context) {
+	name := c.Param("name")
+	if !etcdTest("/hpa/" + name) {
+		c.JSON(404, gin.H{"status": "ERR", "error": "No such hpa"})
+	} else {
+		wch, cancel := etcdWatch("/hpa" + name)
 		flusher, _ := c.Writer.(http.Flusher)
 		for {
 			select {

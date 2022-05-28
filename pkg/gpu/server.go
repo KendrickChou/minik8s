@@ -35,7 +35,7 @@ func Run() {
 }
 
 func getJob() {
-	url := config.AC_ServerAddr + ":" + strconv.Itoa(config.AC_ServerPort) + config.AC_RestGpu_Path + "/" + os.Args[1]
+	url := os.Args[1] + "/gpu/" + os.Args[2]
 	resp, err := http.Get(url)
 	if err != nil {
 		return
@@ -58,7 +58,7 @@ func getJob() {
 }
 
 func downloadFile(filename string, jobUID string) {
-	resp, err := http.Get(config.AC_ServerAddr + ":" + strconv.Itoa(config.AC_ServerPort) + "/public/" + jobUID + "-" + filename)
+	resp, err := http.Get(os.Args[1] + "/public/" + jobUID + "-" + filename)
 	if err != nil {
 		klog.Error(err)
 		return

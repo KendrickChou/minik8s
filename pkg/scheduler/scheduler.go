@@ -11,6 +11,7 @@ import (
 	"minik8s.com/minik8s/pkg/apiclient"
 	"net/http"
 	"strconv"
+	"sync"
 )
 
 type PodRequest struct {
@@ -31,6 +32,8 @@ type NodeRequest struct {
 
 var podMap map[string]v1.Pod
 var nodeMap map[string]v1.Node
+
+var mtx sync.Mutex
 
 var shed func(pod v1.Pod) bool
 
@@ -78,16 +81,17 @@ func Run() {
 
 	//handle watch results
 	for {
-		klog.Infof("selecting chan...\n")
+		klog.Infof("\nselecting chan...\n")
 		select {
 		case rawBytes := <-podChan:
 			req := &PodRequest{}
 			err := json.Unmarshal(rawBytes, req)
 
 			if err != nil {
+
 				klog.Error("Unmarshal Pod Change Req Failed: %v", err)
 			} else {
-				handlePodChanRequest(req)
+				go handlePodChanRequest(req)
 			}
 		case rawBytes := <-nodeChan:
 			req := &NodeRequest{}
@@ -96,7 +100,7 @@ func Run() {
 			if err != nil {
 				klog.Error("Unmarshal Node Change Req Failed: %v", err)
 			} else {
-				handleNodeChanRequest(req)
+				go handleNodeChanRequest(req)
 			}
 		}
 	}
@@ -105,6 +109,7 @@ func Run() {
 func handlePodChanRequest(req *PodRequest) {
 	switch req.Type {
 	case "PUT":
+		mtx.Lock()
 		if _, exist := podMap[req.Key]; exist {
 			podMap[req.Key] = req.Pod
 			klog.Infof("Pod Changed: Key[%v] Value[...]", req.Key)
@@ -115,9 +120,12 @@ func handlePodChanRequest(req *PodRequest) {
 			klog.Infof("Current pod num: %v", len(podMap))
 			shed(req.Pod)
 		}
+		mtx.Unlock()
 
 	case "DELETE":
+		mtx.Lock()
 		pod := podMap[req.Key]
+		mtx.Unlock()
 		podUID := pod.UID
 		nodeUID := pod.Spec.NodeName
 
@@ -128,7 +136,9 @@ func handlePodChanRequest(req *PodRequest) {
 		_, _ = cli.Do(http_req)
 		klog.Infof("Delete Pod[%v] in Node[%v]", podUID, nodeUID)
 
+		mtx.Lock()
 		delete(podMap, req.Key)
+		mtx.Unlock()
 		klog.Infof("Current pod num: %v", len(podMap))
 	}
 }
@@ -136,18 +146,22 @@ func handlePodChanRequest(req *PodRequest) {
 func handleNodeChanRequest(req *NodeRequest) {
 	switch req.Type {
 	case "PUT":
+		mtx.Lock()
 		nodeMap[req.Key] = req.Node
+		mtx.Unlock()
 		klog.Infof("New Node Register: Key[%v] Value[...]", req.Key)
 		klog.Infof("Current node num: %v", len(nodeMap))
 	case "DELETE":
+		mtx.Lock()
 		delete(nodeMap, req.Key)
+		mtx.Unlock()
 		klog.Infof("Node Deregister: Key[%v]", req.Key)
 		klog.Infof("Current node num: %v", len(nodeMap))
 	}
 }
 
 func shed_simple(pod v1.Pod) bool {
-	klog.Infof("Scheduling Pod: UID[%v] NodeName[%v]", pod.UID, pod.Spec.NodeName)
+	klog.Infof("\nScheduling Pod: UID[%v] NodeName[%v]", pod.UID, pod.Spec.NodeName)
 	if pod.Spec.NodeName == "" {
 		min := -1
 		for _, node := range nodeMap {

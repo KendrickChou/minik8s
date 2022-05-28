@@ -1,6 +1,6 @@
 package config
 
-var CouchDBAddr string = "http://localhost:5984"
+var CouchDBAddr string = "http://59.78.8.125:5984"
 var CouchDBUser string = "admin"
 var CouchDBPasswd string = "1234"
 

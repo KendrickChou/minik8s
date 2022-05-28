@@ -8,5 +8,5 @@ import (
 func main() {
 	r := controller.SetUpRouter()
 
-	r.Run(config.ServeAddr + ":" + config.ServePort)
+	r.Run(":" + config.ServePort)
 }
