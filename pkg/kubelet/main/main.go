@@ -111,12 +111,12 @@ func watchingPods(ctx context.Context, kl *kubelet.Kubelet, errChan chan string)
 		return
 	}
 
+	reader := bufio.NewReader(resp.Body)
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		default:
-			reader := bufio.NewReader(resp.Body)
 			buf, err := reader.ReadBytes(byte(constants.EOF))
 
 			if err != nil {
@@ -234,12 +234,12 @@ func watchingEndpoints(ctx context.Context, kp kubeproxy.KubeProxy, errChan chan
 		return
 	}
 
+	reader := bufio.NewReader(resp.Body)
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		default:
-			reader := bufio.NewReader(resp.Body)
 			buf, err := reader.ReadBytes(byte(constants.EOF))
 
 			if err != nil {
