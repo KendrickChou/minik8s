@@ -1,11 +1,26 @@
 package main
 
-import "fmt"
+import (
+	"context"
+	"fmt"
+	"time"
+)
 
 func main() {
-	ch := make(chan []byte, 2)
-	ch <- []byte("111")
-	//ch <- []byte("222")
-	by := <-ch
-	fmt.Printf("%s", by)
+	ctx, cancel := context.WithCancel(context.Background())
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				fmt.Println(1)
+			default:
+				fmt.Println(3)
+				time.Sleep(time.Second * 3)
+			}
+		}
+	}()
+	time.Sleep(time.Second)
+	cancel()
+	fmt.Println(2)
+	time.Sleep(time.Second * 3)
 }

@@ -31,16 +31,70 @@ type PodEntry struct {
 }
 
 type PodPoolManager struct {
-	pp      map[string][]*PodEntry
-	bigLock sync.Mutex
+	pp           map[string][]*PodEntry
+	scale        map[string]int
+	scaleSigChan map[string]chan int
+	cancels      map[string][]context.CancelFunc
+	readyPodChan map[string]chan *PodEntry
+	bigLock      sync.Mutex
 }
 
 func NewPodPoolManager() *PodPoolManager {
 	ppm := &PodPoolManager{
 		pp: make(map[string][]*PodEntry),
 	}
-
+	ppm.scale["python"] = 3
+	ppm.readyPodChan["python"] = make(chan *PodEntry, 0)
+	for i := 0; i < ppm.scale["python"]; i++ {
+		ctx, cancel := context.WithCancel(context.Background())
+		go ppm.provider(ctx, "python")
+		ppm.cancels["python"] = append(ppm.cancels["python"], cancel)
+	}
+	ppm.scaleSigChan["python"] = make(chan int, 0)
+	go ppm.scaler("python")
 	return ppm
+}
+
+func (ppm *PodPoolManager) provider(ctx context.Context, env string) {
+	for {
+		select {
+		case <-ctx.Done():
+			ppm.scale[env]--
+			klog.Infof("Scaling: reduce provider for env: %v, current scale: %d", env, ppm.scale[env])
+			return
+		default:
+			pod, err := newGenericPodEntry(env)
+			if err != nil {
+				klog.Errorf("Cannot make more pods on %v", env)
+				break
+			}
+			ppm.readyPodChan[env] <- pod
+		}
+	}
+}
+
+func (ppm *PodPoolManager) scaler(env string) {
+	for {
+		select {
+		case <-time.After(time.Minute * 2):
+			ppm.bigLock.Lock()
+			s := ppm.scale[env]/2 + 1
+			i := 0
+			for i = 0; i < s; i++ {
+				ppm.cancels[env][i]()
+			}
+			ppm.cancels[env] = append([]context.CancelFunc{}, ppm.cancels[env][i:]...)
+			ppm.bigLock.Unlock()
+		case <-ppm.scaleSigChan[env]:
+			ppm.bigLock.Lock()
+			ppm.scale[env]++
+			klog.Infof("Scaling: add provider for env: %v, current scale: %d", env, ppm.scale[env])
+			ctx, cancel := context.WithCancel(context.Background())
+			go ppm.provider(ctx, env)
+			ppm.cancels[env] = append(ppm.cancels[env], cancel)
+			ppm.bigLock.Unlock()
+		}
+	}
 }
 
 func newGenericPodEntry(env string) (*PodEntry, error) {
@@ -89,7 +143,8 @@ func newGenericPodEntry(env string) (*PodEntry, error) {
 }
 
 func (ppm *PodPoolManager) GetPod(action actionchain.Action) (*PodEntry, error) {
-	for _, pe := range ppm.pp[action.Function] {
+	var pe *PodEntry
+	for _, pe = range ppm.pp[action.Function] {
 		if pe.mtx.TryLock() {
 			klog.Infof("reuse podIP %v, reset delete timer..", pe.PodIP)
 			pe.cancel()
@@ -99,19 +154,22 @@ func (ppm *PodPoolManager) GetPod(action actionchain.Action) (*PodEntry, error) 
 			return pe, nil
 		}
 	}
-
-	pe, err := newGenericPodEntry(action.Env)
-	if err != nil {
-		return nil, err
+	for {
+		select {
+		case pe = <-ppm.readyPodChan[action.Env]:
+			ppm.bigLock.Lock()
+			ppm.pp[action.Function] = append(ppm.pp[action.Function], pe)
+			ppm.bigLock.Unlock()
+			pe.mtx.Lock()
+			ctx, cancel := context.WithCancel(context.Background())
+			go ppm.DeletePodAfter5Minute(ctx, pe, action)
+			pe.cancel = cancel
+			return pe, nil
+		default:
+			ppm.scaleSigChan[action.Env] <- 1
+			time.Sleep(10 * time.Second)
+		}
 	}
-	ppm.bigLock.Lock()
-	ppm.pp[action.Function] = append(ppm.pp[action.Function], pe)
-	ppm.bigLock.Unlock()
-	pe.mtx.Lock()
-	ctx, cancel := context.WithCancel(context.Background())
-	go ppm.DeletePodAfter5Minute(ctx, pe, action)
-	pe.cancel = cancel
-	return pe, err
 }
 
 func (ppm *PodPoolManager) FreePod(pe *PodEntry) {
@@ -142,11 +200,15 @@ func (ppm *PodPoolManager) DeletePod(pe *PodEntry, action actionchain.Action) {
 	for i, podEntry := range ppm.pp[action.Function] {
 		if podEntry == pe {
 			klog.Infof("forget podIP %v for action %v", pe.PodIP, action)
-			_ = apiclient.Rest(pe.uid, "", apiclient.OBJ_POD, apiclient.OP_DELETE)
+			deregisterPod(pe)
 			ppm.pp[action.Function] = append(ppm.pp[action.Function][:i], ppm.pp[action.Function][i+1:]...)
 			break
 		}
 		i++
 	}
 	ppm.bigLock.Unlock()
+}
+
+func deregisterPod(pe *PodEntry) {
+	_ = apiclient.Rest(pe.uid, "", apiclient.OBJ_POD, apiclient.OP_DELETE)
 }
