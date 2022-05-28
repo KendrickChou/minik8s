@@ -31,10 +31,9 @@ type PodEntry struct {
 }
 
 type PodPoolManager struct {
-	pp map[string][]*PodEntry
+	pp      map[string][]*PodEntry
+	bigLock sync.Mutex
 }
-
-var bigLock sync.Mutex
 
 func NewPodPoolManager() *PodPoolManager {
 	ppm := &PodPoolManager{
@@ -105,9 +104,9 @@ func (ppm *PodPoolManager) GetPod(action actionchain.Action) (*PodEntry, error) 
 	if err != nil {
 		return nil, err
 	}
-	bigLock.Lock()
+	ppm.bigLock.Lock()
 	ppm.pp[action.Function] = append(ppm.pp[action.Function], pe)
-	bigLock.Unlock()
+	ppm.bigLock.Unlock()
 	pe.mtx.Lock()
 	ctx, cancel := context.WithCancel(context.Background())
 	go ppm.DeletePodAfter5Minute(ctx, pe, action)
@@ -139,7 +138,7 @@ func (ppm *PodPoolManager) CancelDeletePod(pe *PodEntry) {
 }
 
 func (ppm *PodPoolManager) DeletePod(pe *PodEntry, action actionchain.Action) {
-	bigLock.Lock()
+	ppm.bigLock.Lock()
 	for i, podEntry := range ppm.pp[action.Function] {
 		if podEntry == pe {
 			klog.Infof("forget podIP %v for action %v", pe.PodIP, action)
@@ -149,5 +148,5 @@ func (ppm *PodPoolManager) DeletePod(pe *PodEntry, action actionchain.Action) {
 		}
 		i++
 	}
-	bigLock.Unlock()
+	ppm.bigLock.Unlock()
 }
