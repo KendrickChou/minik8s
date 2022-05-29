@@ -28,6 +28,9 @@ var delCmd = &cobra.Command{
 		case 'P':
 			resp := apiclient.Rest(id, "", apiclient.OBJ_POD, apiclient.OP_DELETE)
 			fmt.Printf("%s\n", resp)
+		case 'N':
+			resp := apiclient.Rest(id, "", apiclient.OBJ_NODE, apiclient.OP_DELETE)
+			fmt.Printf("%s\n", resp)
 		case 'S':
 			resp := apiclient.Rest(id, "", apiclient.OBJ_SERVICE, apiclient.OP_DELETE)
 			fmt.Printf("%s\n", resp)

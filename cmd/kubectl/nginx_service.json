@@ -3,7 +3,7 @@
     "apiversion": "v1",
     "metadata": {
         "name": "myFirstService",
-        "namespace": "default",
+        "namespace": "test",
         "uid": ""
     },
     "spec": {
@@ -14,7 +14,7 @@
         },
         "ports":[{
             "name": "nginx",
-            "port": 80,
+            "port": 50080,
             "targetPort": 80
         }
         ]

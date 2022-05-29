@@ -1,0 +1,41 @@
+{
+    "kind": "ReplicaSet",
+    "apiversion": "v1",
+    "metadata": {
+        "name": "test-replica",
+        "namespace": "test",
+        "labels": {
+            "app": "mysql"
+        }
+    },
+    "spec": {
+        "replicas": 3,
+        "type": "ClusterIP",
+        "clusterIP": "10.1.1.1",
+        "selector":{
+            "matchLabels": {
+                "app": "mysql"
+            }
+        },
+        "template":{
+            "metadata": {
+                "name": "test-pod-1",
+                "namespace": "test",
+                "uid": "",
+                "labels": {
+                    "app" : "mysql"
+                }
+            },
+            "spec": {
+                "Containers": [
+                    {
+                        "Name": "test-container-1",
+                        "Namespace": "test",
+                        "Image": "mysql:latest",
+                        "ImagePullPolicy": "IfNotPresent"
+                    }
+                ]
+            }
+        }
+    }
+}

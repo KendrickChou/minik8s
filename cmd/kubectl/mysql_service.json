@@ -1,0 +1,22 @@
+{
+    "kind": "Service",
+    "apiversion": "v1",
+    "metadata": {
+        "name": "mysql-service",
+        "namespace": "test"
+    },
+    "spec": {
+        "type": "ClusterIP",
+        "clusterIP": "10.1.1.1",
+        "selector":{
+            "app": "mysql"
+        },
+        "ports":[{
+            "name": "nginx",
+            "port": 53306,
+            "targetPort": 3306
+        }
+        ]
+    }
+
+}

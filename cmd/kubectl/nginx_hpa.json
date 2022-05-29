@@ -1,0 +1,40 @@
+{
+  "kind": "HorizontalPodAutoscaler",
+  "apiversion": "v1",
+  "metadata": {
+    "name": "test-HPA",
+    "namespace": "test"
+  },
+  "spec": {
+    "scaleTargetRef": {
+      "apiVersion": "v1",
+      "kind": "ReplicaSet",
+      "name": "nginx-replica-test"
+    },
+    "minReplicas": 2,
+    "maxReplicas": 10,
+    "metrics": [
+      {
+        "type": "Resource",
+        "resource": {
+          "name": "cpu",
+          "target": {
+            "type": "Utilization",
+            "averageUtilization": 20
+          }
+        }
+      },
+      {
+        "type": "Resource",
+        "resource": {
+          "name": "memory",
+          "target": {
+            "type": "Utilization",
+            "averageUtilization": 40
+          }
+        }
+      }
+    ]
+  }
+
+}

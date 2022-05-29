@@ -1,0 +1,22 @@
+{
+  "kind": "pod",
+  "apiversion": "v1",
+  "metadata": {
+    "name": "test-pod-1",
+    "namespace": "default",
+    "uid": "",
+    "labels": {
+      "app" : "mysql"
+    }
+  },
+  "spec": {
+    "Containers": [
+      {
+        "Name": "test-container-1",
+        "Namespace": "test",
+        "Image": "mysql:latest",
+        "ImagePullPolicy": "IfNotPresent"
+      }
+    ]
+  }
+}

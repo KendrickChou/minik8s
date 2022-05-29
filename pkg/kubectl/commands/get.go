@@ -147,7 +147,7 @@ func getDNSs() {
 		fmt.Println("服务器返回信息无效: ", err)
 		return
 	}
-	fmt.Printf("=->%v Services\n", len(kvs))
+	fmt.Printf("=->%v DNS Configs\n", len(kvs))
 	fmt.Printf("%v\t\t\t\t%v\t\t\t%v\t\t\t%v\n", "Key", "Name", "Uid", "Paths")
 	for _, kv := range kvs {
 		fmt.Printf("%v\t\t%v\t\t%v\t\t%v\n", kv.Key, kv.DNS.Name, kv.DNS.UID, kv.DNS.Paths)
@@ -166,7 +166,7 @@ func getEndpoints() {
 	fmt.Printf("=->%v Endpoints\n", len(kvs))
 	fmt.Printf("%v\t\t\t\t\t%v\t\t\t%v\t\t\t%v\n", "Key", "Name", "Uid", "")
 	for _, kv := range kvs {
-		fmt.Printf("%v\t\t%v\t\t%v\t\t%v\n", kv.Key, kv.Endpoint.Name, kv.Endpoint.UID)
+		fmt.Printf("%v\t\t%v\t\t%v\t\t%v\n", kv.Key, kv.Endpoint.Name, kv.Endpoint.UID, kv.Endpoint.OwnerReferences)
 	}
 	fmt.Printf("\n")
 }

@@ -1,0 +1,22 @@
+{
+    "kind": "pod",
+    "apiversion": "v1",
+    "metadata": {
+        "name": "test-pod-1",
+        "namespace": "test",
+        "uid": "",
+        "labels": {
+            "app" : "nginx"
+        }
+    },
+    "spec": {
+        "Containers": [
+            {
+                "Name": "test-container-1",
+                "Namespace": "test",
+                "Image": "nginx:latest",
+                "ImagePullPolicy": "IfNotPresent"
+            }
+        ]
+    }
+}

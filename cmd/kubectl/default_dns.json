@@ -6,7 +6,7 @@
         "namespace": "default",
         "uid": ""
     },
-    "host" : "minik8s-dns-test0",
+    "host" : "minik8s-dns-test-1",
     "paths": [
         {
             "path" : "/",

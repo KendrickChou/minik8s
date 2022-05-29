@@ -91,7 +91,7 @@ var addCmd = &cobra.Command{
 }
 
 func init() {
-	addCmd.Flags().StringP("file", "f", "default.json", "指定json配置文件")
+	addCmd.Flags().StringP("file", "f", "nginx_pod.json", "指定json配置文件")
 	addCmd.Flags().StringP("kind", "k", "pod", "指定创建对象类型")
 
 	rootCmd.AddCommand(addCmd)

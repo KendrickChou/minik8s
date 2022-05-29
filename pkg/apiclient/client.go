@@ -194,6 +194,8 @@ func Rest(id string, value string, objTy ObjType, opTy OpType) []byte {
 		url += config.AC_RestGpus_Path
 	case OBJ_POD:
 		url += config.AC_RestPod_Path
+	case OBJ_NODE:
+		url += config.AC_RestNode_Path
 	case OBJ_SERVICE:
 		url += config.AC_RestService_Path
 	case OBJ_REPLICAS:

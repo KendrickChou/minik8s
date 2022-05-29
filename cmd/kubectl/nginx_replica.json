@@ -2,8 +2,8 @@
     "kind": "ReplicaSet",
     "apiversion": "v1",
     "metadata": {
-        "name": "myFirstReplica",
-        "namespace": "default",
+        "name": "nginx-replica-test",
+        "namespace": "test",
         "labels": {
             "app": "nginx"
         }
@@ -19,8 +19,8 @@
         },
         "template":{
             "metadata": {
-                "name": "myFirstPod1",
-                "namespace": "default",
+                "name": "test-pod-1",
+                "namespace": "test",
                 "uid": "",
                 "labels": {
                     "app" : "nginx"
@@ -29,15 +29,10 @@
             "spec": {
                 "Containers": [
                     {
-                        "Name": "myFirstContainer",
-                        "Namespace": "example",
-                        "ID": "4a2e3b94e5b5d184001b4a3475e958619bddbe89702b6249336f952adc9c33e4",
+                        "Name": "test-container-1",
+                        "Namespace": "test",
                         "Image": "nginx:latest",
-                        "ImagePullPolicy": "IfNotPresent",
-                        "Entrypoint": [
-                        ],
-                        "Mounts": [
-                        ]
+                        "ImagePullPolicy": "IfNotPresent"
                     }
                 ]
             }
