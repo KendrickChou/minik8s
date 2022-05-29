@@ -14,6 +14,7 @@ import (
 	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/client"
+	"github.com/docker/go-connections/nat"
 	"k8s.io/klog/v2"
 
 	v1 "minik8s.com/minik8s/pkg/api/v1"
@@ -128,6 +129,36 @@ func (manager *containerManager) CreateContainer(ctx context.Context, container 
 				Consistency: mount.Consistency(m.Consistency),
 			})
 		}
+	}
+	if len(container.ExposedPorts) != 0 {
+		exposedPorts := nat.PortSet{}
+
+		for _, port := range container.ExposedPorts {
+			exposedPorts[nat.Port(port)] = struct{}{}
+		}
+
+		containerConfig.ExposedPorts = exposedPorts
+	}
+	if len(container.BindPorts) != 0 {
+		portMap := nat.PortMap{}
+
+		for port, hostaddr := range container.BindPorts {
+			array := strings.Split(hostaddr, ":")
+			if len(array) != 2 {
+				klog.Error("Parsed BindPorts Error ", array)
+				continue
+			}
+			host := array[0]
+			hostport := array[1]
+			portMap[nat.Port(port)] = []nat.PortBinding{
+				{
+					HostIP: host,
+					HostPort: hostport,
+				},
+			}
+		}
+
+		hostConfig.PortBindings = portMap
 	}
 
 	body, err := manager.dockerClient.ContainerCreate(ctx, containerConfig, hostConfig, nil, nil, container.Name)
@@ -247,7 +278,5 @@ func (manager *containerManager) ContainerStats(ctx context.Context, containerID
 		return nil, err
 	}
 
-
-
-	return strings.Split(string(res[:(len(res) - 1)]), "\t"), nil
+	return strings.Split(string(res[:(len(res)-1)]), "\t"), nil
 }

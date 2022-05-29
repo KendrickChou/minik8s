@@ -25,40 +25,44 @@ type ContainerState struct {
 }
 
 type Container struct {
-	Name string `json:"Name,omitempty"`
+	Name string `json:"name,omitempty"`
 
-	Namespace string `json:"Namespace,omitempty"`
+	Namespace string `json:"namespace,omitempty"`
 
-	ID string `json:"ID,omitempty"`
+	ID string `json:"id,omitempty"`
 
-	Image string `json:"Image,omitempty"`
+	Image string `json:"image,omitempty"`
 
 	//"Always" means that kubelet always attempts to pull the latest image. Container will fail If the pull fails.
 	//"IfNotPresent" means that kubelet pulls if the image isn't present on disk. Container will fail if the image isn't present and the pull fails.
 	//"Never" means that kubelet never pulls an image, but only uses a local image. Container will fail if the image isn't present
 	//default: IfNotPresent
-	ImagePullPolicy string `json:"ImagePullPolicy,omitempty" default:"IfNotPresent"`
+	ImagePullPolicy string `json:"imagepullpolicy,omitempty" default:"IfNotPresent"`
 
 	// Command to run when starting the container
-	Command []string `json:"Command,omitempty"`
+	Command []string `json:"command,omitempty"`
 
-	Entrypoint []string `json:"Entrypoint,omitempty"`
+	Entrypoint []string `json:"entrypoint,omitempty"`
 
 	// Container's working directory.
 	// If not specified, the container runtime's default will be used, which
 	// might be configured in the container image.
-	WorkingDir string `json:"WorkingDir,omitempty"`
+	WorkingDir string `json:"workingdir,omitempty"`
 
-	Env []string `json:"Env,omitempty"`
+	Env []string `json:"env,omitempty"`
 
 	// mount volumes
-	Mounts []Mount `json:"Mounts,omitempty"`
+	Mounts []Mount `json:"mounts,omitempty"`
 
 	NetworkMode string `json:"-"`
 
 	DNS string `json:"-"`
-
+ 
 	DNSSearch string `json:"-"`
+
+	ExposedPorts []string `json:"exposedports,omitempty"`
+
+	BindPorts map[string]string `json:"bindports,omitempty"`
 }
 
 type ContainerStatus struct {
