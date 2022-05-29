@@ -28,6 +28,13 @@ type Kubelet struct {
 }
 
 func NewKubelet(nodeName string, UID string) (Kubelet, error) {
+	// err := kubelet.podManager.CreatePodBridgeNetwork(kubelet.Spec.CIDR)
+	err := connectWeaveNet()
+
+	if err != nil {
+		klog.Errorf("Connect to weave net error: %s", err.Error())
+	}
+
 	kubelet := Kubelet{
 		Node: v1.Node{
 			TypeMeta: v1.TypeMeta{
@@ -44,9 +51,6 @@ func NewKubelet(nodeName string, UID string) (Kubelet, error) {
 	}
 
 	kubelet.PodManager = &kubelet.podManager
-
-	// err := kubelet.podManager.CreatePodBridgeNetwork(kubelet.Spec.CIDR)
-	err := connectWeaveNet()
 
 	return kubelet, err
 }
