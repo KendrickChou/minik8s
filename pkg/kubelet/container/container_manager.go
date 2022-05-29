@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 
 	"github.com/docker/docker/api/types"
@@ -159,6 +160,24 @@ func (manager *containerManager) CreateContainer(ctx context.Context, container 
 		}
 
 		hostConfig.PortBindings = portMap
+	}
+	if len(container.Resources) != 0 {
+		resources := dockerctnr.Resources{}
+		cpu, ok := container.Resources["cpu"]
+
+		if ok {
+			num, _ := strconv.ParseInt(cpu, 10, 64)
+			resources.NanoCPUs = 1000000000 * num
+		}
+		
+		mem, ok := container.Resources["memory"]
+
+		if ok {
+			num, _ := strconv.ParseInt(mem, 10, 64)
+			resources.Memory = num
+		}
+
+		hostConfig.Resources = resources
 	}
 
 	body, err := manager.dockerClient.ContainerCreate(ctx, containerConfig, hostConfig, nil, nil, container.Name)

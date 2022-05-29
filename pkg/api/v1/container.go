@@ -63,6 +63,11 @@ type Container struct {
 	ExposedPorts []string `json:"exposedports,omitempty"`
 
 	BindPorts map[string]string `json:"bindports,omitempty"`
+
+	// --- resource type --- | --- value ---
+	//          cpu					1
+	//			memory				128 * 1024 * 1024 in bytes
+	Resources map[string]string `json:"resources,omitempty"`
 }
 
 type ContainerStatus struct {
