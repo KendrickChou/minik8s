@@ -34,6 +34,18 @@ var delCmd = &cobra.Command{
 		case 'R':
 			resp := apiclient.Rest(id, "", apiclient.OBJ_REPLICAS, apiclient.OP_DELETE)
 			fmt.Printf("%s\n", resp)
+		case 'D':
+			resp := apiclient.Rest(id, "", apiclient.OBJ_DNS, apiclient.OP_DELETE)
+			fmt.Printf("%s\n", resp)
+		case 'H':
+			resp := apiclient.Rest(id, "", apiclient.OBJ_HPA, apiclient.OP_DELETE)
+			fmt.Printf("%s\n", resp)
+		case 'E':
+			resp := apiclient.Rest(id, "", apiclient.OBJ_ENDPOINT, apiclient.OP_DELETE)
+			fmt.Printf("%s\n", resp)
+		case 'G':
+			resp := apiclient.Rest(id, "", apiclient.OBJ_GPU, apiclient.OP_DELETE)
+			fmt.Printf("%s\n", resp)
 		case 'A':
 			cli := http.Client{}
 			url := config.AC_ServerAddr + ":" + strconv.Itoa(config.AC_ServerPort)

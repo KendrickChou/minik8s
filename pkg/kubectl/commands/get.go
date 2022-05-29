@@ -37,14 +37,44 @@ var getCmd = &cobra.Command{
 				getNodes()
 			case "endpoint":
 				getEndpoints()
+			case "dns":
+				getDNSs()
 			case "all":
 				getPods()
 				getNodes()
 				getServices()
+				getDNSs()
 				getEndpoints()
 				getReplicaSet()
 			default:
 				fmt.Println("未知的对象类型！")
+			}
+		} else {
+			fmt.Println("正在查询指定对象: ", kind)
+			switch id[0] {
+			case 'P':
+				resp := apiclient.Rest(id, "", apiclient.OBJ_POD, apiclient.OP_GET)
+				fmt.Printf("%s\n", resp)
+			case 'S':
+				resp := apiclient.Rest(id, "", apiclient.OBJ_SERVICE, apiclient.OP_GET)
+				fmt.Printf("%s\n", resp)
+			case 'R':
+				resp := apiclient.Rest(id, "", apiclient.OBJ_REPLICAS, apiclient.OP_GET)
+				fmt.Printf("%s\n", resp)
+			case 'D':
+				resp := apiclient.Rest(id, "", apiclient.OBJ_DNS, apiclient.OP_GET)
+				fmt.Printf("%s\n", resp)
+			case 'H':
+				resp := apiclient.Rest(id, "", apiclient.OBJ_HPA, apiclient.OP_GET)
+				fmt.Printf("%s\n", resp)
+			case 'E':
+				resp := apiclient.Rest(id, "", apiclient.OBJ_ENDPOINT, apiclient.OP_GET)
+				fmt.Printf("%s\n", resp)
+			case 'G':
+				resp := apiclient.Rest(id, "", apiclient.OBJ_GPU, apiclient.OP_GET)
+				fmt.Printf("%s\n", resp)
+			default:
+				fmt.Println("找不到指定的对象！")
 			}
 		}
 
@@ -102,6 +132,21 @@ func getServices() {
 	fmt.Printf("%v\t\t\t\t%v\t\t\t%v\t\t\t%v\n", "Key", "Name", "Uid", "Cluster IP")
 	for _, kv := range kvs {
 		fmt.Printf("%v\t\t%v\t\t%v\t\t%v\n", kv.Key, kv.Service.Name, kv.Service.UID, kv.Service.Spec.ClusterIP)
+	}
+	fmt.Printf("\n")
+}
+func getDNSs() {
+	resp := apiclient.Rest("", "", apiclient.OBJ_ALL_DNSS, apiclient.OP_GET)
+	var kvs []GetDNSResponse
+	err := json.Unmarshal(resp, &kvs)
+	if err != nil {
+		fmt.Println("服务器返回信息无效: ", err)
+		return
+	}
+	fmt.Printf("=->%v Services\n", len(kvs))
+	fmt.Printf("%v\t\t\t\t%v\t\t\t%v\t\t\t%v\n", "Key", "Name", "Uid", "Paths")
+	for _, kv := range kvs {
+		fmt.Printf("%v\t\t%v\t\t%v\t\t%v\n", kv.Key, kv.DNS.Name, kv.DNS.UID, kv.DNS.Paths)
 	}
 	fmt.Printf("\n")
 }

@@ -26,6 +26,11 @@ type GetServiceResponse struct {
 	Service v1.Service `json:"value"`
 	Type    string     `json:"type"`
 }
+type GetDNSResponse struct {
+	Key  string `json:"key"`
+	DNS  v1.DNS `json:"value"`
+	Type string `json:"type"`
+}
 type GetEndpointResponse struct {
 	Key      string      `json:"key"`
 	Endpoint v1.Endpoint `json:"value"`
