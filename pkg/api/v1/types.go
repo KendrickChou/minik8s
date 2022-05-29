@@ -69,7 +69,7 @@ func ComparePodStatus(newStatus *PodStatus, oldStatus *PodStatus) bool {
 
 func GetOwnerReplicaSet(pod *Pod) string {
 	for _, owner := range pod.OwnerReferences {
-		if owner.Kind == "Replica" {
+		if owner.Kind == "ReplicaSet" {
 			return owner.UID
 		}
 	}
@@ -85,4 +85,13 @@ func GetOwnerService(owners []OwnerReference) string {
 	}
 
 	return ""
+}
+
+func CompareServicePort(newPort ServicePort, oldPort ServicePort) bool {
+	if newPort.Name != oldPort.Name || newPort.Protocol != oldPort.Protocol || newPort.Port != oldPort.Port ||
+		newPort.TargetPort != oldPort.Port || newPort.NodePort != oldPort.NodePort {
+		return false
+	}
+
+	return true
 }

@@ -19,8 +19,9 @@ type ObjType int8
 type OpType int8
 
 type HttpResponse struct {
-	ID     string `json:"id"`
-	Status string `json:"status"`
+	ID     string `json:"id,omitempty"`
+	Status string `json:"status,omitempty"`
+	Error  string `json:"error,omitempty"`
 }
 
 const (
@@ -139,6 +140,8 @@ func GetAll(objType ObjType) []byte {
 		url += config.AC_RestReplicas_Path
 	case OBJ_ALL_ENDPOINTS:
 		url += config.AC_RestEndpoints_Path
+	case OBJ_ALL_HPAS:
+		url += config.AC_RestHPAs_Path
 	case OBJ_POD:
 		url += config.AC_RestPod_Path
 	case OBJ_SERVICE:
@@ -147,6 +150,8 @@ func GetAll(objType ObjType) []byte {
 		url += config.AC_RestReplica_Path
 	case OBJ_ENDPOINT:
 		url += config.AC_RestEndpoint_Path
+	case OBJ_HPA:
+		url += config.AC_RestHPA_Path
 	default:
 		klog.Error("Invalid arguments!\n")
 		return nil
@@ -254,7 +259,8 @@ func TemplateArrangePodToNode(pod v1.Pod) {
 	}
 }
 
-func GetPodStatus(pod *v1.Pod) []byte {
+// GetPodStatusHttp deprecated
+func GetPodStatusHttp(pod *v1.Pod) []byte {
 	var resp *http.Response
 	var err error
 	url := config.AC_ServerAddr + ":" + strconv.Itoa(config.AC_ServerPort)
@@ -311,7 +317,7 @@ func UpdateEndpoint(ep *v1.Endpoint) bool {
 		return false
 	}
 
-	responseBytes := Rest(ep.UID, string(epByte), OBJ_POD, OP_PUT)
+	responseBytes := Rest(ep.UID, string(epByte), OBJ_ENDPOINT, OP_PUT)
 
 	var responseBody HttpResponse
 	err = json.Unmarshal(responseBytes, &responseBody)
@@ -394,8 +400,47 @@ func UpdateReplicaSet(rs *v1.ReplicaSet) bool {
 	}
 }
 
+func UpdateHorizontalPodAutoscaler(hpa *v1.HorizontalPodAutoscaler) bool {
+	rsByte, err := json.Marshal(hpa)
+	if err != nil {
+		return false
+	}
+
+	responseBytes := Rest(hpa.UID, string(rsByte), OBJ_HPA, OP_PUT)
+
+	var responseBody HttpResponse
+	err = json.Unmarshal(responseBytes, &responseBody)
+	if err != nil {
+		klog.Error("Json unmarshal error\n")
+		return false
+	}
+
+	if responseBody.Status == "OK" {
+		return true
+	} else {
+		return false
+	}
+}
+
 func DeleteEndpoint(epID string) bool {
 	responseBytes := Rest(epID, "", OBJ_ENDPOINT, OP_DELETE)
+
+	var responseBody HttpResponse
+	err := json.Unmarshal(responseBytes, &responseBody)
+	if err != nil {
+		klog.Error("Json unmarshal error\n")
+		return false
+	}
+
+	if responseBody.Status == "OK" {
+		return true
+	} else {
+		return false
+	}
+}
+
+func DeletePod(podID string) bool {
+	responseBytes := Rest(podID, "", OBJ_POD, OP_DELETE)
 
 	var responseBody HttpResponse
 	err := json.Unmarshal(responseBytes, &responseBody)

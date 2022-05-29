@@ -13,12 +13,12 @@ type EventHandler struct {
 }
 
 type Informer struct {
-	Kind       string
-	Handlers   []EventHandler
-	store      ThreadSafeStore
-	reflector  Reflector
-	notifyChan chan Delta
-	synced     bool
+	Kind           string
+	Handlers       []EventHandler
+	store          ThreadSafeStore
+	reflector      Reflector
+	transportQueue WorkQueue
+	synced         bool
 }
 
 func NewInformer(kind string) (inf *Informer) {
@@ -27,10 +27,10 @@ func NewInformer(kind string) (inf *Informer) {
 		synced: false,
 	}
 
-	inf.notifyChan = make(chan Delta)
+	inf.transportQueue.Init()
 	inf.Handlers = []EventHandler{}
 	inf.reflector.Kind = kind
-	inf.reflector.NotifyChan = inf.notifyChan
+	inf.reflector.transportQueue = &inf.transportQueue
 	inf.store.Init()
 	return inf
 }
@@ -40,26 +40,28 @@ func (inf *Informer) Run(stopChan chan bool) {
 	syncChan := make(chan bool)
 	go inf.reflector.Run(reflectorStopChan, syncChan)
 
-	for {
-		var loop = true
-		select {
-		case delta := <-inf.notifyChan:
-			inf.store.Add(delta.GetKey(), delta.GetValue())
-		case <-syncChan:
-			loop = false
-		}
+	<-syncChan
 
-		if !loop {
-			break
-		}
+	for !inf.transportQueue.Empty() {
+		item := inf.transportQueue.Fetch()
+		delta := item.(Delta)
+		inf.store.Add(delta.GetKey(), delta.GetValue())
 	}
 
 	inf.synced = true
 
 	for {
 		select {
-		case delta := <-inf.notifyChan:
+		case <-stopChan:
+			reflectorStopChan <- true
+			return
+		default:
 			{
+				if inf.transportQueue.Empty() {
+					continue
+				}
+				item := inf.transportQueue.Fetch()
+				delta := item.(Delta)
 				switch delta.GetType() {
 				case "PUT", "POST":
 					oldObj, exist := inf.store.Get(delta.GetKey())
@@ -88,9 +90,6 @@ func (inf *Informer) Run(stopChan chan bool) {
 					klog.Error("invalid delta type\n")
 				}
 			}
-		case <-stopChan:
-			reflectorStopChan <- true
-			return
 		}
 
 	}
@@ -124,6 +123,10 @@ func (inf *Informer) DeleteItem(key string) {
 		{
 			flag = apiclient.DeleteEndpoint(key)
 		}
+	case "Pod":
+		{
+			flag = apiclient.DeletePod(key)
+		}
 	default:
 		klog.Warningf("Delete %s not handled", inf.Kind)
 	}
@@ -152,6 +155,11 @@ func (inf *Informer) UpdateItem(key string, obj any) {
 		{
 			rs := obj.(v1.ReplicaSet)
 			flag = apiclient.UpdateReplicaSet(&rs)
+		}
+	case "HorizontalPodAutoscaler":
+		{
+			hpa := obj.(v1.HorizontalPodAutoscaler)
+			flag = apiclient.UpdateHorizontalPodAutoscaler(&hpa)
 		}
 	default:
 		klog.Warningf("Update %s not handled", inf.Kind)
@@ -182,7 +190,22 @@ func (inf *Informer) AddItem(obj any) {
 	}
 
 	if uid != "" {
-		inf.store.Add(uid, obj)
+		switch inf.Kind {
+		case "Pod":
+			{
+				pod := obj.(v1.Pod)
+				pod.UID = uid
+				inf.store.Add(uid, pod)
+			}
+		case "Endpoint":
+			{
+				ep := obj.(v1.Endpoint)
+				ep.UID = uid
+				inf.store.Add(uid, ep)
+			}
+		default:
+			klog.Warningf("Add %s not handled", inf.Kind)
+		}
 	} else {
 		klog.Error("Add Object failed ", obj)
 	}
