@@ -24,10 +24,22 @@ var putCmd = &cobra.Command{
 			resp := apiclient.Rest(id, "", apiclient.OBJ_POD, apiclient.OP_PUT)
 			fmt.Printf("%s\n", resp)
 		case 'S':
-			resp := apiclient.Rest(id, "", apiclient.OBJ_SERVICE, apiclient.OP_DELETE)
+			resp := apiclient.Rest(id, "", apiclient.OBJ_SERVICE, apiclient.OP_PUT)
 			fmt.Printf("%s\n", resp)
 		case 'R':
-			resp := apiclient.Rest(id, "", apiclient.OBJ_REPLICAS, apiclient.OP_DELETE)
+			resp := apiclient.Rest(id, "", apiclient.OBJ_REPLICAS, apiclient.OP_PUT)
+			fmt.Printf("%s\n", resp)
+		case 'D':
+			resp := apiclient.Rest(id, "", apiclient.OBJ_DNS, apiclient.OP_PUT)
+			fmt.Printf("%s\n", resp)
+		case 'H':
+			resp := apiclient.Rest(id, "", apiclient.OBJ_HPA, apiclient.OP_PUT)
+			fmt.Printf("%s\n", resp)
+		case 'E':
+			resp := apiclient.Rest(id, "", apiclient.OBJ_ENDPOINT, apiclient.OP_PUT)
+			fmt.Printf("%s\n", resp)
+		case 'G':
+			resp := apiclient.Rest(id, "", apiclient.OBJ_GPU, apiclient.OP_PUT)
 			fmt.Printf("%s\n", resp)
 		default:
 			fmt.Println("找不到指定的对象！")
