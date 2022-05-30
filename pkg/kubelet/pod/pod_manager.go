@@ -157,13 +157,13 @@ func (pm *podManager) AddPod(pod *v1.Pod) error {
 
 		container.ID = id
 
-		// err = pm.containerManager.StartContainer(context.TODO(), &container)
+		err = pm.containerManager.StartContainer(context.TODO(), &container)
 
-		// if err != nil {
-		// 	klog.Errorf("Start pod %s Initial container %s failed: %s", pod.Name, container.Name, err.Error())
-		// 	klog.Errorln(err)
-		// 	return err
-		// }
+		if err != nil {
+			klog.Errorf("Start pod %s Initial container %s failed: %s", pod.Name, container.Name, err.Error())
+			klog.Errorln(err)
+			return err
+		}
 
 		pod.Spec.InitialContainers[k] = container
 
@@ -198,11 +198,11 @@ func (pm *podManager) AddPod(pod *v1.Pod) error {
 
 		container.ID = id
 
-		// err = pm.containerManager.StartContainer(context.TODO(), container)
+		err = pm.containerManager.StartContainer(context.TODO(), container)
 
-		// if err != nil {
-		// 	klog.Errorln(err)
-		// }
+		if err != nil {
+			klog.Errorln(err)
+		}
 	}
 
 	return nil

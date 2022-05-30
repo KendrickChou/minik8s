@@ -121,7 +121,7 @@ func Watch(ctx context.Context, ch chan []byte, ty ObjType) {
 			}
 
 			buf[len(buf)-1] = '\n'
-			klog.Infof("buf: %s\n", buf)
+			//klog.Infof("buf: %s\n", buf)
 			ch <- buf
 		}
 	}
@@ -236,6 +236,7 @@ func Rest(id string, value string, objTy ObjType, opTy OpType) []byte {
 	if err != nil {
 		return nil
 	}
+	resp.Body.Close()
 
 	return buf
 }
@@ -270,6 +271,7 @@ func GetPodStatusHttp(pod *v1.Pod) []byte {
 
 	resp, err = http.Get(url)
 	buf, err := io.ReadAll(resp.Body)
+	resp.Body.Close()
 	if err != nil {
 		klog.Error("http get error\n")
 		return nil
@@ -294,6 +296,7 @@ func PostEndpoint(endpoint *v1.Endpoint) string {
 	resp, err = cli.Do(req)
 
 	buf, err := io.ReadAll(resp.Body)
+	resp.Body.Close()
 	if err != nil {
 		klog.Error("Read response error\n")
 		return ""

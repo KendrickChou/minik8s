@@ -124,9 +124,9 @@ func uploadFile(path string, newFilename string) {
 	request.Header.Set("Content-Type", writer.FormDataContentType())
 
 	client := &http.Client{}
-	resp, err := client.Do(request)
-	defer resp.Body.Close()
+	resp, _ := client.Do(request)
 	respBody, err := ioutil.ReadAll(resp.Body)
+	resp.Body.Close()
 	if err != nil {
 		fmt.Println("文件上传失败：", err)
 		return
