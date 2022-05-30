@@ -398,6 +398,10 @@ func handlePutPodStatusByNode(c *gin.Context) {
 			var pod v1.Pod
 			var podStatus v1.PodStatus
 			kv, err = etcdGet("/pod/" + pname)
+			if err != nil {
+				c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
+				return
+			}
 			err = json.Unmarshal(kv.Value, &pod)
 			if err != nil {
 				c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
@@ -415,6 +419,10 @@ func handlePutPodStatusByNode(c *gin.Context) {
 				return
 			}
 			err = etcdPut("/pod/"+pname, string(podBuf))
+			if err != nil {
+				c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
+				return
+			}
 			c.JSON(200, gin.H{"status": "OK"})
 		}
 	}
@@ -504,12 +512,12 @@ func handlePostReplica(c *gin.Context) {
 
 func handlePutReplica(c *gin.Context) {
 	buf := make([]byte, c.Request.ContentLength)
-	_, err := c.Request.Body.Read(buf)
+	_, _ = c.Request.Body.Read(buf)
 	name := c.Param("name")
 	if !etcdTest("/replica/" + name) {
 		c.JSON(404, gin.H{"status": "ERR", "error": "No such replica"})
 	} else {
-		err = etcdPut("/replica/"+name, string(buf))
+		err := etcdPut("/replica/"+name, string(buf))
 		if err != nil {
 			c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
 		} else {
@@ -877,6 +885,10 @@ func handleGetGPU(c *gin.Context) {
 					klog.Error(err)
 				}
 				err = etcdPut("/gpu/"+gj.UID, string(buf))
+				if err != nil {
+					c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
+					return
+				}
 				kv.Value = buf
 			}
 			c.JSON(200, kv)
