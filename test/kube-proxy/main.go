@@ -25,18 +25,20 @@ func main() {
 			Name: "test-endpoint",
 		},
 		ServiceIp: "10.8.8.8",
-		Subset: v1.EndpointSubset{
-			Addresses: []v1.EndpointAddress{
-				{IP: "10.40.0.0"},
-				{IP: "10.40.0.3"},
-			},
-			Ports: []v1.EndpointPort{
-				{Name: "port1", Port: 80, ServicePort: 81, Protocol: "tcp"},
-				{Name: "port2", Port: 80, ServicePort: 82, Protocol: "tcp"},
+		Subset: []v1.EndpointSubset{
+			{
+				Addresses: []v1.EndpointAddress{
+					{IP: "10.40.0.0"},
+					{IP: "10.40.0.3"},
+				},
+				Ports: []v1.EndpointPort{
+					{Name: "port1", Port: 80, ServicePort: 81, Protocol: "tcp"},
+					{Name: "port2", Port: 80, ServicePort: 82, Protocol: "tcp"},
+				},
 			},
 		},
 	}
 
-	kp.AddEndpoint(context.TODO(), ep)
-	// kp.RemoveEndpoint(context.TODO(), ep.Name)
+	kp.AddEndpoint(context.TODO(), "TEST", ep)
+	kp.RemoveEndpoint(context.TODO(), "TEST")
 }

@@ -131,7 +131,7 @@ func (kp *kubeProxy) AddEndpoint(ctx context.Context, uid string, endpoint v1.En
 		}
 	}
 
-	kp.SVCChain[endpoint.Name] = svcChains
+	kp.SVCChain[uid] = svcChains
 
 	return nil
 }
@@ -208,14 +208,27 @@ func initIPtables(ipt *iptables.IPTables) error {
 		return errors.New(errInfo)
 	}
 
+	svcChain := regexp.MustCompile("K8S-SVC")
+	sepChain := regexp.MustCompile("K8S-SEP")
+
+	// clear K8S-SERVICE first
 	for _, chain := range chains {
-		match, _ := regexp.MatchString("K8S", chain)
-		if match {
-			if chain == constants.ServiceChainName {
-				ipt.ClearChain(constants.NATTableName, chain)
-			} else {
-				ipt.ClearAndDeleteChain(constants.NATTableName, chain)
-			}
+		if chain == constants.ServiceChainName {
+			ipt.ClearChain(constants.NATTableName, chain)
+		}
+	}
+
+	// then clean and delete K8S-SVC-
+	for _, chain := range chains {
+		if svcChain.MatchString(chain) {
+			ipt.ClearAndDeleteChain(constants.NATTableName, chain)
+		}
+	}
+
+	// clean and delete K8S-SEP-*
+	for _, chain := range chains {
+		if sepChain.MatchString(chain) {
+			ipt.ClearAndDeleteChain(constants.NATTableName, chain)
 		}
 	}
 

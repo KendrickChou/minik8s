@@ -3,7 +3,7 @@ package main
 import (
 	v1 "minik8s.com/minik8s/pkg/api/v1"
 	"minik8s.com/minik8s/pkg/kubelet"
-	kubeconfig "minik8s.com/minik8s/pkg/kubelet/apis/config"
+	"minik8s.com/minik8s/pkg/kubelet/apis/config"
 )
 
 func createAPod(kl *kubelet.Kubelet) {
@@ -49,11 +49,11 @@ func createAPod(kl *kubelet.Kubelet) {
 }
 
 func main() {
-	kubelet := kubelet.NewKubelet("kubelet")
+	kubelet, _ := kubelet.NewKubelet("kubelet", "1234")
 
 	// createAPod(&kubelet)
 
-	kubelet.ListenAndServe(&kubeconfig.KubeletConfiguration{
+	kubelet.ListenAndServe(&config.KubeletConfiguration{
 		TypeMeta: v1.TypeMeta{Kind: "kubelet", APIVersion: "v1"},
 		Address:  "localhost",
 		Port:     "8080"})

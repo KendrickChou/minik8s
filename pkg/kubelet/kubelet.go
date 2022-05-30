@@ -11,7 +11,6 @@ import (
 
 	v1 "minik8s.com/minik8s/pkg/api/v1"
 	"minik8s.com/minik8s/pkg/kubelet/apis/config"
-	kubeconfig "minik8s.com/minik8s/pkg/kubelet/apis/config"
 	"minik8s.com/minik8s/pkg/kubelet/apis/constants"
 	"minik8s.com/minik8s/pkg/kubelet/pod"
 	"minik8s.com/minik8s/pkg/kubelet/server"
@@ -53,7 +52,7 @@ func NewKubelet(nodeName string, UID string) (Kubelet, error) {
 	return kubelet, err
 }
 
-func (kl *Kubelet) ListenAndServe(kubeCfg *kubeconfig.KubeletConfiguration) {
+func (kl *Kubelet) ListenAndServe(kubeCfg *config.KubeletConfiguration) {
 	address := kubeCfg.Address
 	port := kubeCfg.Port
 
