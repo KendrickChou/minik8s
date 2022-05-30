@@ -29,7 +29,9 @@ func main() {
 	// regist to apiserver
 	if err != nil || resp.StatusCode != 200 {
 		klog.Fatalf("Node failed register to apiserver %s", config.ApiServerAddress)
-		resp.Body.Close()
+		if resp != nil {
+			resp.Body.Close()
+		}
 		os.Exit(0)
 	}
 
