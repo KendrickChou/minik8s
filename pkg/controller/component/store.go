@@ -24,9 +24,7 @@ func (store *ThreadSafeStore) Update(key string, obj any) {
 func (store *ThreadSafeStore) Delete(key string) {
 	store.lock.Lock()
 	defer store.lock.Unlock()
-	if _, exists := store.items[key]; exists {
-		delete(store.items, key)
-	}
+	delete(store.items, key)
 }
 
 func (store *ThreadSafeStore) Get(key string) (item any, exists bool) {

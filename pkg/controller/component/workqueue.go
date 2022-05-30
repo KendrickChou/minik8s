@@ -19,10 +19,6 @@ func (s set) delete(item any) {
 	delete(s, item)
 }
 
-func (s set) len() int {
-	return len(s)
-}
-
 type WorkQueue struct {
 	queue      []any
 	processing set
