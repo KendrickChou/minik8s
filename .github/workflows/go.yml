@@ -2,7 +2,7 @@ name: Go
 
 on:
   push:
-    branches: [ develop ]
+    branches: [ bugfix/test_2 ]
 
 jobs:
 

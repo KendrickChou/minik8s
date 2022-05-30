@@ -15,5 +15,5 @@ type DNSPath struct {
 
 	ServiceName string `json:"servicename,omitempty"`
 
-	Port int16 `json:"port,omitempty"`
+	Port int `json:"port,omitempty"`
 }

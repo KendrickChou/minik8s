@@ -135,7 +135,8 @@ func handlePodChanRequest(req *PodRequest) {
 		url := config.AC_ServerAddr + ":" + strconv.Itoa(config.AC_ServerPort)
 		buf, _ := json.Marshal(req.Pod)
 		http_req, _ := http.NewRequest(http.MethodDelete, url+"/innode/"+nodeUID+"/pod/"+podUID, bytes.NewReader(buf))
-		_, _ = cli.Do(http_req)
+		resp, _ := cli.Do(http_req)
+		resp.Body.Close()
 		klog.Infof("Delete Pod[%v] in Node[%v]", podUID, nodeUID)
 
 		mtx.Lock()
@@ -168,8 +169,10 @@ func shed_simple(pod v1.Pod) bool {
 		min := -1
 		for _, node := range nodeMap {
 			resp, _ := http.Get(config.AC_ServerAddr + ":" + strconv.Itoa(config.AC_ServerPort) + "/innode/" + node.UID + "/pods")
+			
 			var pods []PodRequest
 			buf, _ := io.ReadAll(resp.Body)
+			resp.Body.Close()
 			_ = json.Unmarshal(buf, &pods)
 			if len(pods) < min || min == -1 {
 				min = len(pods)
@@ -182,17 +185,20 @@ func shed_simple(pod v1.Pod) bool {
 	url := config.AC_ServerAddr + ":" + strconv.Itoa(config.AC_ServerPort)
 	buf, _ := json.Marshal(pod)
 	req, _ := http.NewRequest(http.MethodPut, url+"/innode/"+pod.Spec.NodeName+"/pod/"+pod.UID, bytes.NewReader(buf))
-	resp, _ := cli.Do(req)
-	if resp.StatusCode != http.StatusOK {
+	resp2, _ := cli.Do(req)
+	
+	if resp2.StatusCode != http.StatusOK {
 		klog.Errorf("Sched error: Cannot Assign Pod[%v] to Node[%v]", pod.UID, pod.Spec.NodeName)
 		return false
 	}
+	resp2.Body.Close()
 
 	buf, _ = json.Marshal(pod)
 	req, _ = http.NewRequest(http.MethodPut, url+"/pod/"+pod.UID, bytes.NewReader(buf))
-	resp, _ = cli.Do(req)
+	resp3, _ := cli.Do(req)
+	resp3.Body.Close()
 	klog.Infof("Sched ok with pod UID[%v] to Node UID[%v]", pod.UID, pod.Spec.NodeName)
-	return resp.StatusCode == http.StatusOK
+	return true
 }
 
 func shed_rr(pod v1.Pod) bool {
@@ -215,15 +221,16 @@ func shed_rr(pod v1.Pod) bool {
 	url := config.AC_ServerAddr + ":" + strconv.Itoa(config.AC_ServerPort)
 	buf, _ := json.Marshal(pod)
 	req, _ := http.NewRequest(http.MethodPut, url+"/innode/"+pod.Spec.NodeName+"/pod/"+pod.UID, bytes.NewReader(buf))
-	resp, _ := cli.Do(req)
-	if resp.StatusCode != http.StatusOK {
+	resp2, _ := cli.Do(req)
+	if resp2.StatusCode != http.StatusOK {
 		klog.Errorf("Sched error: Cannot Assign Pod[%v] to Node[%v]", pod.UID, pod.Spec.NodeName)
 		return false
 	}
-
+	resp2.Body.Close()
 	buf, _ = json.Marshal(pod)
 	req, _ = http.NewRequest(http.MethodPut, url+"/pod/"+pod.UID, bytes.NewReader(buf))
-	resp, _ = cli.Do(req)
+	resp3, _ := cli.Do(req)
 	klog.Infof("Sched ok with pod UID[%v] to Node UID[%v]", pod.UID, pod.Spec.NodeName)
-	return resp.StatusCode == http.StatusOK
+	resp3.Body.Close()
+	return true
 }

@@ -1,0 +1,17 @@
+{
+    "kind": "dns",
+    "apiversion": "v1",
+    "metadata": {
+        "name": "test-DNS",
+        "namespace": "default",
+        "uid": ""
+    },
+    "host" : "dns-test1-com",
+    "paths": [
+        {
+            "path" : "/hello1",
+            "servicename" : "myFirstService1",
+            "port" : 50080
+        }
+    ]
+}
