@@ -41,7 +41,7 @@ func NewGateway() {
 			err := json.Unmarshal(rawBytes, req)
 
 			if err != nil {
-				klog.Error("Unmarshal APIServer Data Failed: %s", err.Error())
+				klog.Errorf("Unmarshal APIServer Data Failed: %s", err.Error())
 			} else {
 				err = handleNodeChangeRequest(handler, req)
 				if err != nil {
