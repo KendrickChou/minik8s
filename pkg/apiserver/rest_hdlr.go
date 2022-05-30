@@ -10,7 +10,6 @@ package apiserver
 
 import (
 	"encoding/json"
-	"fmt"
 	"github.com/gin-gonic/gin"
 	"k8s.io/klog"
 	"minik8s.com/minik8s/config"
@@ -40,10 +39,10 @@ func handleGetService(c *gin.Context) {
 
 func handlePostService(c *gin.Context) {
 	buf := make([]byte, c.Request.ContentLength)
-	_, err := c.Request.Body.Read(buf)
+	_, _ = c.Request.Body.Read(buf)
 	name := "S" + strconv.Itoa(nextObjNum()) + "-" + random.String(8)
 	var service v1.Service
-	err = json.Unmarshal(buf, &service)
+	err := json.Unmarshal(buf, &service)
 	if err != nil {
 		c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
 		return
@@ -60,13 +59,13 @@ func handlePostService(c *gin.Context) {
 
 func handlePutService(c *gin.Context) {
 	buf := make([]byte, c.Request.ContentLength)
-	_, err := c.Request.Body.Read(buf)
+	_, _ = c.Request.Body.Read(buf)
 	name := c.Param("name")
 
 	if !etcdTest("/service/" + name) {
 		c.JSON(404, gin.H{"status": "ERR", "error": "No such service"})
 	} else {
-		err = etcdPut(""+
+		err := etcdPut(""+
 			"/service/"+name, string(buf))
 		if err != nil {
 			c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
@@ -107,9 +106,8 @@ func handleWatchServices(c *gin.Context) {
 				cancel()
 				return
 			}
-			_, err = fmt.Fprintf(c.Writer, string(info))
-			writeN, err := c.Writer.Write([]byte{26})
-			fmt.Printf("wN: %v, err: %v", writeN, err)
+			c.Writer.Write(info)
+			_, err = c.Writer.Write([]byte{26})
 			if err != nil {
 				klog.Infof("fail to write to client, cancel watch task...\n")
 				cancel()
@@ -140,7 +138,8 @@ func handleWatchService(c *gin.Context) {
 					cancel()
 					return
 				}
-				_, err = fmt.Fprintf(c.Writer, string(info))
+				c.Writer.Write(info)
+				_, err = c.Writer.Write([]byte{26})
 				if err != nil {
 					klog.Infof("fail to write to client, cancel watch task...\n")
 					cancel()
@@ -171,10 +170,10 @@ func handleGetPod(c *gin.Context) {
 
 func handlePostPod(c *gin.Context) {
 	buf := make([]byte, c.Request.ContentLength)
-	_, err := c.Request.Body.Read(buf)
+	_, _ = c.Request.Body.Read(buf)
 	name := "P" + strconv.Itoa(nextObjNum()) + "-" + random.String(8)
 	var pod v1.Pod
-	err = json.Unmarshal(buf, &pod)
+	err := json.Unmarshal(buf, &pod)
 	if err != nil {
 		c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
 		return
@@ -191,12 +190,12 @@ func handlePostPod(c *gin.Context) {
 
 func handlePutPod(c *gin.Context) {
 	buf := make([]byte, c.Request.ContentLength)
-	_, err := c.Request.Body.Read(buf)
+	_, _ = c.Request.Body.Read(buf)
 	name := c.Param("name")
 	if !etcdTest("/pod/" + name) {
 		c.JSON(404, gin.H{"status": "ERR", "error": "No such pod"})
 	} else {
-		err = etcdPut("/pod/"+name, string(buf))
+		err := etcdPut("/pod/"+name, string(buf))
 		if err != nil {
 			c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
 		} else {
@@ -235,7 +234,6 @@ func handleWatchPods(c *gin.Context) {
 				cancel()
 				return
 			}
-			//_, err = fmt.Fprintf(c.Writer, string(info))
 			c.Writer.Write(info)
 			_, err = c.Writer.Write([]byte{26})
 			if err != nil {
@@ -310,13 +308,13 @@ func handleGetPodByNode(c *gin.Context) {
 
 func handlePostPodByNode(c *gin.Context) {
 	buf := make([]byte, c.Request.ContentLength)
-	_, err := c.Request.Body.Read(buf)
+	_, _ = c.Request.Body.Read(buf)
 	nname := c.Param("nname")
 	pname := "P" + strconv.Itoa(nextObjNum()) + "-" + random.String(8)
 	if !etcdTest("/node/" + nname) {
 		c.JSON(404, gin.H{"status": "ERR", "error": "No such pod"})
 	} else {
-		err = etcdPut("/innode/"+nname+"/pod/"+pname, string(buf))
+		err := etcdPut("/innode/"+nname+"/pod/"+pname, string(buf))
 		if err != nil {
 			c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
 		} else {
@@ -327,13 +325,13 @@ func handlePostPodByNode(c *gin.Context) {
 
 func handlePutPodByNode(c *gin.Context) {
 	buf := make([]byte, c.Request.ContentLength)
-	_, err := c.Request.Body.Read(buf)
+	_, _ = c.Request.Body.Read(buf)
 	nname := c.Param("nname")
 	pname := c.Param("pname")
 	if !etcdTest("/node/"+nname) || !etcdTest("/pod/"+pname) {
 		c.JSON(404, gin.H{"status": "ERR", "error": "No such pod"})
 	} else {
-		err = etcdPut("/innode/"+nname+"/pod/"+pname, string(buf))
+		err := etcdPut("/innode/"+nname+"/pod/"+pname, string(buf))
 		if err != nil {
 			c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
 		} else {
@@ -386,13 +384,13 @@ func handleGetPodStatusByNode(c *gin.Context) {
 
 func handlePutPodStatusByNode(c *gin.Context) {
 	buf := make([]byte, c.Request.ContentLength)
-	_, err := c.Request.Body.Read(buf)
+	_, _ = c.Request.Body.Read(buf)
 	nname := c.Param("nname")
 	pname := c.Param("pname")
 	if !etcdTest("/node/"+nname) || !etcdTest("/pod/"+pname) {
 		c.JSON(404, gin.H{"status": "ERR", "error": "No such pod"})
 	} else {
-		err = etcdPut("/innode/"+nname+"/podstatus/"+pname, string(buf))
+		err := etcdPut("/innode/"+nname+"/podstatus/"+pname, string(buf))
 		if err != nil {
 			c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
 		} else {
@@ -455,7 +453,8 @@ func handleWatchPodsByNode(c *gin.Context) {
 				cancel()
 				return
 			}
-			_, err = c.Writer.Write(append(info, 26))
+			c.Writer.Write(info)
+			_, err = c.Writer.Write([]byte{26})
 			if err != nil {
 				klog.Infof("fail to write to client, cancel watch task...\n")
 				cancel()
@@ -485,10 +484,10 @@ func handleGetReplica(c *gin.Context) {
 
 func handlePostReplica(c *gin.Context) {
 	buf := make([]byte, c.Request.ContentLength)
-	_, err := c.Request.Body.Read(buf)
+	_, _ = c.Request.Body.Read(buf)
 	name := "R" + strconv.Itoa(nextObjNum()) + "-" + random.String(8)
 	var rep v1.ReplicaSet
-	err = json.Unmarshal(buf, &rep)
+	err := json.Unmarshal(buf, &rep)
 	if err != nil {
 		c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
 		return
@@ -549,7 +548,7 @@ func handleWatchReplicas(c *gin.Context) {
 				cancel()
 				return
 			}
-			_, err = fmt.Fprintf(c.Writer, string(info))
+			c.Writer.Write(info)
 			_, err = c.Writer.Write([]byte{26})
 			if err != nil {
 				klog.Infof("fail to write to client, cancel watch task...\n")
@@ -581,7 +580,7 @@ func handleWatchReplica(c *gin.Context) {
 					cancel()
 					return
 				}
-				_, err = fmt.Fprintf(c.Writer, string(info))
+				c.Writer.Write(info)
 				_, err = c.Writer.Write([]byte{26})
 				if err != nil {
 					klog.Infof("fail to write to client, cancel watch task...\n")
@@ -613,10 +612,10 @@ func handleGetHPA(c *gin.Context) {
 
 func handlePostHPA(c *gin.Context) {
 	buf := make([]byte, c.Request.ContentLength)
-	_, err := c.Request.Body.Read(buf)
+	_, _ = c.Request.Body.Read(buf)
 	name := "H" + strconv.Itoa(nextObjNum()) + "-" + random.String(8)
 	var hpa v1.HorizontalPodAutoscaler
-	err = json.Unmarshal(buf, &hpa)
+	err := json.Unmarshal(buf, &hpa)
 	if err != nil {
 		c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
 		return
@@ -633,12 +632,12 @@ func handlePostHPA(c *gin.Context) {
 
 func handlePutHPA(c *gin.Context) {
 	buf := make([]byte, c.Request.ContentLength)
-	_, err := c.Request.Body.Read(buf)
+	_, _ = c.Request.Body.Read(buf)
 	name := c.Param("name")
 	if !etcdTest("/hpa/" + name) {
 		c.JSON(404, gin.H{"status": "ERR", "error": "No such hpa"})
 	} else {
-		err = etcdPut("/hpa/"+name, string(buf))
+		err := etcdPut("/hpa/"+name, string(buf))
 		if err != nil {
 			c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
 		} else {
@@ -677,7 +676,7 @@ func handleWatchHPAs(c *gin.Context) {
 				cancel()
 				return
 			}
-			_, err = fmt.Fprintf(c.Writer, string(info))
+			c.Writer.Write(info)
 			_, err = c.Writer.Write([]byte{26})
 			if err != nil {
 				klog.Infof("fail to write to client, cancel watch task...\n")
@@ -709,7 +708,7 @@ func handleWatchHPA(c *gin.Context) {
 					cancel()
 					return
 				}
-				_, err = fmt.Fprintf(c.Writer, string(info))
+				c.Writer.Write(info)
 				_, err = c.Writer.Write([]byte{26})
 				if err != nil {
 					klog.Infof("fail to write to client, cancel watch task...\n")
@@ -741,10 +740,10 @@ func handleGetEndpoint(c *gin.Context) {
 
 func handlePostEndpoint(c *gin.Context) {
 	buf := make([]byte, c.Request.ContentLength)
-	_, err := c.Request.Body.Read(buf)
+	_, _ = c.Request.Body.Read(buf)
 	name := "E" + strconv.Itoa(nextObjNum()) + "-" + random.String(8)
 	var ep v1.Endpoint
-	err = json.Unmarshal(buf, &ep)
+	err := json.Unmarshal(buf, &ep)
 	if err != nil {
 		c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
 		return
@@ -761,12 +760,12 @@ func handlePostEndpoint(c *gin.Context) {
 
 func handlePutEndpoint(c *gin.Context) {
 	buf := make([]byte, c.Request.ContentLength)
-	_, err := c.Request.Body.Read(buf)
+	_, _ = c.Request.Body.Read(buf)
 	name := c.Param("name")
 	if !etcdTest("/endpoint/" + name) {
 		c.JSON(404, gin.H{"status": "ERR", "error": "No such endpoint"})
 	} else {
-		err = etcdPut("/endpoint/"+name, string(buf))
+		err := etcdPut("/endpoint/"+name, string(buf))
 		if err != nil {
 			c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
 		} else {
@@ -805,7 +804,7 @@ func handleWatchEndpoints(c *gin.Context) {
 				cancel()
 				return
 			}
-			_, err = fmt.Fprintf(c.Writer, string(info))
+			c.Writer.Write(info)
 			_, err = c.Writer.Write([]byte{26})
 			if err != nil {
 				klog.Infof("fail to write to client, cancel watch task...\n")
@@ -837,7 +836,7 @@ func handleWatchEndpoint(c *gin.Context) {
 					cancel()
 					return
 				}
-				_, err = fmt.Fprintf(c.Writer, string(info))
+				c.Writer.Write(info)
 				_, err = c.Writer.Write([]byte{26})
 				if err != nil {
 					klog.Infof("fail to write to client, cancel watch task...\n")
@@ -887,28 +886,15 @@ func handleGetGPU(c *gin.Context) {
 
 func handlePostGPU(c *gin.Context) {
 	buf := make([]byte, c.Request.ContentLength)
-	_, err := c.Request.Body.Read(buf)
+	_, _ = c.Request.Body.Read(buf)
 	name := "G" + strconv.Itoa(nextObjNum()) + "-" + random.String(8)
 	var gj v1.GPUJob
-	err = json.Unmarshal(buf, &gj)
+	err := json.Unmarshal(buf, &gj)
 	if err != nil {
 		c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
 		return
 	}
 	gj.UID = name
-	//
-	//sshClient := gpu.NewSshClient(config.AS_GPU_DATA_ADDR)
-	//sshClient.UploadFile("./uploads/"+gj.Script, config.AS_GPU_HOMEPATH+gj.Script)
-	//for _, up_file := range gj.Files {
-	//	sshClient.UploadFile("./uploads/"+up_file.Filename, config.AS_GPU_HOMEPATH+up_file.Filename)
-	//}
-	//sshClient.Close()
-	//
-	//sshClient = gpu.NewSshClient(config.AS_GPU_LOGIN_ADDR)
-	//res := sshClient.RunCmd("sbatch " + config.AS_GPU_HOMEPATH + gj.Script)
-	//klog.Infof("sbatch result: %v", res)
-	//gj.JobNum = string(res[len(res)-9 : len(res)-1])
-
 	buf, _ = json.Marshal(gj)
 	err = etcdPut("/gpu/"+name, string(buf))
 	if err != nil {
@@ -920,12 +906,12 @@ func handlePostGPU(c *gin.Context) {
 
 func handlePutGPU(c *gin.Context) {
 	buf := make([]byte, c.Request.ContentLength)
-	_, err := c.Request.Body.Read(buf)
+	_, _ = c.Request.Body.Read(buf)
 	name := c.Param("name")
 	if !etcdTest("/gpu/" + name) {
 		c.JSON(404, gin.H{"status": "ERR", "error": "No such gpu job"})
 	} else {
-		err = etcdPut("/gpu/"+name, string(buf))
+		err := etcdPut("/gpu/"+name, string(buf))
 		if err != nil {
 			c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
 		} else {
@@ -964,7 +950,7 @@ func handleWatchGPUs(c *gin.Context) {
 				cancel()
 				return
 			}
-			_, err = fmt.Fprintf(c.Writer, string(info))
+			c.Writer.Write(info)
 			_, err = c.Writer.Write([]byte{26})
 			if err != nil {
 				klog.Infof("fail to write to client, cancel watch task...\n")
@@ -995,10 +981,10 @@ func handleGetDNS(c *gin.Context) {
 
 func handlePostDNS(c *gin.Context) {
 	buf := make([]byte, c.Request.ContentLength)
-	_, err := c.Request.Body.Read(buf)
+	_, _ = c.Request.Body.Read(buf)
 	name := "E" + strconv.Itoa(nextObjNum()) + "-" + random.String(8)
 	var dns v1.DNS
-	err = json.Unmarshal(buf, &dns)
+	err := json.Unmarshal(buf, &dns)
 	if err != nil {
 		c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
 		return
@@ -1015,12 +1001,12 @@ func handlePostDNS(c *gin.Context) {
 
 func handlePutDNS(c *gin.Context) {
 	buf := make([]byte, c.Request.ContentLength)
-	_, err := c.Request.Body.Read(buf)
+	_, _ = c.Request.Body.Read(buf)
 	name := c.Param("name")
 	if etcdTest("/dns/" + name) {
 		c.JSON(404, gin.H{"status": "ERR", "error": "No such dns"})
 	} else {
-		err = etcdPut("/dns/"+name, string(buf))
+		err := etcdPut("/dns/"+name, string(buf))
 		if err != nil {
 			c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
 		} else {
@@ -1059,7 +1045,7 @@ func handleWatchDNSs(c *gin.Context) {
 				cancel()
 				return
 			}
-			_, err = fmt.Fprintf(c.Writer, string(info))
+			c.Writer.Write(info)
 			_, err = c.Writer.Write([]byte{26})
 			if err != nil {
 				klog.Infof("fail to write to client, cancel watch task...\n")
@@ -1090,7 +1076,7 @@ func handleGetNode(c *gin.Context) {
 
 func handlePostNode(c *gin.Context) {
 	buf := make([]byte, c.Request.ContentLength)
-	_, err := c.Request.Body.Read(buf)
+	_, _ = c.Request.Body.Read(buf)
 	name := "N" + strconv.Itoa(nextObjNum()) + "-" + random.String(8)
 	node := v1.Node{}
 	//err = json.Unmarshal(buf, &node)
@@ -1101,7 +1087,7 @@ func handlePostNode(c *gin.Context) {
 	node.UID = name
 	node.Name = name
 	buf, _ = json.Marshal(node)
-	err = etcdPut("/node/"+name, string(buf))
+	err := etcdPut("/node/"+name, string(buf))
 	if err != nil {
 		c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
 	} else {
@@ -1111,7 +1097,7 @@ func handlePostNode(c *gin.Context) {
 
 func handlePutNode(c *gin.Context) {
 	buf := make([]byte, c.Request.ContentLength)
-	_, err := c.Request.Body.Read(buf)
+	_, _ = c.Request.Body.Read(buf)
 	name := c.Param("name")
 	kv, err := etcdGet("/node/" + name)
 	if err != nil {
@@ -1158,7 +1144,7 @@ func handleWatchNodes(c *gin.Context) {
 				cancel()
 				return
 			}
-			_, err = fmt.Fprintf(c.Writer, string(info))
+			c.Writer.Write(info)
 			_, err = c.Writer.Write([]byte{26})
 			if err != nil {
 				klog.Infof("fail to write to client, cancel watch task...\n")
@@ -1190,7 +1176,8 @@ func handleWatchNode(c *gin.Context) {
 					cancel()
 					return
 				}
-				_, err = fmt.Fprintf(c.Writer, string(info))
+				c.Writer.Write(info)
+				_, err = c.Writer.Write([]byte{26})
 				if err != nil {
 					klog.Infof("fail to write to client, cancel watch task...\n")
 					cancel()
@@ -1205,9 +1192,6 @@ func handleWatchNode(c *gin.Context) {
 //------------ Other API -----------
 
 func handleHeartbeat(c *gin.Context) {
-	//name := c.Param("name")
-	//num := c.Param("num")
-	//klog.Infof("heartbeat from %v, num %v\n", name, num)
 	c.JSON(200, gin.H{"status": "OK"})
 }
 
