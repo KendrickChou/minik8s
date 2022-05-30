@@ -25,7 +25,7 @@ func initEtcd() {
 		DialTimeout: 10 * time.Second,
 	})
 	if err != nil {
-		klog.Error("create etcd client failed, err:%v\n", err)
+		klog.Errorf("create etcd client failed, err:%v\n", err)
 	} else {
 		klog.Info("successfully started etcd client\n\n")
 	}
@@ -34,7 +34,7 @@ func initEtcd() {
 func closeEtcd() {
 	err := etcdClient.Close()
 	if err != nil {
-		klog.Error("close etcd client failed, err:%v\n", err)
+		klog.Errorf("close etcd client failed, err:%v\n", err)
 	} else {
 		klog.Info("etcd client closed\n")
 	}

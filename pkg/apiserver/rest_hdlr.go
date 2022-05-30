@@ -1130,8 +1130,8 @@ func handlePutNode(c *gin.Context) {
 
 func handleDeleteNode(c *gin.Context) {
 	name := c.Param("name")
-	if etcdTest("/node/" + name) {
-		c.JSON(404, gin.H{"status": "ERR", "error": "No such replica"})
+	if !etcdTest("/node/" + name) {
+		c.JSON(404, gin.H{"status": "ERR", "error": "No such node"})
 	} else {
 		err := etcdDel("/node/" + name)
 		if err != nil {
