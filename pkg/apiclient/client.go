@@ -121,7 +121,6 @@ func Watch(ctx context.Context, ch chan []byte, ty ObjType) {
 			}
 
 			buf[len(buf)-1] = '\n'
-			klog.Infof("buf: %s\n", buf)
 			ch <- buf
 		}
 	}

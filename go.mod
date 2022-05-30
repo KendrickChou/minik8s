@@ -8,7 +8,6 @@ require (
 	github.com/containerd/containerd v1.6.2
 	github.com/coreos/go-iptables v0.5.0
 	github.com/dchest/uniuri v0.0.0-20200228104902-7aecb25e1fe5
-	github.com/deckarep/golang-set v1.8.0
 	github.com/docker/docker v20.10.14+incompatible
 	github.com/gin-gonic/gin v1.7.7
 	github.com/pkg/sftp v1.13.4

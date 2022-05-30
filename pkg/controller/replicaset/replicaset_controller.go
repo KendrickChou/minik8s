@@ -4,7 +4,7 @@ import (
 	"k8s.io/klog"
 	v1 "minik8s.com/minik8s/pkg/api/v1"
 	"minik8s.com/minik8s/pkg/controller/component"
-	"strconv"
+	"minik8s.com/minik8s/utils/random"
 )
 
 type ReplicaSetController struct {
@@ -171,7 +171,7 @@ func (rsc *ReplicaSetController) increaseReplica(realReplicaNum int, rs *v1.Repl
 		pod.APIVersion = rs.APIVersion
 		pod.ObjectMeta = rs.Spec.Template.ObjectMeta
 		pod.UID = ""
-		pod.Name = pod.Name + "-" + strconv.Itoa(i)
+		pod.Name = pod.Name + "-" + random.String(5)
 
 		ref := v1.OwnerReference{
 			Name:       rs.Name,

@@ -6,6 +6,7 @@ import (
 	"math"
 	v1 "minik8s.com/minik8s/pkg/api/v1"
 	"minik8s.com/minik8s/pkg/controller/component"
+	"minik8s.com/minik8s/utils/random"
 	"strconv"
 	"time"
 )
@@ -75,7 +76,6 @@ func (hpaC *HorizontalController) Run() {
 func (hpaC *HorizontalController) periodicallyScaleAll() {
 	for {
 		time.Sleep(time.Second * 15)
-		klog.Info("periodically scale")
 		hpas := hpaC.hpaInformer.List()
 		for _, item := range hpas {
 			hpa := item.(v1.HorizontalPodAutoscaler)
@@ -133,7 +133,7 @@ func (hpaC *HorizontalController) getRSOwnedPods(rs *v1.ReplicaSet) []v1.Pod {
 func (hpaC *HorizontalController) reconcileAutoScaler(key string) error {
 	hpaItem := hpaC.hpaInformer.GetItem(key)
 	if hpaItem == nil {
-		return errors.New("can't find horizontalPodAutoScaler")
+		return errors.New("can't find HPA " + key)
 	}
 	hpa := hpaItem.(v1.HorizontalPodAutoscaler)
 
@@ -423,7 +423,7 @@ func (hpaC *HorizontalController) createPods(max int, policy *v1.HPAScalingPolic
 		}
 
 		for j := 0; j < numInPeriod; j++ {
-			podTemplate.Name += strconv.Itoa(i)
+			podTemplate.Name += random.String(5)
 			hpaC.podInformer.AddItem(podTemplate)
 			hpa.Status.CurrentReplicas++
 			hpa.Status.LastScaleTime = time.Now()
@@ -438,9 +438,14 @@ func (hpaC *HorizontalController) createPods(max int, policy *v1.HPAScalingPolic
 }
 
 func (hpaC *HorizontalController) calcPodCpuUtilization(pod *v1.Pod) float64 {
+	klog.Info(pod)
 	var utilization float64 = 0
 	for _, cs := range pod.Status.ContainerStatuses {
 		utilStr := cs.State.CPUPerc
+		klog.Infof("Pod %s cpuperc %s", pod.UID, utilStr)
+		if utilStr == "" {
+			continue
+		}
 		utilStr = utilStr[0 : len(utilStr)-1]
 		cpuUtil, err := strconv.ParseFloat(utilStr, 64)
 		if err != nil {
@@ -454,10 +459,14 @@ func (hpaC *HorizontalController) calcPodCpuUtilization(pod *v1.Pod) float64 {
 }
 
 func (hpaC *HorizontalController) calcPodMemoryUtilization(pod *v1.Pod) float64 {
-
+	klog.Info(pod)
 	var utilization float64 = 0
 	for _, cs := range pod.Status.ContainerStatuses {
 		utilStr := cs.State.MemPerc
+		klog.Infof("Pod %s memperc %s", pod.UID, utilStr)
+		if utilStr == "" {
+			continue
+		}
 		utilStr = utilStr[0 : len(utilStr)-1]
 		memoryUtil, err := strconv.ParseFloat(utilStr, 64)
 		if err != nil {

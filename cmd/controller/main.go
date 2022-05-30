@@ -5,9 +5,12 @@ import (
 	"minik8s.com/minik8s/pkg/controller/endpoint"
 	"minik8s.com/minik8s/pkg/controller/podautoscaling"
 	rs "minik8s.com/minik8s/pkg/controller/replicaset"
+	"minik8s.com/minik8s/utils/random"
 )
 
 func main() {
+	random.Init()
+
 	podInformer := component.NewInformer("Pod")
 	podStopChan := make(chan bool)
 	go podInformer.Run(podStopChan)
