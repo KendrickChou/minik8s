@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"fmt"
 	"io"
 	"k8s.io/klog"
 	"minik8s.com/minik8s/config"
