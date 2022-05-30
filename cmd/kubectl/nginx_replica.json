@@ -2,7 +2,7 @@
     "kind": "ReplicaSet",
     "apiversion": "v1",
     "metadata": {
-        "name": "nginx-replica-test",
+        "name": "nginx-replica-test-2",
         "namespace": "test",
         "labels": {
             "app": "nginx"
@@ -10,11 +10,9 @@
     },
     "spec": {
         "replicas": 3,
-        "type": "ClusterIP",
-        "clusterIP": "10.1.1.1",
         "selector":{
             "matchLabels": {
-                "app": "nginx"
+                "app": "nginx1"
             }
         },
         "template":{
@@ -23,7 +21,7 @@
                 "namespace": "test",
                 "uid": "",
                 "labels": {
-                    "app" : "nginx"
+                    "app" : "nginx1"
                 }
             },
             "spec": {

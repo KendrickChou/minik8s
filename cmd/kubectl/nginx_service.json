@@ -2,15 +2,15 @@
     "kind": "Service",
     "apiversion": "v1",
     "metadata": {
-        "name": "myFirstService",
+        "name": "myFirstService1",
         "namespace": "test",
         "uid": ""
     },
     "spec": {
         "type": "ClusterIP",
-        "clusterIP": "10.1.1.1",
+        "clusterIP": "10.1.1.2",
         "selector":{
-            "app": "nginx"
+            "app": "nginx1"
         },
         "ports":[{
             "name": "nginx",
