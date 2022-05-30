@@ -29,7 +29,9 @@ func main() {
 	// regist to apiserver
 	if err != nil || resp.StatusCode != 200 {
 		klog.Fatalf("Node failed register to apiserver %s", config.ApiServerAddress)
-		resp.Body.Close()
+		if resp != nil {
+			resp.Body.Close()
+		}
 		os.Exit(0)
 	}
 
@@ -178,6 +180,8 @@ func sendHeartBeat(ctx context.Context, nodeUID string, errChan chan string) {
 			errorCounter++
 			continue
 		}
+
+		resp.Body.Close()
 
 		if resp.StatusCode != 200 {
 			klog.Warningf("Send Heartbeat %d Failed, response status %s", counter, resp.Status)

@@ -48,6 +48,10 @@ type PodSpec struct {
 	NodeName string `json:"nodeName,omitempty"`
 
 	Volumes []string `json:"volumes,omitempty"`
+
+	ExposedPorts []string `json:"exposedports,omitempty"`
+
+	BindPorts map[string]string `json:"bindports,omitempty"`
 }
 
 type PodStatus struct {

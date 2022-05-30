@@ -60,13 +60,13 @@ type Container struct {
  
 	DNSSearch string `json:"-"`
 
-	ExposedPorts []string `json:"exposedports,omitempty"`
+	ExposedPorts []string `json:"-"`
 
-	BindPorts map[string]string `json:"bindports,omitempty"`
+	BindPorts map[string]string `json:"-"`
 
 	// --- resource type --- | --- value ---
 	//          cpu					1
-	//			memory				128 * 1024 * 1024 in bytes
+	//			memory				B/KB/MB/GB/TB/PB/EB
 	Resources map[string]string `json:"resources,omitempty"`
 }
 

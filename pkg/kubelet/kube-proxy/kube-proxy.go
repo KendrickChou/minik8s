@@ -64,7 +64,7 @@ func (kp *kubeProxy) AddEndpoint(ctx context.Context, uid string, endpoint v1.En
 		return nil
 	}
 
-	if len(endpoint.Subset.Addresses) == 0 || len(endpoint.Subset.Ports) == 0 {
+	if len(endpoint.Subset) == 0 {
 		err := fmt.Sprintf("Add endpoint error: endpoint %s subset is null", endpoint.Name)
 		klog.Error(err)
 		return errors.New(err)
@@ -73,59 +73,62 @@ func (kp *kubeProxy) AddEndpoint(ctx context.Context, uid string, endpoint v1.En
 	kp.endpoints[uid] = &endpoint
 
 	svcChains := []string{}
-	for _, port := range endpoint.Subset.Ports {
-		// create svc chain
-		svcID := createAServiceChainID()
-		err := kp.ipt.NewChain(constants.NATTableName, svcID)
-		svcChains = append(svcChains, svcID)
 
-		if err != nil {
-			klog.Errorf("Create Service Chain %s Error: %s", svcID, err.Error())
-		}
-
-		// append to K8S-SERVICE chain
-		rule := fmt.Sprintf("-d %s -p %s --dport %d -m comment --comment %s -j %s", endpoint.ServiceIp, port.Protocol, port.ServicePort, endpoint.Name, svcID)
-		err = kp.ipt.Append(constants.NATTableName, constants.ServiceChainName, strings.Split(rule, " ")...)
-
-		if err != nil {
-			klog.Errorf("Append %s to K8S-SERVICE Chain Error: %s", svcID, err.Error())
-		}
-
-		sepChains := []string{}
-		for i, addr := range endpoint.Subset.Addresses {
-			// create sep chain
-			sepID := createASEPChainID()
-			err = kp.ipt.NewChain(constants.NATTableName, sepID)
-			sepChains = append(sepChains, sepID)
-
+	for _, subset := range endpoint.Subset {
+		for _, port := range subset.Ports {
+			// create svc chain
+			svcID := createAServiceChainID()
+			err := kp.ipt.NewChain(constants.NATTableName, svcID)
+			svcChains = append(svcChains, svcID)
+	
 			if err != nil {
-				klog.Errorf("Create SEP Chain %s Error: %s", sepID, err.Error())
+				klog.Errorf("Create Service Chain %s Error: %s", svcID, err.Error())
 			}
-
-			// append to K8S-SVC-xxx chain
-			p := 1 / float32(len(endpoint.Subset.Addresses))
-			if i != len(endpoint.Subset.Addresses)-1 {
-				rule = fmt.Sprintf("-m statistic --mode random --probability %f -j %s", p, sepID)
-			} else {
-				rule = fmt.Sprintf("-j %s", sepID)
-			}
-
-			err = kp.ipt.Append(constants.NATTableName, svcID, strings.Split(rule, " ")...)
-
+	
+			// append to K8S-SERVICE chain
+			rule := fmt.Sprintf("-d %s -p %s --dport %d -m comment --comment %s -j %s", endpoint.ServiceIp, port.Protocol, port.ServicePort, endpoint.Name, svcID)
+			err = kp.ipt.Append(constants.NATTableName, constants.ServiceChainName, strings.Split(rule, " ")...)
+	
 			if err != nil {
-				klog.Errorf("Append %s to SVC Chain %s Error: %s", sepID, svcID, err.Error())
+				klog.Errorf("Append %s to K8S-SERVICE Chain Error: %s", svcID, err.Error())
 			}
-
-			// append to K8S-SEP-xxx
-			rule = fmt.Sprintf("-j DNAT -p %s --to %s:%d", port.Protocol, addr.IP, port.Port)
-			err = kp.ipt.Append(constants.NATTableName, sepID, strings.Split(rule, " ")...)
-
-			if err != nil {
-				klog.Errorf("Append DNAT Rule to SEP Chain %s Error: %s", sepID, err.Error())
+	
+			sepChains := []string{}
+			for i, addr := range subset.Addresses {
+				// create sep chain
+				sepID := createASEPChainID()
+				err = kp.ipt.NewChain(constants.NATTableName, sepID)
+				sepChains = append(sepChains, sepID)
+	
+				if err != nil {
+					klog.Errorf("Create SEP Chain %s Error: %s", sepID, err.Error())
+				}
+	
+				// append to K8S-SVC-xxx chain
+				p := 1 / float32(len(subset.Addresses))
+				if i != len(subset.Addresses)-1 {
+					rule = fmt.Sprintf("-m statistic --mode random --probability %f -j %s", p, sepID)
+				} else {
+					rule = fmt.Sprintf("-j %s", sepID)
+				}
+	
+				err = kp.ipt.Append(constants.NATTableName, svcID, strings.Split(rule, " ")...)
+	
+				if err != nil {
+					klog.Errorf("Append %s to SVC Chain %s Error: %s", sepID, svcID, err.Error())
+				}
+	
+				// append to K8S-SEP-xxx
+				rule = fmt.Sprintf("-j DNAT -p %s --to %s:%d", port.Protocol, addr.IP, port.Port)
+				err = kp.ipt.Append(constants.NATTableName, sepID, strings.Split(rule, " ")...)
+	
+				if err != nil {
+					klog.Errorf("Append DNAT Rule to SEP Chain %s Error: %s", sepID, err.Error())
+				}
 			}
+	
+			kp.SEPChain[svcID] = sepChains
 		}
-
-		kp.SEPChain[svcID] = sepChains
 	}
 
 	kp.SVCChain[endpoint.Name] = svcChains

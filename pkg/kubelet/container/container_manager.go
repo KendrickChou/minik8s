@@ -17,7 +17,7 @@ import (
 	"github.com/docker/docker/client"
 	"github.com/docker/go-connections/nat"
 	"k8s.io/klog/v2"
-
+	bytesize "github.com/inhies/go-bytesize"
 	v1 "minik8s.com/minik8s/pkg/api/v1"
 )
 
@@ -173,8 +173,13 @@ func (manager *containerManager) CreateContainer(ctx context.Context, container 
 		mem, ok := container.Resources["memory"]
 
 		if ok {
-			num, _ := strconv.ParseInt(mem, 10, 64)
-			resources.Memory = num
+			inBytes, err := bytesize.Parse(mem)
+
+			if err != nil {
+				klog.Errorf("Container %s Parse Memory Size Error: %s", container.Name, inBytes)
+			} else {
+				resources.Memory = int64(inBytes)
+			}
 		}
 
 		hostConfig.Resources = resources
