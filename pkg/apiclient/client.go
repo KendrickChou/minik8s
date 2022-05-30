@@ -241,27 +241,6 @@ func Rest(id string, value string, objTy ObjType, opTy OpType) []byte {
 	return buf
 }
 
-func TemplateArrangePodToNode(pod v1.Pod) {
-	var resp *http.Response
-	var err error
-	url := config.AC_ServerAddr + ":" + strconv.Itoa(config.AC_ServerPort)
-
-	cli := http.Client{}
-	podBytes, err := json.Marshal(pod)
-	if err != nil {
-		klog.Error("Json marshall error\n")
-	}
-
-	req, _ := http.NewRequest(http.MethodPost, url+"/node/1/pod/"+pod.UID, bytes.NewReader(podBytes))
-	resp, err = cli.Do(req)
-
-	buf, err := io.ReadAll(resp.Body)
-	fmt.Printf(string(buf))
-	if err != nil {
-		klog.Error("TemplateArrangePodToNode Error\n")
-	}
-}
-
 // GetPodStatusHttp deprecated
 func GetPodStatusHttp(pod *v1.Pod) []byte {
 	var resp *http.Response

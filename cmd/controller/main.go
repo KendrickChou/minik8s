@@ -5,9 +5,13 @@ import (
 	"minik8s.com/minik8s/pkg/controller/endpoint"
 	"minik8s.com/minik8s/pkg/controller/podautoscaling"
 	rs "minik8s.com/minik8s/pkg/controller/replicaset"
+	"minik8s.com/minik8s/utils/random"
+	"time"
 )
 
 func main() {
+	random.Init()
+
 	podInformer := component.NewInformer("Pod")
 	podStopChan := make(chan bool)
 	go podInformer.Run(podStopChan)
@@ -28,6 +32,11 @@ func main() {
 	hpStopChan := make(chan bool)
 	go hpInformer.Run(hpStopChan)
 
+	for !(podInformer.HasSynced() && rsInformer.HasSynced() && serviceInformer.HasSynced() &&
+		endpointInformer.HasSynced() && hpInformer.HasSynced()) {
+
+	}
+
 	rsController := rs.NewReplicaSetController(podInformer, rsInformer)
 	go rsController.Run()
 
@@ -38,6 +47,6 @@ func main() {
 	go hpaController.Run()
 
 	for {
-
+		time.Sleep(time.Second * 100)
 	}
 }
