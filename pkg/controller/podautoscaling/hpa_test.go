@@ -39,7 +39,12 @@ func readFile(path string) []byte {
 	if err != nil {
 		panic(err)
 	}
-	defer file.Close()
+	defer func(file *os.File) {
+		closeErr := file.Close()
+		if closeErr != nil {
+			panic(closeErr)
+		}
+	}(file)
 	content, err := ioutil.ReadAll(file)
 	return content
 }

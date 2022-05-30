@@ -4,8 +4,6 @@ import (
 	"k8s.io/klog"
 	v1 "minik8s.com/minik8s/pkg/api/v1"
 	"minik8s.com/minik8s/pkg/controller/component"
-	"strconv"
-	"strings"
 )
 
 type EndpointController struct {
@@ -204,6 +202,7 @@ func (epc *EndpointController) createEndpoint(service v1.Service, pods []v1.Pod,
 	}
 }
 
+/* useless at this moment
 func (epc *EndpointController) portsMatch(pod *v1.Pod, ports []v1.EndpointPort) bool {
 	if len(pod.Spec.ExposedPorts) == len(ports) {
 		portSet := map[int]struct{}{}
@@ -228,6 +227,7 @@ func (epc *EndpointController) portsMatch(pod *v1.Pod, ports []v1.EndpointPort) 
 
 	return false
 }
+*/
 
 // get Service by OwnerReferences
 func (epc *EndpointController) getPodOwnerService(pod *v1.Pod) *v1.Service {
