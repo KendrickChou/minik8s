@@ -76,7 +76,7 @@ func podsOwnedByRS(podInformer *component.Informer, rs *v1.ReplicaSet) []v1.Pod 
 	return result
 }
 
-func TestHPAIncreaseReplica(t *testing.T) {
+func testHPAIncreaseReplica(t *testing.T) {
 	podInformer, rsInformer, hpaInformer := runInformerAndController()
 	time.Sleep(time.Second)
 
