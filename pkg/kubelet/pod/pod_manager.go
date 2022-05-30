@@ -148,6 +148,10 @@ func (pm *podManager) AddPod(pod *v1.Pod) error {
 
 		container.Name = pod.Name + "-" + container.Name
 
+		container.ExposedPorts = pod.Spec.ExposedPorts
+
+		container.BindPorts = pod.Spec.BindPorts
+
 		id, err := pm.containerManager.CreateContainer(context.TODO(), &container)
 
 		if err != nil {
@@ -180,7 +184,7 @@ func (pm *podManager) AddPod(pod *v1.Pod) error {
 	// create related volumes
 	for _, volume := range pod.Spec.Volumes {
 		klog.Infof("Create Volume %s For Pod %s", pod.Name, volume)
-		cmd := exec.Command("docker", "volume", "create", pod.Name + "-" + volume)
+		cmd := exec.Command("docker", "volume", "create", pod.Name+"-"+volume)
 		cmd.CombinedOutput()
 	}
 
@@ -302,7 +306,7 @@ func (pm *podManager) DeletePod(UID string) error {
 
 	for _, volume := range pod.Spec.Volumes {
 		klog.Infof("Delete Volume %s For Pod %s", pod.Name, volume)
-		cmd := exec.Command("docker", "volume", "rm", pod.Name + "-" + volume)
+		cmd := exec.Command("docker", "volume", "rm", pod.Name+"-"+volume)
 		cmd.CombinedOutput()
 	}
 

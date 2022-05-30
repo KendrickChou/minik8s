@@ -60,9 +60,9 @@ type Container struct {
  
 	DNSSearch string `json:"-"`
 
-	ExposedPorts []string `json:"exposedports,omitempty"`
+	ExposedPorts []string `json:"-"`
 
-	BindPorts map[string]string `json:"bindports,omitempty"`
+	BindPorts map[string]string `json:"-"`
 
 	// --- resource type --- | --- value ---
 	//          cpu					1
