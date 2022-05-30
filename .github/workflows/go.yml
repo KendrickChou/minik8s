@@ -2,7 +2,7 @@ name: Go
 
 on:
   push:
-    branches: [ bugfix/warning ]
+    branches: [ develop ]
 
 jobs:
 
