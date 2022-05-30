@@ -25,34 +25,34 @@ type ContainerState struct {
 }
 
 type Container struct {
-	Name string `json:"Name,omitempty"`
+	Name string `json:"name,omitempty"`
 
-	Namespace string `json:"Namespace,omitempty"`
+	Namespace string `json:"namespace,omitempty"`
 
-	ID string `json:"ID,omitempty"`
+	ID string `json:"id,omitempty"`
 
-	Image string `json:"Image,omitempty"`
+	Image string `json:"image,omitempty"`
 
 	//"Always" means that kubelet always attempts to pull the latest image. Container will fail If the pull fails.
 	//"IfNotPresent" means that kubelet pulls if the image isn't present on disk. Container will fail if the image isn't present and the pull fails.
 	//"Never" means that kubelet never pulls an image, but only uses a local image. Container will fail if the image isn't present
 	//default: IfNotPresent
-	ImagePullPolicy string `json:"ImagePullPolicy,omitempty" default:"IfNotPresent"`
+	ImagePullPolicy string `json:"imagepullpolicy,omitempty" default:"IfNotPresent"`
 
 	// Command to run when starting the container
-	Command []string `json:"Command,omitempty"`
+	Command []string `json:"command,omitempty"`
 
-	Entrypoint []string `json:"Entrypoint,omitempty"`
+	Entrypoint []string `json:"entrypoint,omitempty"`
 
 	// Container's working directory.
 	// If not specified, the container runtime's default will be used, which
 	// might be configured in the container image.
-	WorkingDir string `json:"WorkingDir,omitempty"`
+	WorkingDir string `json:"workingDir,omitempty"`
 
-	Env []string `json:"Env,omitempty"`
+	Env []string `json:"env,omitempty"`
 
 	// mount volumes
-	Mounts []Mount `json:"Mounts,omitempty"`
+	Mounts []Mount `json:"mounts,omitempty"`
 
 	NetworkMode string `json:"-"`
 
@@ -62,16 +62,16 @@ type Container struct {
 }
 
 type ContainerStatus struct {
-	Name string `json:"Name,omitempty"`
+	Name string `json:"name,omitempty"`
 
-	State ContainerState `json:"State,omitempty"`
+	State ContainerState `json:"state,omitempty"`
 }
 
 type Mount struct {
-	Type        string `json:"MountType,omitempty"`
-	Source      string `json:"MountSource,omitempty"`
-	Target      string `json:"MountTarget,omitempty"`
-	Consistency string `json:"MountConsistency,omitempty"`
+	Type        string `json:"mountType,omitempty"`
+	Source      string `json:"mountSource,omitempty"`
+	Target      string `json:"mountTarget,omitempty"`
+	Consistency string `json:"mountConsistency,omitempty"`
 }
 
 const (

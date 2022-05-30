@@ -10,12 +10,12 @@
         }
     },
     "spec": {
-        "Containers": [
+        "containers": [
             {
-                "Name": "test-container-1",
-                "Namespace": "test",
-                "Image": "nginx:latest",
-                "ImagePullPolicy": "IfNotPresent"
+                "name": "test-container-1",
+                "namespace": "test",
+                "image": "nginx:latest",
+                "imagepullpolicy": "IfNotPresent"
             }
         ]
     }

@@ -10,12 +10,12 @@
     }
   },
   "spec": {
-    "Containers": [
+    "containers": [
       {
-        "Name": "test-container-1",
-        "Namespace": "test",
-        "Image": "mysql:latest",
-        "ImagePullPolicy": "IfNotPresent"
+        "name": "test-container-1",
+        "namespace": "test",
+        "image": "mysql:latest",
+        "imagepullpolicy": "IfNotPresent"
       }
     ]
   }
