@@ -37,12 +37,18 @@ var mtx sync.Mutex
 
 var shed func(pod v1.Pod) bool
 
-var currNum int = 0
+var currNum int
 
 func Init() {
-	shed = shed_simple
 	podMap = make(map[string]v1.Pod)
 	nodeMap = make(map[string]v1.Node)
+	currNum = 0
+	switch config.SCHED_STRATEGY {
+	case "SIMPLE":
+		shed = shed_simple
+	case "RR":
+		shed = shed_rr
+	}
 }
 
 func Run() {
@@ -169,7 +175,7 @@ func shed_simple(pod v1.Pod) bool {
 		min := -1
 		for _, node := range nodeMap {
 			resp, _ := http.Get(config.AC_ServerAddr + ":" + strconv.Itoa(config.AC_ServerPort) + "/innode/" + node.UID + "/pods")
-			
+
 			var pods []PodRequest
 			buf, _ := io.ReadAll(resp.Body)
 			resp.Body.Close()
@@ -186,7 +192,7 @@ func shed_simple(pod v1.Pod) bool {
 	buf, _ := json.Marshal(pod)
 	req, _ := http.NewRequest(http.MethodPut, url+"/innode/"+pod.Spec.NodeName+"/pod/"+pod.UID, bytes.NewReader(buf))
 	resp2, _ := cli.Do(req)
-	
+
 	if resp2.StatusCode != http.StatusOK {
 		klog.Errorf("Sched error: Cannot Assign Pod[%v] to Node[%v]", pod.UID, pod.Spec.NodeName)
 		return false
@@ -213,7 +219,7 @@ func shed_rr(pod v1.Pod) bool {
 				pod.Spec.NodeName = node.UID
 				break
 			}
-			i ++
+			i++
 		}
 		klog.Infof("Sched handle pod UID[%v]: set appointed Node[%v]", pod.UID, pod.Spec.NodeName)
 	}

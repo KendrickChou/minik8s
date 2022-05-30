@@ -61,6 +61,10 @@ func SetUpRouter() *gin.Engine {
 	router.DELETE("/function/:id", func(ctx *gin.Context) {
 		funcId := ctx.Params.ByName("id")
 		bytes, err := couchdb.GetDoc(context.TODO(), constants.FunctionDBId, funcId)
+		if err != nil {
+			ctx.JSON(500, gin.H{"error": err.Error()})
+			return
+		}
 
 		var f couchobject.Function
 		json.Unmarshal(bytes, &f)
@@ -137,7 +141,7 @@ func SetUpRouter() *gin.Engine {
 	})
 
 	router.GET("/trigger/:id", func(ctx *gin.Context) {
-		buf, err := ioutil.ReadAll(ctx.Request.Body)
+		buf, _ := ioutil.ReadAll(ctx.Request.Body)
 		acId := ctx.Params.ByName("id")
 		bytes, err := couchdb.GetDoc(context.TODO(), constants.ActionDBId, acId)
 

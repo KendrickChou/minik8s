@@ -41,20 +41,20 @@ type PodPoolManager struct {
 
 func NewPodPoolManager() *PodPoolManager {
 	ppm := &PodPoolManager{
-		pp: make(map[string][]*PodEntry),
-		scale: make(map[string]int),
+		pp:           make(map[string][]*PodEntry),
+		scale:        make(map[string]int),
 		scaleSigChan: make(map[string]chan int),
-		cancels: make(map[string][]context.CancelFunc),
+		cancels:      make(map[string][]context.CancelFunc),
 		readyPodChan: make(map[string]chan *PodEntry),
 	}
 	ppm.scale["python"] = 3
-	ppm.readyPodChan["python"] = make(chan *PodEntry, 0)
+	ppm.readyPodChan["python"] = make(chan *PodEntry)
 	for i := 0; i < ppm.scale["python"]; i++ {
 		ctx, cancel := context.WithCancel(context.Background())
 		go ppm.provider(ctx, "python")
 		ppm.cancels["python"] = append(ppm.cancels["python"], cancel)
 	}
-	ppm.scaleSigChan["python"] = make(chan int, 0)
+	ppm.scaleSigChan["python"] = make(chan int)
 	go ppm.scaler("python")
 	return ppm
 }
@@ -81,8 +81,8 @@ func (ppm *PodPoolManager) scaler(env string) {
 		select {
 		case <-time.After(time.Minute * 2):
 			ppm.bigLock.Lock()
-			s := (ppm.scale[env] + 1)/2
-			if s > 0{
+			s := (ppm.scale[env] + 1) / 2
+			if s > 0 {
 				i := 0
 				for i = 0; i < s; i++ {
 					ppm.scale[env]--
@@ -90,11 +90,11 @@ func (ppm *PodPoolManager) scaler(env string) {
 					ppm.cancels[env][i]()
 				}
 				ppm.cancels[env] = append([]context.CancelFunc{}, ppm.cancels[env][i:]...)
-			}else{
+			} else {
 				clear := false
-				for !clear{
-					select{
-					case podEntry := <- ppm.readyPodChan[env]:
+				for !clear {
+					select {
+					case podEntry := <-ppm.readyPodChan[env]:
 						deregisterPod(podEntry)
 					default:
 						clear = true
@@ -185,7 +185,7 @@ func (ppm *PodPoolManager) GetPod(action actionchain.Action) (*PodEntry, error) 
 			return pe, nil
 		default:
 			klog.Infof("no pod is ready for env: %v", action.Env)
-			if needMorePod{
+			if needMorePod {
 				needMorePod = false
 				ppm.scaleSigChan[action.Env] <- 1
 			}

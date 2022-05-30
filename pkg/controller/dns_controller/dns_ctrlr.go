@@ -53,17 +53,13 @@ func Run() {
 	}
 
 	//handle watch results
-	for {
-		select {
-		case rawBytes := <-dnsChan:
-			req := &DNSRequest{}
-			err := json.Unmarshal(rawBytes, req)
-
-			if err != nil {
-				klog.Error("Unmarshal Dns Change Req Failed: %v", err)
-			} else {
-				handleDNSChanRequest(req)
-			}
+	for rawBytes := range dnsChan {
+		req := &DNSRequest{}
+		err := json.Unmarshal(rawBytes, req)
+		if err != nil {
+			klog.Error("Unmarshal Dns Change Req Failed: %v", err)
+		} else {
+			handleDNSChanRequest(req)
 		}
 	}
 }

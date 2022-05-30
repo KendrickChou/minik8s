@@ -155,7 +155,7 @@ func GetAll(objType ObjType) []byte {
 		klog.Error("Invalid arguments!\n")
 		return nil
 	}
-	resp, err = http.Get(url)
+	resp, _ = http.Get(url)
 	buf, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil
@@ -230,12 +230,17 @@ func Rest(id string, value string, objTy ObjType, opTy OpType) []byte {
 		klog.Error("Invalid arguments!\n")
 		return nil
 	}
-
-	buf, err := io.ReadAll(resp.Body)
 	if err != nil {
+		klog.Errorf("network error: %v", err)
 		return nil
 	}
+
+	buf, err := io.ReadAll(resp.Body)
 	resp.Body.Close()
+	if err != nil {
+		klog.Errorf("io read error: %v", err)
+		return nil
+	}
 
 	return buf
 }
@@ -248,10 +253,14 @@ func GetPodStatusHttp(pod *v1.Pod) []byte {
 	url += "/innode/" + pod.Spec.NodeName + "/podstatus/" + pod.UID
 
 	resp, err = http.Get(url)
+	if err != nil {
+		klog.Errorf("network error: %v", err)
+		return nil
+	}
 	buf, err := io.ReadAll(resp.Body)
 	resp.Body.Close()
 	if err != nil {
-		klog.Error("http get error\n")
+		klog.Error("io read error\n")
 		return nil
 	}
 
@@ -272,6 +281,10 @@ func PostEndpoint(endpoint *v1.Endpoint) string {
 
 	req, _ := http.NewRequest(http.MethodPost, url+config.AC_RestEndpoint_Path+"/"+endpoint.UID, bytes.NewReader(epBytes))
 	resp, err = cli.Do(req)
+	if err != nil {
+		klog.Errorf("network error: %v", err)
+		return ""
+	}
 
 	buf, err := io.ReadAll(resp.Body)
 	resp.Body.Close()

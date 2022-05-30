@@ -40,7 +40,10 @@ var addCmd = &cobra.Command{
 		}
 
 		kind, err := cmd.Flags().GetString("kind")
-
+		if err != nil {
+			fmt.Println("getString err: ", err)
+			return
+		}
 		var resp []byte
 		switch kind {
 		case "pod":
@@ -114,13 +117,17 @@ func uploadFile(path string, newFilename string) {
 		return
 	}
 	_, err = io.Copy(part, upfile)
+	if err != nil {
+		fmt.Println("io copy err: ", err)
+		return
+	}
 
 	err = writer.Close()
 	if err != nil {
 		fmt.Println("文件上传失败：", err)
 		return
 	}
-	request, err := http.NewRequest("POST", url, body)
+	request, _ := http.NewRequest("POST", url, body)
 	request.Header.Set("Content-Type", writer.FormDataContentType())
 
 	client := &http.Client{}
