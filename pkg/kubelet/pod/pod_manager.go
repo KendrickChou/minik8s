@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"time"
 
 	"github.com/docker/docker/api/types"
@@ -156,13 +157,13 @@ func (pm *podManager) AddPod(pod *v1.Pod) error {
 
 		container.ID = id
 
-		err = pm.containerManager.StartContainer(context.TODO(), &container)
+		// err = pm.containerManager.StartContainer(context.TODO(), &container)
 
-		if err != nil {
-			klog.Errorf("Start pod %s Initial container %s failed: %s", pod.Name, container.Name, err.Error())
-			klog.Errorln(err)
-			return err
-		}
+		// if err != nil {
+		// 	klog.Errorf("Start pod %s Initial container %s failed: %s", pod.Name, container.Name, err.Error())
+		// 	klog.Errorln(err)
+		// 	return err
+		// }
 
 		pod.Spec.InitialContainers[k] = container
 
@@ -176,6 +177,14 @@ func (pm *podManager) AddPod(pod *v1.Pod) error {
 		}
 	}
 
+	// create related volumes
+	for _, volume := range pod.Spec.Volumes {
+		klog.Infof("Create Volume %s For Pod %s", pod.Name, volume)
+		cmd := exec.Command("docker", "volume", "create", pod.Name + "-" + volume)
+		cmd.CombinedOutput()
+	}
+
+	// start user spec pods
 	for _, container := range pod.Spec.Containers {
 		container.Name = pod.Name + "-" + container.Name
 		container.NetworkMode = constants.NetworkIDPrefix + pod.Spec.InitialContainers[constants.InitialPauseContainerKey].Name
@@ -189,11 +198,11 @@ func (pm *podManager) AddPod(pod *v1.Pod) error {
 
 		container.ID = id
 
-		err = pm.containerManager.StartContainer(context.TODO(), container)
+		// err = pm.containerManager.StartContainer(context.TODO(), container)
 
-		if err != nil {
-			klog.Errorln(err)
-		}
+		// if err != nil {
+		// 	klog.Errorln(err)
+		// }
 	}
 
 	return nil
@@ -291,6 +300,12 @@ func (pm *podManager) DeletePod(UID string) error {
 		}
 	}
 
+	for _, volume := range pod.Spec.Volumes {
+		klog.Infof("Delete Volume %s For Pod %s", pod.Name, volume)
+		cmd := exec.Command("docker", "volume", "rm", pod.Name + "-" + volume)
+		cmd.CombinedOutput()
+	}
+
 	for _, container := range pod.Spec.Containers {
 		err := pm.containerManager.StopContainer(context.TODO(), container)
 
@@ -355,8 +370,8 @@ func (pm *podManager) PodStatus(UID string) (v1.PodStatus, error) {
 			Error:      stats.State.Error,
 			StartedAt:  stats.State.StartedAt,
 			FinishedAt: stats.State.FinishedAt,
-			CPUPerc:   dynamicStats[0],
-			MemPerc:   dynamicStats[1],
+			CPUPerc:    dynamicStats[0],
+			MemPerc:    dynamicStats[1],
 		}
 
 		pod.Status.ContainerStatuses = append(pod.Status.ContainerStatuses,
@@ -393,8 +408,8 @@ func (pm *podManager) PodStatus(UID string) (v1.PodStatus, error) {
 			Error:      stats.State.Error,
 			StartedAt:  stats.State.StartedAt,
 			FinishedAt: stats.State.FinishedAt,
-			CPUPerc:   dynamicStats[0],
-			MemPerc:   dynamicStats[1],
+			CPUPerc:    dynamicStats[0],
+			MemPerc:    dynamicStats[1],
 		}
 
 		pod.Status.ContainerStatuses = append(pod.Status.ContainerStatuses,
