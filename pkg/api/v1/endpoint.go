@@ -14,7 +14,7 @@ type Endpoint struct {
 	// NotReadyAddresses in the same subset.
 	// Sets of addresses and ports that comprise a service.
 	// +optional
-	Subset EndpointSubset `json:"subsets,omitempty"`
+	Subset []EndpointSubset `json:"subsets,omitempty"`
 }
 
 // EndpointSubset is a group of addresses with a common set of ports. The

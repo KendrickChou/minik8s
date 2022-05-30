@@ -179,6 +179,8 @@ func sendHeartBeat(ctx context.Context, nodeUID string, errChan chan string) {
 			continue
 		}
 
+		resp.Body.Close()
+
 		if resp.StatusCode != 200 {
 			klog.Warningf("Send Heartbeat %d Failed, response status %s", counter, resp.Status)
 			errorCounter++

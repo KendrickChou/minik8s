@@ -8,9 +8,9 @@ require (
 	github.com/containerd/containerd v1.6.2
 	github.com/coreos/go-iptables v0.5.0
 	github.com/dchest/uniuri v0.0.0-20200228104902-7aecb25e1fe5
-	github.com/deckarep/golang-set v1.8.0
 	github.com/docker/docker v20.10.14+incompatible
 	github.com/gin-gonic/gin v1.7.7
+	github.com/inhies/go-bytesize v0.0.0-20220417184213-4913239db9cf
 	github.com/pkg/sftp v1.13.4
 	github.com/sbinet/go-python v0.1.0
 	github.com/spf13/cobra v1.4.0
@@ -38,7 +38,7 @@ require (
 	github.com/coreos/go-semver v0.3.0 // indirect
 	github.com/coreos/go-systemd/v22 v22.3.2 // indirect
 	github.com/docker/distribution v2.7.1+incompatible // indirect
-	github.com/docker/go-connections v0.4.0 // indirect
+	github.com/docker/go-connections v0.4.0
 	github.com/docker/go-events v0.0.0-20190806004212-e31b211e4f1c // indirect
 	github.com/docker/go-units v0.4.0 // indirect
 	github.com/gin-contrib/sse v0.1.0 // indirect

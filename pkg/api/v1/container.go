@@ -66,7 +66,7 @@ type Container struct {
 
 	// --- resource type --- | --- value ---
 	//          cpu					1
-	//			memory				128 * 1024 * 1024 in bytes
+	//			memory				B/KB/MB/GB/TB/PB/EB
 	Resources map[string]string `json:"resources,omitempty"`
 }
 
