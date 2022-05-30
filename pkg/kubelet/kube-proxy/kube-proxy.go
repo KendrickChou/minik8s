@@ -59,9 +59,9 @@ func (kp *kubeProxy) AddEndpoint(ctx context.Context, uid string, endpoint v1.En
 	_, ok := kp.endpoints[uid]
 
 	if ok {
-		err := fmt.Sprintf("Add endpoint error: endpoint %s already exists", endpoint.Name)
-		klog.Error(err)
-		return errors.New(err)
+		klog.Infof("Add endpoint %s already exists, try to update it", endpoint.Name)
+		kp.UpdateEndpoint(ctx, uid, endpoint)
+		return nil
 	}
 
 	if len(endpoint.Subset.Addresses) == 0 || len(endpoint.Subset.Ports) == 0 {
@@ -175,9 +175,9 @@ func (kp *kubeProxy) RemoveEndpoint(ctx context.Context, name string) error {
 }
 
 func (kp *kubeProxy) UpdateEndpoint(ctx context.Context, uid string, endpoint v1.Endpoint) error {
-	klog.Infof("Update Endpoint %s", endpoint.Name)
+	klog.Infof("Update Endpoint %s, UID: %s", endpoint.Name, uid)
 
-	err := kp.RemoveEndpoint(context.TODO(), endpoint.Name)
+	err := kp.RemoveEndpoint(context.TODO(), uid)
 
 	if err != nil {
 		return err
@@ -252,13 +252,13 @@ func initIPtables(ipt *iptables.IPTables) error {
 	}
 
 	klog.Info("Add K8S-SERVICE Chain to OUTPUT & PREROUTING")
-	
+
 	return nil
 }
 
 func deleteRulesByTarget(table, chain, target string) (string, error) {
 	command := fmt.Sprintf("iptables -t %s -D %s $(iptables -t %s --line-number -nL %s | grep %s | awk '{print $1}' | tac)",
-				 			table, chain, table, chain, target)
+		table, chain, table, chain, target)
 
 	cmd := exec.Command("bash", "-c", command)
 
