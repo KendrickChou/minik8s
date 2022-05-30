@@ -32,7 +32,7 @@ const (
 	HeartBeatInterval        uint64 = 1  //second
 	MaxErrorHeartBeat        int    = 10 // if successively failed over 10 times, close node
 	RefreshPodStatusInterval uint64 = 10
-	ReconnectInterval		 uint64 = 20
+	ReconnectInterval        uint64 = 20
 )
 
 const (
@@ -48,7 +48,7 @@ const (
 	SepChainPrefix     string = "K8S-SEP-"
 
 	DNS       string = "172.17.0.1"
-	DNSSearch string = "weave.local."
+	DNSSearch string = "weave.local.root"
 )
 
 var InitialPauseContainer v1.Container = v1.Container{
