@@ -16,8 +16,8 @@ import (
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/client"
 	"github.com/docker/go-connections/nat"
-	"k8s.io/klog/v2"
 	bytesize "github.com/inhies/go-bytesize"
+	"k8s.io/klog/v2"
 	v1 "minik8s.com/minik8s/pkg/api/v1"
 )
 
@@ -153,7 +153,7 @@ func (manager *containerManager) CreateContainer(ctx context.Context, container 
 			hostport := array[1]
 			portMap[nat.Port(port)] = []nat.PortBinding{
 				{
-					HostIP: host,
+					HostIP:   host,
 					HostPort: hostport,
 				},
 			}
@@ -169,7 +169,7 @@ func (manager *containerManager) CreateContainer(ctx context.Context, container 
 			num, _ := strconv.ParseInt(cpu, 10, 64)
 			resources.NanoCPUs = 1000000000 * num
 		}
-		
+
 		mem, ok := container.Resources["memory"]
 
 		if ok {
@@ -197,6 +197,12 @@ func (manager *containerManager) StartContainer(ctx context.Context, container *
 	out, err := manager.dockerClient.ContainerLogs(ctx, container.ID, types.ContainerLogsOptions{
 		ShowStdout: true,
 		ShowStderr: true})
+
+	if err != nil {
+		klog.Errorf("Start Container Error: %s", err.Error())
+		return err
+	}
+
 	defer out.Close()
 
 	io.Copy(os.Stdout, out)
