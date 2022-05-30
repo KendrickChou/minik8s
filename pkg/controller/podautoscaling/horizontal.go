@@ -438,12 +438,12 @@ func (hpaC *HorizontalController) createPods(max int, policy *v1.HPAScalingPolic
 }
 
 func (hpaC *HorizontalController) calcPodCpuUtilization(pod *v1.Pod) float64 {
-	klog.Info(pod)
 	var utilization float64 = 0
 	for _, cs := range pod.Status.ContainerStatuses {
 		utilStr := cs.State.CPUPerc
 		klog.Infof("Pod %s cpuperc %s", pod.UID, utilStr)
 		if utilStr == "" {
+			klog.Infof("cpuperc of Pod %v is empty", pod)
 			continue
 		}
 		utilStr = utilStr[0 : len(utilStr)-1]
@@ -459,12 +459,12 @@ func (hpaC *HorizontalController) calcPodCpuUtilization(pod *v1.Pod) float64 {
 }
 
 func (hpaC *HorizontalController) calcPodMemoryUtilization(pod *v1.Pod) float64 {
-	klog.Info(pod)
 	var utilization float64 = 0
 	for _, cs := range pod.Status.ContainerStatuses {
 		utilStr := cs.State.MemPerc
 		klog.Infof("Pod %s memperc %s", pod.UID, utilStr)
 		if utilStr == "" {
+			klog.Infof("memperc of Pod %v is empty", pod)
 			continue
 		}
 		utilStr = utilStr[0 : len(utilStr)-1]

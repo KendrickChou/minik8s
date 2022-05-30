@@ -4,6 +4,8 @@ import (
 	"k8s.io/klog"
 	v1 "minik8s.com/minik8s/pkg/api/v1"
 	"minik8s.com/minik8s/pkg/controller/component"
+	"strconv"
+	"strings"
 )
 
 type EndpointController struct {
@@ -168,35 +170,63 @@ func (epc *EndpointController) createEndpoint(service v1.Service, pods []v1.Pod,
 	endpoint.OwnerReferences[0] = owner
 	endpoint.ServiceIp = service.Spec.ClusterIP
 
-	var subset v1.EndpointSubset
+	subsets := make([]v1.EndpointSubset, len(pods))
 
-	ipNum := len(pods)
-	addresses := make([]v1.EndpointAddress, ipNum)
-	for i := 0; i < ipNum; i++ {
-		addresses[i].IP = pods[i].Status.PodIP
-	}
-	subset.Addresses = addresses
+	for _, pod := range pods {
+		newSubset := v1.EndpointSubset{}
+		addresses := make([]v1.EndpointAddress, 1)
+		addresses[0].IP = pod.Status.PodIP
+		newSubset.Addresses = addresses
 
-	portsNum := len(service.Spec.Ports)
-	ports := make([]v1.EndpointPort, portsNum)
-	for i := 0; i < portsNum; i++ {
-		ports[i].Name = service.Spec.Ports[i].Name
-		ports[i].Port = service.Spec.Ports[i].TargetPort
-		ports[i].ServicePort = service.Spec.Ports[i].Port
-		if service.Spec.Ports[i].Protocol == "" {
-			ports[i].Protocol = "tcp"
-		} else {
-			ports[i].Protocol = service.Spec.Ports[i].Protocol
+		portsNum := len(service.Spec.Ports)
+		ports := make([]v1.EndpointPort, portsNum)
+		for i := 0; i < portsNum; i++ {
+			ports[i].Name = service.Spec.Ports[i].Name
+			ports[i].Port = service.Spec.Ports[i].TargetPort
+			ports[i].ServicePort = service.Spec.Ports[i].Port
+			if service.Spec.Ports[i].Protocol == "" {
+				ports[i].Protocol = "tcp"
+			} else {
+				ports[i].Protocol = service.Spec.Ports[i].Protocol
+			}
 		}
-	}
-	subset.Ports = ports
+		newSubset.Ports = ports
 
-	endpoint.Subset = subset
+		subsets = append(subsets, newSubset)
+	}
+
+	endpoint.Subset = subsets
+
 	if prevID == "" {
 		epc.endpointInformer.AddItem(endpoint)
 	} else {
 		epc.endpointInformer.UpdateItem(endpoint.UID, endpoint)
 	}
+}
+
+func (epc *EndpointController) portsMatch(pod *v1.Pod, ports []v1.EndpointPort) bool {
+	if len(pod.Spec.ExposedPorts) == len(ports) {
+		portSet := map[int]struct{}{}
+		for _, port := range ports {
+			portSet[int(port.Port)] = struct{}{}
+		}
+
+		for _, exposedPort := range pod.Spec.ExposedPorts {
+			portAndProtocol := strings.Split(exposedPort, "/")
+			port, err := strconv.Atoi(portAndProtocol[0])
+			if err != nil {
+				klog.Error("convert string error")
+			}
+
+			if _, exists := portSet[port]; !exists {
+				return false
+			}
+		}
+
+		return true
+	}
+
+	return false
 }
 
 // get Service by OwnerReferences

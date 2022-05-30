@@ -297,7 +297,6 @@ func (rsc *ReplicaSetController) updatePod(newObj, oldObj any) {
 
 	rs := rsc.getPodOwnerReplicaSet(&oldPod)
 	if rs == nil {
-		klog.Info(oldPod)
 		rss := rsc.getPodReplicaSet(&newPod)
 
 		for _, tmpRS := range rss {
