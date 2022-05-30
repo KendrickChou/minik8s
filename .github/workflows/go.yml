@@ -2,7 +2,7 @@ name: Go
 
 on:
   push:
-    branches: [ bugfix/CICD_controller ]
+    branches: [ develop ]
 
 jobs:
 
