@@ -15,7 +15,7 @@ type KubeletConfiguration struct {
 
 var	InternalPodBridgeNetworkName string = "kubelet"
 
-var ApiServerIP string = "59.78.8.125"
+var ApiServerIP string = "10.119.11.209"
 
 var WeaveServerIP string = "10.119.11.209"
 

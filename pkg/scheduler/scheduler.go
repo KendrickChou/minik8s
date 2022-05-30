@@ -37,6 +37,8 @@ var mtx sync.Mutex
 
 var shed func(pod v1.Pod) bool
 
+var currNum int = 0
+
 func Init() {
 	shed = shed_simple
 	podMap = make(map[string]v1.Pod)
@@ -173,6 +175,39 @@ func shed_simple(pod v1.Pod) bool {
 				min = len(pods)
 				pod.Spec.NodeName = node.UID
 			}
+		}
+		klog.Infof("Sched handle pod UID[%v]: set appointed Node[%v]", pod.UID, pod.Spec.NodeName)
+	}
+	cli := http.Client{}
+	url := config.AC_ServerAddr + ":" + strconv.Itoa(config.AC_ServerPort)
+	buf, _ := json.Marshal(pod)
+	req, _ := http.NewRequest(http.MethodPut, url+"/innode/"+pod.Spec.NodeName+"/pod/"+pod.UID, bytes.NewReader(buf))
+	resp, _ := cli.Do(req)
+	if resp.StatusCode != http.StatusOK {
+		klog.Errorf("Sched error: Cannot Assign Pod[%v] to Node[%v]", pod.UID, pod.Spec.NodeName)
+		return false
+	}
+
+	buf, _ = json.Marshal(pod)
+	req, _ = http.NewRequest(http.MethodPut, url+"/pod/"+pod.UID, bytes.NewReader(buf))
+	resp, _ = cli.Do(req)
+	klog.Infof("Sched ok with pod UID[%v] to Node UID[%v]", pod.UID, pod.Spec.NodeName)
+	return resp.StatusCode == http.StatusOK
+}
+
+func shed_rr(pod v1.Pod) bool {
+	klog.Infof("\nScheduling Pod: UID[%v] NodeName[%v]", pod.UID, pod.Spec.NodeName)
+	if pod.Spec.NodeName == "" && len(nodeMap) > 0 {
+		nodeNum := len(nodeMap)
+		currNum = (currNum + 1) % nodeNum
+
+		i := 0
+		for _, node := range nodeMap {
+			if i == currNum {
+				pod.Spec.NodeName = node.UID
+				break
+			}
+			i ++
 		}
 		klog.Infof("Sched handle pod UID[%v]: set appointed Node[%v]", pod.UID, pod.Spec.NodeName)
 	}
