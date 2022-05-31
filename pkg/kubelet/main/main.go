@@ -11,12 +11,12 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
-	"strconv"
 	"strings"
 	"time"
 
 	"github.com/patrickmn/go-cache"
 	"k8s.io/klog/v2"
+	v1 "minik8s.com/minik8s/pkg/api/v1"
 	"minik8s.com/minik8s/pkg/kubelet"
 	"minik8s.com/minik8s/pkg/kubelet/apis/config"
 	"minik8s.com/minik8s/pkg/kubelet/apis/constants"
@@ -27,11 +27,11 @@ import (
 const JsonContentType string = "application/json"
 
 func main() {
-
 	// read from cache if exist
 	_, err := os.Stat(constants.CacheFilePath)
 
 	var restart bool = false
+	gob.Register(v1.Node{})
 
 	// get node info in cache or send request to api server
 	if err == nil {
@@ -55,17 +55,23 @@ func main() {
 		}
 
 		nodeCache := cache.NewFrom(cache.NoExpiration, 0, items)
-		value, ok := nodeCache.Get(constants.NodeCacheID)
+		node, ok := nodeCache.Get(constants.NodeCacheKey)
 
 		if !ok {
 			klog.Errorf("No node cache in cache file")
 			os.Exit(0)
 		}
 
-		constants.NodeUID = value.(string)
+		constants.Node = node.(v1.Node)
 		restart = true
 	} else if errors.Is(err, os.ErrNotExist) {
-		klog.Info("Send request to register a node.")
+		if len(os.Args) != 2 {
+			klog.Error("Wrong Args. Please Input Node Name.")
+			os.Exit(0)
+		}
+		constants.Node.Name = os.Args[1]
+
+		klog.Infof("Send request to register node %s.", constants.Node.Name)
 
 		resp, err := http.Post(config.ApiServerAddress+constants.RegistNodeRequest(), JsonContentType, bytes.NewBuffer([]byte{}))
 
@@ -90,12 +96,12 @@ func main() {
 			os.Exit(0)
 		}
 
-		constants.NodeUID = registResp.UID
+		constants.Node.UID = registResp.UID
 
 		// write it to cache & store to cache file
 		nodeCache := cache.New(cache.NoExpiration, 0)
 
-		nodeCache.Add(constants.NodeCacheID, constants.NodeUID, cache.NoExpiration)
+		nodeCache.Add(constants.NodeCacheKey, constants.Node, cache.NoExpiration)
 
 		items := nodeCache.Items()
 		f, err := os.Create(constants.CacheFilePath)
@@ -119,10 +125,11 @@ func main() {
 		klog.Errorf("Check File %s Error: %s", constants.CacheFilePath, err.Error())
 	}
 
-	klog.Infof("Successful Get Node UID: %s", constants.NodeUID)
+	constants.Node.Status.Phase = "Running"
+	klog.Infof("Successful Get Node %s, UID: %s", constants.Node.Name, constants.Node.UID)
 
 	// create kubelet
-	kl, err := kubelet.NewKubelet(config.NodeName, constants.NodeUID)
+	kl, err := kubelet.NewKubelet(constants.Node.Name, constants.Node.UID)
 
 	if err != nil {
 		klog.Fatalf("Create Kubelet Failed: %s", err.Error())
@@ -141,7 +148,7 @@ func main() {
 	if restart {
 		klog.Info("Try to recover pods...")
 
-		resp, err := http.Get(config.ApiServerAddress + constants.GetAllPodsRequest(constants.NodeUID))
+		resp, err := http.Get(config.ApiServerAddress + constants.GetAllPodsRequest(constants.Node.UID))
 
 		if err != nil {
 			klog.Errorf("Get All Existed Pods Error: %s", err.Error())
@@ -160,7 +167,7 @@ func main() {
 		}
 
 		for _, pod := range podArray {
-			kl.AddPodsWithoutCreate(pod.Pod)
+			kl.RecoverPod(pod.Pod)
 		}
 
 		klog.Info("Recover pods complete.")
@@ -178,8 +185,7 @@ func main() {
 
 	// start heartbeat
 	klog.Info("Begin send heartbeat")
-	heartbeatErr := make(chan string)
-	go sendHeartBeat(ctx, kl.UID, heartbeatErr)
+	go sendHeartBeat(ctx)
 
 	// start refreshPodStatus periodically
 	klog.Info("Begin refresh pod status")
@@ -198,10 +204,6 @@ func main() {
 			klog.Errorf("Node seems Failed: %s", e)
 
 			go watchingPods(ctx, &kl, podErr)
-		case e := <-heartbeatErr:
-			klog.Errorf("Node seems Failed: %s", e)
-
-			go sendHeartBeat(ctx, kl.UID, heartbeatErr)
 		case e := <-endpointsErr:
 			klog.Errorf("Node seems Failed: %s", e)
 
@@ -264,48 +266,27 @@ func handlePodChangeRequest(kl *kubelet.Kubelet, req *httpresponse.PodChangeRequ
 	}
 }
 
-func sendHeartBeat(ctx context.Context, nodeUID string, errChan chan string) {
-	counter := 0
-	errorCounter := 0
-	// lastReportTime := time.Now()
-
+func sendHeartBeat(ctx context.Context) {
 	for {
-		if errorCounter >= constants.MaxErrorHeartBeat {
-			errChan <- "Send heartbeat failed successively for " + strconv.Itoa(constants.MaxErrorHeartBeat) + " times"
-			return
+		body, err := json.Marshal(constants.Node)
+		if err != nil {
+			klog.Errorf("Unmarshal Node Error: %s", err.Error())
 		}
-
-		time.Sleep(time.Duration(constants.HeartBeatInterval) * time.Second)
-
-		counter++
-		// lastReportTime = time.Now()
-
-		// klog.Infof("Send Heartbeat %d, time: %s", counter, lastReportTime)
-
-		resp, err := http.Get(config.ApiServerAddress + constants.HeartBeatRequest(nodeUID, strconv.Itoa(counter)))
+		
+		req, _ := http.NewRequest(http.MethodPut, config.ApiServerAddress+constants.RefreshNodeRequest(constants.Node.UID), bytes.NewReader(body))
+		resp, err := http.DefaultClient.Do(req)
 
 		if err != nil {
-			klog.Warningf("Send Heartbeat %d Failed: %s", counter, err.Error())
-			errorCounter++
-			continue
+			klog.Errorf("Error When refresh Node: %s", err.Error())
+		} else {
+			resp.Body.Close()
 		}
 
-		resp.Body.Close()
-
-		if resp.StatusCode != 200 {
-			klog.Warningf("Send Heartbeat %d Failed, response status %s", counter, resp.Status)
-			errorCounter++
-			continue
-		}
-
-		errorCounter = 0
+		time.Sleep(time.Duration(constants.RefreshPodStatusInterval) * time.Second)
 	}
 }
 
 func refreshAllPodStatus(ctx context.Context, kl *kubelet.Kubelet) {
-
-	cli := http.Client{}
-
 	for {
 		pods, err := kl.GetPods()
 
@@ -322,7 +303,7 @@ func refreshAllPodStatus(ctx context.Context, kl *kubelet.Kubelet) {
 			}
 
 			req, _ := http.NewRequest(http.MethodPut, config.ApiServerAddress+constants.RefreshPodStatusRequest(kl.UID, pod.UID), bytes.NewReader(body))
-			resp, err := cli.Do(req)
+			resp, err := http.DefaultClient.Do(req)
 
 			if err != nil {
 				klog.Errorf("Error When refresh Pod Status: %s", err.Error())

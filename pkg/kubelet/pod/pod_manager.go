@@ -212,7 +212,7 @@ func (pm *podManager) AddPod(pod *v1.Pod) error {
 
 	// refresh modified pod spec to apiserver.(for restart)
 	body, _ := json.Marshal(pod)
-	req, _ := http.NewRequest(http.MethodPut, config.ApiServerAddress+constants.RefreshPodRequest(constants.NodeUID, pod.UID), bytes.NewReader(body))
+	req, _ := http.NewRequest(http.MethodPut, config.ApiServerAddress+constants.RefreshPodRequest(constants.Node.UID, pod.UID), bytes.NewReader(body))
 	resp, err := http.DefaultClient.Do(req)
 
 	if err != nil {
@@ -230,20 +230,6 @@ func (pm *podManager) AddPodWithoutCreate(pod *v1.Pod) error {
 
 	if pod.UID == "" {
 		err := "pod UID is empty"
-
-		klog.Errorln(err)
-		return errors.New(err)
-	}
-
-	if _, ok := pm.podByUID[pod.UID]; ok {
-		err := "duplicated pod UID: " + string(pod.UID)
-
-		klog.Errorln(err)
-		return errors.New(err)
-	}
-
-	if dupPod, ok := pm.podByName[pod.Name]; ok && dupPod.Namespace == pod.Namespace {
-		err := "duplicated pod name: " + pod.Name + " in namespace: " + pod.Namespace
 
 		klog.Errorln(err)
 		return errors.New(err)

@@ -22,5 +22,3 @@ var WeaveServerIP string = "10.119.11.209"
 var ApiServerAddress string = "http://" + ApiServerIP + ":8080"
 
 var GatewayAddress string = "addr"
-
-var NodeName string = "node"

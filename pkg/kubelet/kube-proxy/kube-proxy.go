@@ -298,7 +298,7 @@ func initIPtables(ipt *iptables.IPTables) error {
 	}
 
 	if exist {
-		klog.Info("K8S-SERVICE Chain already exists")
+		// klog.Info("K8S-SERVICE Chain already exists")
 		return nil
 	}
 

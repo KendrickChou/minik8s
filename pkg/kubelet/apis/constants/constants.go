@@ -16,8 +16,8 @@ func WatchPodsRequest(nodeUID string) string {
 	return "/watch/innode/" + nodeUID + "/pods"
 }
 
-func HeartBeatRequest(nodeUID string, counter string) string {
-	return "/heartbeat/" + nodeUID + "/" + counter
+func RefreshNodeRequest(nodeUID string) string {
+	return "/node/" + nodeUID
 }
 
 func RefreshPodStatusRequest(nodeUID string, podUID string) string {
@@ -41,15 +41,14 @@ func GetAllPodsRequest(nodeID string) string {
 }
 
 const (
-	HeartBeatInterval        uint64 = 1  //second
-	MaxErrorHeartBeat        int    = 10 // if successively failed over 10 times, close node
+	RefreshNodeInterval        uint64 = 5  //second
 	RefreshPodStatusInterval uint64 = 10
 	ReconnectInterval        uint64 = 20
 )
 
 const (
 	CacheFilePath string = "./cache"
-	NodeCacheID   string = "node"
+	NodeCacheKey  string = "node"
 
 	NetworkIDPrefix          string = "container:"
 	InitialPauseContainerKey string = "pause"
@@ -74,4 +73,9 @@ var InitialPauseContainer v1.Container = v1.Container{
 	DNSSearch:       DNSSearch,
 }
 
-var NodeUID string = ""
+var Node v1.Node = v1.Node{
+	TypeMeta: v1.TypeMeta{
+		Kind:       "node",
+		APIVersion: "v1",
+	},
+}
