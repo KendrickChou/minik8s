@@ -438,3 +438,20 @@ func DeletePod(podID string) bool {
 		return false
 	}
 }
+
+func DeleteGPUJob(jobID string) bool {
+	responseBytes := Rest(jobID, "", OBJ_GPU, OP_DELETE)
+
+	var responseBody HttpResponse
+	err := json.Unmarshal(responseBytes, &responseBody)
+	if err != nil {
+		klog.Error("Json unmarshal error\n")
+		return false
+	}
+
+	if responseBody.Status == "OK" {
+		return true
+	} else {
+		return false
+	}
+}

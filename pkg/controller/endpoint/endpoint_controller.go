@@ -25,9 +25,6 @@ func NewEndpointController(podInfo *component.Informer, servInfo *component.Info
 func (epc *EndpointController) Run() {
 	epc.queue.Init()
 
-	for !(epc.endpointInformer.HasSynced() && epc.podInformer.HasSynced() && epc.serviceInformer.HasSynced()) {
-	}
-
 	epc.podInformer.AddEventHandler(component.EventHandler{
 		OnAdd:    epc.addPod,
 		OnDelete: epc.deletePod,
@@ -63,7 +60,7 @@ func (epc *EndpointController) processNextWorkItem() bool {
 	item := epc.serviceInformer.GetItem(key)
 	if item == nil {
 		klog.Warning("item " + key + " not found\n")
-		return true
+		return false
 	}
 
 	if !epc.queue.Process(key) {

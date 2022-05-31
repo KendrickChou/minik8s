@@ -24,9 +24,6 @@ func NewReplicaSetController(podInfo *component.Informer, rsInfo *component.Info
 func (rsc *ReplicaSetController) Run() {
 	rsc.queue.Init()
 
-	for !(rsc.rsInformer.HasSynced() && rsc.podInformer.HasSynced()) {
-	}
-
 	rsc.rsInformer.AddEventHandler(component.EventHandler{
 		OnAdd:    rsc.addRS,
 		OnDelete: rsc.deleteRS,
