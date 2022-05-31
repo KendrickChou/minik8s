@@ -39,7 +39,7 @@ type Pod struct {
 }
 
 type PodSpec struct {
-	InitialContainers map[string]Container
+	InitialContainers map[string]Container `json:"initialcontainers,omitempty"`
 
 	Containers []*Container `json:"containers,omitempty"`
 

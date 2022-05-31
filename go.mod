@@ -11,6 +11,7 @@ require (
 	github.com/docker/docker v20.10.14+incompatible
 	github.com/gin-gonic/gin v1.7.7
 	github.com/inhies/go-bytesize v0.0.0-20220417184213-4913239db9cf
+	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/pkg/sftp v1.13.4
 	github.com/spf13/cobra v1.4.0
 	k8s.io/klog/v2 v2.30.0

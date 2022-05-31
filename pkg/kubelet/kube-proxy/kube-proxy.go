@@ -2,15 +2,20 @@ package kubeproxy
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"net/http"
 	"os/exec"
 	"regexp"
 	"strings"
 
 	"k8s.io/klog"
 	v1 "minik8s.com/minik8s/pkg/api/v1"
+	"minik8s.com/minik8s/pkg/kubelet/apis/config"
 	"minik8s.com/minik8s/pkg/kubelet/apis/constants"
+	"minik8s.com/minik8s/pkg/kubelet/apis/httpresponse"
 
 	"github.com/coreos/go-iptables/iptables"
 	"github.com/dchest/uniuri"
@@ -49,7 +54,43 @@ func NewKubeProxy() (KubeProxy, error) {
 	kp.ipt = ipt
 
 	err = initIPtables(ipt)
+	if err != nil {
+		klog.Errorf("Init IP tables Error: %s", err.Error())
+		return nil, err
+	}
 	klog.Info("Init IP Tables successfully!")
+
+	// get all existed endpoints
+	resp, err := http.Get(config.ApiServerAddress + constants.GetAllEndpointsRequest())
+
+	if err != nil {
+		klog.Errorf("Get All Existed Endpoints Error: %s", err.Error())
+		return nil, err
+	}
+
+	buf, err := io.ReadAll(resp.Body)
+
+	resp.Body.Close()
+
+	if err != nil {
+		klog.Errorf("Get All Existed Endpoints Error: %s", err.Error())
+		return nil, err
+	}
+
+	var epArray []httpresponse.EndpointChangeRequest
+	json.Unmarshal(buf, &epArray)
+
+	for _, ep := range epArray {
+		klog.Infof("Add Endpoint %s, key: %s ", ep.Endpoint.Name, ep.Key)
+
+		parsedPath := strings.Split(ep.Key, "/")
+		uid := parsedPath[len(parsedPath) - 1]
+
+		kp.AddEndpoint(context.TODO(), uid, ep.Endpoint)
+	}
+
+	klog.Infof("All existed endpoints are added!")
+	klog.Infof("Kube-proxy is ready to go")
 
 	return kp, err
 }
@@ -73,31 +114,45 @@ func (kp *kubeProxy) AddEndpoint(ctx context.Context, uid string, endpoint v1.En
 	kp.endpoints[uid] = &endpoint
 
 	svcChains := []string{}
+	serviceChainMap := make(map[string]string) // map port/protocol -> svcID.
 
 	for _, subset := range endpoint.Subset {
 		for _, port := range subset.Ports {
-			// create svc chain
-			svcID := createAServiceChainID()
-			err := kp.ipt.NewChain(constants.NATTableName, svcID)
-			svcChains = append(svcChains, svcID)
-	
-			if err != nil {
-				klog.Errorf("Create Service Chain %s Error: %s", svcID, err.Error())
+			key := fmt.Sprintf("%d/%s", port.ServicePort, port.Protocol)
+			_, ok := serviceChainMap[key]
+
+			if !ok {
+				// create svc chain
+				svcID := createAServiceChainID()
+				err := kp.ipt.NewChain(constants.NATTableName, svcID)
+				svcChains = append(svcChains, svcID)
+				
+				if err != nil {
+					klog.Errorf("Create Service Chain %s Error: %s", svcID, err.Error())
+				}
+				
+				// append to K8S-SERVICE chain
+				rule := fmt.Sprintf("-d %s -p %s --dport %d -m comment --comment %s -j %s", endpoint.ServiceIp, port.Protocol, port.ServicePort, endpoint.Name, svcID)
+				err = kp.ipt.Append(constants.NATTableName, constants.ServiceChainName, strings.Split(rule, " ")...)
+				
+				if err != nil {
+					klog.Errorf("Append %s to K8S-SERVICE Chain Error: %s", svcID, err.Error())
+				}
+
+				serviceChainMap[key] = svcID
 			}
-	
-			// append to K8S-SERVICE chain
-			rule := fmt.Sprintf("-d %s -p %s --dport %d -m comment --comment %s -j %s", endpoint.ServiceIp, port.Protocol, port.ServicePort, endpoint.Name, svcID)
-			err = kp.ipt.Append(constants.NATTableName, constants.ServiceChainName, strings.Split(rule, " ")...)
-	
-			if err != nil {
-				klog.Errorf("Append %s to K8S-SERVICE Chain Error: %s", svcID, err.Error())
-			}
-	
+		}
+	}
+
+	for _, subset := range endpoint.Subset {
+		for _, port := range subset.Ports {
+			svcID := serviceChainMap[fmt.Sprintf("%d/%s", port.ServicePort, port.Protocol)]
+
 			sepChains := []string{}
 			for i, addr := range subset.Addresses {
 				// create sep chain
 				sepID := createASEPChainID()
-				err = kp.ipt.NewChain(constants.NATTableName, sepID)
+				err := kp.ipt.NewChain(constants.NATTableName, sepID)
 				sepChains = append(sepChains, sepID)
 	
 				if err != nil {
@@ -106,6 +161,7 @@ func (kp *kubeProxy) AddEndpoint(ctx context.Context, uid string, endpoint v1.En
 	
 				// append to K8S-SVC-xxx chain
 				p := 1 / float32(len(subset.Addresses))
+				var rule string
 				if i != len(subset.Addresses)-1 {
 					rule = fmt.Sprintf("-m statistic --mode random --probability %f -j %s", p, sepID)
 				} else {
@@ -205,6 +261,7 @@ func initIPtables(ipt *iptables.IPTables) error {
 
 	if err != nil {
 		errInfo := fmt.Sprintf("Check K8S-SERVICE chain error: %s", err.Error())
+		klog.Error(errInfo)
 		return errors.New(errInfo)
 	}
 
@@ -241,7 +298,7 @@ func initIPtables(ipt *iptables.IPTables) error {
 	}
 
 	if exist {
-		klog.Info("K8S-SERVICE Chain already exists")
+		// klog.Info("K8S-SERVICE Chain already exists")
 		return nil
 	}
 

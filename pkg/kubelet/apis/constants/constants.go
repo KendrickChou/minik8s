@@ -16,26 +16,40 @@ func WatchPodsRequest(nodeUID string) string {
 	return "/watch/innode/" + nodeUID + "/pods"
 }
 
-func HeartBeatRequest(nodeUID string, counter string) string {
-	return "/heartbeat/" + nodeUID + "/" + counter
+func RefreshNodeRequest(nodeUID string) string {
+	return "/node/" + nodeUID
+}
+
+func RefreshPodStatusRequest(nodeUID string, podUID string) string {
+	return "/innode/" + nodeUID + "/podstatus/" + podUID
 }
 
 func RefreshPodRequest(nodeUID string, podUID string) string {
-	return "/innode/" + nodeUID + "/podstatus/" + podUID
+	return "/innode/" + nodeUID + "/pod/" + podUID
 }
 
 func WatchEndpointsRequest() string {
 	return "/watch/endpoints"
 }
 
+func GetAllEndpointsRequest() string {
+	return "/endpoints"
+}
+
+func GetAllPodsRequest(nodeID string) string {
+	return "/innode/" + nodeID + "/pods"
+}
+
 const (
-	HeartBeatInterval        uint64 = 1  //second
-	MaxErrorHeartBeat        int    = 10 // if successively failed over 10 times, close node
+	RefreshNodeInterval        uint64 = 5  //second
 	RefreshPodStatusInterval uint64 = 10
 	ReconnectInterval        uint64 = 20
 )
 
 const (
+	CacheFilePath string = "./cache"
+	NodeCacheKey  string = "node"
+
 	NetworkIDPrefix          string = "container:"
 	InitialPauseContainerKey string = "pause"
 	WeaveNetworkName         string = "weave"
@@ -57,4 +71,11 @@ var InitialPauseContainer v1.Container = v1.Container{
 	ImagePullPolicy: "IfNotPresent",
 	DNS:             DNS,
 	DNSSearch:       DNSSearch,
+}
+
+var Node v1.Node = v1.Node{
+	TypeMeta: v1.TypeMeta{
+		Kind:       "node",
+		APIVersion: "v1",
+	},
 }

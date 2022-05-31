@@ -83,6 +83,10 @@ func (kl *Kubelet) GetPodByUID(UID string) (v1.Pod, error) {
 }
 
 func (kl *Kubelet) CreatePod(pod v1.Pod) (v1.Pod, error) {
+	if kl.podManager.CheckDuplicate(&pod) {
+		return v1.Pod{}, nil
+	}
+
 	installInitialContainers(&pod)
 
 	err := kl.podManager.AddPod(&pod)
@@ -96,6 +100,27 @@ func (kl *Kubelet) CreatePod(pod v1.Pod) (v1.Pod, error) {
 
 func (kl *Kubelet) DeletePod(UID string) error {
 	return kl.podManager.DeletePod(UID)
+}
+
+func (kl *Kubelet) RecoverPod(pod v1.Pod) error {
+	if kl.podManager.CheckDuplicate(&pod) {
+		return errors.New("duplicated Pod")
+	}
+
+	var err error
+	if _, ok := pod.Spec.InitialContainers[constants.InitialPauseContainerKey]; ok {
+		err = kl.podManager.AddPodWithoutCreate(&pod)
+	} else {
+		// if not created.
+		installInitialContainers(&pod)
+		err = kl.podManager.AddPod(&pod)
+	}
+
+	if err != nil {
+		klog.Errorf("Recover Pod %s Error: %s", pod.Name, err.Error())
+	}
+
+	return err
 }
 
 func installInitialContainers(pod *v1.Pod) error {

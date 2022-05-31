@@ -20,3 +20,5 @@ vendor/
 /go.sum
 
 cmd/apiserver/uploads/
+
+cache.txt
