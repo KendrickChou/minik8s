@@ -31,7 +31,6 @@ func main() {
 	// read from cache if exist
 	_, err := os.Stat(constants.CacheFilePath)
 
-	var nodeUID string
 	var restart bool = false
 
 	// get node info in cache or send request to api server
@@ -63,7 +62,7 @@ func main() {
 			os.Exit(0)
 		}
 
-		nodeUID = value.(string)
+		constants.NodeUID = value.(string)
 		restart = true
 	} else if errors.Is(err, os.ErrNotExist) {
 		klog.Info("Send request to register a node.")
@@ -91,18 +90,18 @@ func main() {
 			os.Exit(0)
 		}
 
-		nodeUID = registResp.UID
+		constants.NodeUID = registResp.UID
 
 		// write it to cache & store to cache file
 		nodeCache := cache.New(cache.NoExpiration, 0)
 
-		nodeCache.Add(constants.NodeCacheID, nodeUID, cache.NoExpiration)
+		nodeCache.Add(constants.NodeCacheID, constants.NodeUID, cache.NoExpiration)
 
 		items := nodeCache.Items()
 		f, err := os.Create(constants.CacheFilePath)
 
 		if err != nil {
-			klog.Errorf("Create Cache File %s Error: %s",  constants.CacheFilePath,err.Error())
+			klog.Errorf("Create Cache File %s Error: %s", constants.CacheFilePath, err.Error())
 			os.Exit(0)
 		}
 
@@ -111,7 +110,7 @@ func main() {
 		f.Close()
 
 		if err != nil {
-			klog.Error("Encode cache items %s Error: %s", err.Error())
+			klog.Errorf("Encode cache items Error: %s", err.Error())
 			os.Exit(0)
 		}
 
@@ -120,8 +119,10 @@ func main() {
 		klog.Errorf("Check File %s Error: %s", constants.CacheFilePath, err.Error())
 	}
 
+	klog.Infof("Successful Get Node UID: %s", constants.NodeUID)
+
 	// create kubelet
-	kl, err := kubelet.NewKubelet(config.NodeName, nodeUID)
+	kl, err := kubelet.NewKubelet(config.NodeName, constants.NodeUID)
 
 	if err != nil {
 		klog.Fatalf("Create Kubelet Failed: %s", err.Error())
@@ -140,7 +141,7 @@ func main() {
 	if restart {
 		klog.Info("Try to recover pods...")
 
-		resp, err := http.Get(config.ApiServerAddress + constants.GetAllPodsRequest(nodeUID))
+		resp, err := http.Get(config.ApiServerAddress + constants.GetAllPodsRequest(constants.NodeUID))
 
 		if err != nil {
 			klog.Errorf("Get All Existed Pods Error: %s", err.Error())
@@ -159,6 +160,7 @@ func main() {
 		}
 
 		for _, pod := range podArray {
+			klog.Info(pod.Pod)
 			kl.AddPodsWithoutCreate(pod.Pod)
 		}
 
@@ -320,7 +322,7 @@ func refreshAllPodStatus(ctx context.Context, kl *kubelet.Kubelet) {
 				klog.Errorf("Marshal pod status error: %s", err.Error())
 			}
 
-			req, _ := http.NewRequest(http.MethodPut, config.ApiServerAddress+constants.RefreshPodRequest(kl.UID, pod.UID), bytes.NewReader(body))
+			req, _ := http.NewRequest(http.MethodPut, config.ApiServerAddress+constants.RefreshPodStatusRequest(kl.UID, pod.UID), bytes.NewReader(body))
 			resp, err := cli.Do(req)
 
 			if err != nil {

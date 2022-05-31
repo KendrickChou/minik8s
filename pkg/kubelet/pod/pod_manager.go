@@ -1,17 +1,22 @@
 package pod
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
 	"os"
 	"os/exec"
+	"regexp"
 	"time"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
 	"k8s.io/klog/v2"
 	v1 "minik8s.com/minik8s/pkg/api/v1"
+	"minik8s.com/minik8s/pkg/kubelet/apis/config"
 	"minik8s.com/minik8s/pkg/kubelet/apis/constants"
 	"minik8s.com/minik8s/pkg/kubelet/container"
 )
@@ -128,18 +133,23 @@ func (pm *podManager) AddPod(pod *v1.Pod) error {
 	}
 
 	if _, ok := pm.podByUID[pod.UID]; ok {
-		err := "duplicated pod UID: " + string(pod.UID)
-
-		klog.Errorln(err)
-		return errors.New(err)
+		// check if it't refreshed by myself
+		if matched, _ := regexp.MatchString(pod.Name+"-", pod.Spec.InitialContainers[constants.InitialPauseContainerKey].Name); !matched {
+			err := "duplicated pod UID: " + string(pod.UID)
+			klog.Errorln(err)
+			return errors.New(err)
+		} else {
+			klog.Infof("Pod is refreshed by myself: Name: %s, UID: %s", pod.Name, pod.UID)
+			return nil
+		}
 	}
 
-	if dupPod, ok := pm.podByName[pod.Name]; ok && dupPod.Namespace == pod.Namespace {
-		err := "duplicated pod name: " + pod.Name + " in namespace: " + pod.Namespace
+	// if dupPod, ok := pm.podByName[pod.Name]; ok && dupPod.Namespace == pod.Namespace {
+	// 	err := "duplicated pod name: " + pod.Name + " in namespace: " + pod.Namespace
 
-		klog.Errorln(err)
-		return errors.New(err)
-	}
+	// 	klog.Errorln(err)
+	// 	return errors.New(err)
+	// }
 
 	pm.podByUID[pod.UID] = pod
 	pm.podByName[pod.Name] = pod
@@ -210,6 +220,18 @@ func (pm *podManager) AddPod(pod *v1.Pod) error {
 			klog.Errorln(err)
 		}
 	}
+
+	// refresh modified pod spec to apiserver.(for restart)
+	body, _ := json.Marshal(pod)
+	req, _ := http.NewRequest(http.MethodPut, config.ApiServerAddress+constants.RefreshPodRequest(constants.NodeUID, pod.UID), bytes.NewReader(body))
+	resp, err := http.DefaultClient.Do(req)
+
+	if err != nil {
+		klog.Errorf("Error When refresh Pod Status: %s", err.Error())
+		return err
+	}
+
+	resp.Body.Close()
 
 	return nil
 }
@@ -382,7 +404,7 @@ func (pm *podManager) PodStatus(UID string) (v1.PodStatus, error) {
 
 	pod := pm.podByUID[UID]
 
-	klog.Infof("Inspect Pod %s status", pod.Name)
+	klog.Infof("Inspect Pod %s, UID: %s status", pod.Name, pod.UID)
 
 	pod.Status.ContainerStatuses = []v1.ContainerStatus{}
 

@@ -20,8 +20,12 @@ func HeartBeatRequest(nodeUID string, counter string) string {
 	return "/heartbeat/" + nodeUID + "/" + counter
 }
 
-func RefreshPodRequest(nodeUID string, podUID string) string {
+func RefreshPodStatusRequest(nodeUID string, podUID string) string {
 	return "/innode/" + nodeUID + "/podstatus/" + podUID
+}
+
+func RefreshPodRequest(nodeUID string, podUID string) string {
+	return "/innode/" + nodeUID + "/pod/" + podUID
 }
 
 func WatchEndpointsRequest() string {
@@ -69,3 +73,5 @@ var InitialPauseContainer v1.Container = v1.Container{
 	DNS:             DNS,
 	DNSSearch:       DNSSearch,
 }
+
+var NodeUID string = ""
