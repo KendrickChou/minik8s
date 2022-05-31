@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
-	"regexp"
 	"time"
 
 	"github.com/docker/docker/api/types"
@@ -39,6 +38,8 @@ type PodManager interface {
 	PodStatus(UID string) (v1.PodStatus, error)
 
 	CreatePodBridgeNetwork(CIDR string) error
+
+	CheckDuplicate(pod *v1.Pod) bool
 }
 
 type podManager struct {
@@ -130,18 +131,6 @@ func (pm *podManager) AddPod(pod *v1.Pod) error {
 
 		klog.Errorln(err)
 		return errors.New(err)
-	}
-
-	if _, ok := pm.podByUID[pod.UID]; ok {
-		// check if it't refreshed by myself
-		if matched, _ := regexp.MatchString(pod.Name+"-", pod.Spec.InitialContainers[constants.InitialPauseContainerKey].Name); !matched {
-			err := "duplicated pod UID: " + string(pod.UID)
-			klog.Errorln(err)
-			return errors.New(err)
-		} else {
-			klog.Infof("Pod is refreshed by myself: Name: %s, UID: %s", pod.Name, pod.UID)
-			return nil
-		}
 	}
 
 	// if dupPod, ok := pm.podByName[pod.Name]; ok && dupPod.Namespace == pod.Namespace {
@@ -528,4 +517,24 @@ func (pm *podManager) CreatePodBridgeNetwork(CIDR string) error {
 	}
 
 	return nil
+}
+
+func (pm *podManager) CheckDuplicate(pod *v1.Pod) bool {
+	if existedPod, ok := pm.podByUID[pod.UID]; ok {
+		// check if it't refreshed by myself
+		existedPauseID := existedPod.Spec.InitialContainers[constants.InitialPauseContainerKey].ID
+		if pausePod, ok := pod.Spec.InitialContainers[constants.InitialPauseContainerKey]; ok && pausePod.ID == existedPauseID {
+			klog.Infof("Pod is refreshed by myself: Name: %s, UID: %s", pod.Name, pod.UID)
+		} else {
+			klog.Errorf("Duplicated pod: name %s, UID %s ", pod.Name, pod.UID)
+		}
+		return true
+	}
+
+	if _, ok := pm.podByName[pod.Name]; ok {
+		klog.Errorf("Duplicated pod: name %s, UID %s ", pod.Name, pod.UID)
+		return true
+	}
+
+	return false
 }

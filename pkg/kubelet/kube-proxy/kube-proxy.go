@@ -289,11 +289,6 @@ func initIPtables(ipt *iptables.IPTables) error {
 		}
 	}
 
-	cmd := exec.Command("iptables", "-t", "nat", "-L")
-	buf, _ := cmd.CombinedOutput()
-
-	klog.Info(string(buf))
-
 	// return if already exist
 	exist, err := ipt.ChainExists(constants.NATTableName, constants.ServiceChainName)
 

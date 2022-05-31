@@ -160,7 +160,6 @@ func main() {
 		}
 
 		for _, pod := range podArray {
-			klog.Info(pod.Pod)
 			kl.AddPodsWithoutCreate(pod.Pod)
 		}
 

@@ -83,6 +83,12 @@ func (kl *Kubelet) GetPodByUID(UID string) (v1.Pod, error) {
 }
 
 func (kl *Kubelet) CreatePod(pod v1.Pod) (v1.Pod, error) {
+	isDup := kl.podManager.CheckDuplicate(&pod)
+
+	if isDup {
+		return v1.Pod{}, nil
+	}
+
 	installInitialContainers(&pod)
 
 	err := kl.podManager.AddPod(&pod)
