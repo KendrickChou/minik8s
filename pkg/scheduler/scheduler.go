@@ -5,13 +5,15 @@ import (
 	"context"
 	"encoding/json"
 	"io"
+	"net/http"
+	"strconv"
+	"sync"
+	"time"
+
 	"k8s.io/klog/v2"
 	"minik8s.com/minik8s/config"
 	v1 "minik8s.com/minik8s/pkg/api/v1"
 	"minik8s.com/minik8s/pkg/apiclient"
-	"net/http"
-	"strconv"
-	"sync"
 )
 
 type PodRequest struct {
@@ -31,7 +33,11 @@ type NodeRequest struct {
 }
 
 var podMap map[string]v1.Pod
+
+var pendingPod []string
+
 var nodeMap map[string]v1.Node
+var cancelMap map[string]context.CancelFunc
 
 var mtx sync.Mutex
 
@@ -42,6 +48,7 @@ var currNum int
 func Init() {
 	podMap = make(map[string]v1.Pod)
 	nodeMap = make(map[string]v1.Node)
+	cancelMap = make(map[string]context.CancelFunc)
 	currNum = 0
 	switch config.SCHED_STRATEGY {
 	case "SIMPLE":
@@ -89,7 +96,6 @@ func Run() {
 
 	//handle watch results
 	for {
-		klog.Infof("\nselecting chan...\n")
 		select {
 		case rawBytes := <-podChan:
 			req := &PodRequest{}
@@ -121,12 +127,14 @@ func handlePodChanRequest(req *PodRequest) {
 		if _, exist := podMap[req.Key]; exist {
 			podMap[req.Key] = req.Pod
 			klog.Infof("Pod Changed: Key[%v] Value[...]", req.Key)
-			klog.Infof("Current pod num: %v", len(podMap))
 		} else {
 			podMap[req.Key] = req.Pod
 			klog.Infof("New Pod Added: Key[%v] Value[...]", req.Key)
 			klog.Infof("Current pod num: %v", len(podMap))
-			shed(req.Pod)
+			ok := shed(req.Pod)
+			if !ok{
+				pendingPod = append(pendingPod, req.Key)
+			}
 		}
 		mtx.Unlock()
 
@@ -147,6 +155,12 @@ func handlePodChanRequest(req *PodRequest) {
 
 		mtx.Lock()
 		delete(podMap, req.Key)
+		for i := 0; i < len(pendingPod); i++{
+			if pendingPod[i] == req.Key{
+				pendingPod = append(pendingPod[:i], pendingPod[i+1:]...)
+				break
+			}
+		}
 		mtx.Unlock()
 		klog.Infof("Current pod num: %v", len(podMap))
 	}
@@ -156,10 +170,26 @@ func handleNodeChanRequest(req *NodeRequest) {
 	switch req.Type {
 	case "PUT":
 		mtx.Lock()
-		nodeMap[req.Key] = req.Node
+		if _, exist := nodeMap[req.Key]; exist {
+			nodeMap[req.Key] = req.Node
+			klog.Infof("Node Changed: Key[%v] Value[...]", req.Key)
+			cancelMap[req.Key]()
+			newCtx, cancel := context.WithCancel(context.Background())
+			go deleteNodeAfter30s(newCtx, req.Key)
+			cancelMap[req.Key] = cancel
+		} else {
+			nodeMap[req.Key] = req.Node
+			klog.Infof("New Node Register: Key[%v] Value[...]", req.Key)
+			klog.Infof("Current node num: %v", len(nodeMap))
+			newCtx, cancel := context.WithCancel(context.Background())
+			go deleteNodeAfter30s(newCtx, req.Key)
+			cancelMap[req.Key] = cancel
+			for _, podKey := range pendingPod{
+				shed(podMap[podKey])
+			}
+		}
 		mtx.Unlock()
-		klog.Infof("New Node Register: Key[%v] Value[...]", req.Key)
-		klog.Infof("Current node num: %v", len(nodeMap))
+
 	case "DELETE":
 		mtx.Lock()
 		delete(nodeMap, req.Key)
@@ -174,6 +204,9 @@ func shed_simple(pod v1.Pod) bool {
 	if pod.Spec.NodeName == "" {
 		min := -1
 		for _, node := range nodeMap {
+			if node.Status.Phase == "Unknown"{
+				continue
+			}
 			resp, _ := http.Get(config.AC_ServerAddr + ":" + strconv.Itoa(config.AC_ServerPort) + "/innode/" + node.UID + "/pods")
 
 			var pods []PodRequest
@@ -187,6 +220,11 @@ func shed_simple(pod v1.Pod) bool {
 		}
 		klog.Infof("Sched handle pod UID[%v]: set appointed Node[%v]", pod.UID, pod.Spec.NodeName)
 	}
+	if pod.Spec.NodeName == ""{
+		klog.Errorf("Sched error: Cannot Assign Pod[%v]: no suitable node", pod.UID)
+		return false
+	}
+
 	cli := http.Client{}
 	url := config.AC_ServerAddr + ":" + strconv.Itoa(config.AC_ServerPort)
 	buf, _ := json.Marshal(pod)
@@ -223,6 +261,11 @@ func shed_rr(pod v1.Pod) bool {
 		}
 		klog.Infof("Sched handle pod UID[%v]: set appointed Node[%v]", pod.UID, pod.Spec.NodeName)
 	}
+	if pod.Spec.NodeName == ""{
+		klog.Errorf("Sched error: Cannot Assign Pod[%v]: no suitable node", pod.UID)
+		return false
+	}
+
 	cli := http.Client{}
 	url := config.AC_ServerAddr + ":" + strconv.Itoa(config.AC_ServerPort)
 	buf, _ := json.Marshal(pod)
@@ -239,4 +282,22 @@ func shed_rr(pod v1.Pod) bool {
 	klog.Infof("Sched ok with pod UID[%v] to Node UID[%v]", pod.UID, pod.Spec.NodeName)
 	resp3.Body.Close()
 	return true
+}
+
+
+func deleteNodeAfter30s(ctx context.Context, key string){
+	select {
+	case <-ctx.Done():
+		klog.Infof("Node[%v] updated, reset cancel func", key)
+		return
+	case <-time.After(30 * time.Second):
+		mtx.Lock()
+		klog.Infof("Node[%v] disconnected", key)
+		node := nodeMap[key]
+		node.Status.Phase = "Unknown"
+		nodeMap[key] = node
+		buf, _ := json.Marshal(node)
+		apiclient.Rest(node.UID, string(buf), apiclient.OBJ_NODE, apiclient.OP_PUT)
+		mtx.Unlock()
+	}
 }

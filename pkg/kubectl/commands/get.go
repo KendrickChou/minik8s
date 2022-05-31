@@ -58,6 +58,9 @@ var getCmd = &cobra.Command{
 			case 'S':
 				resp := apiclient.Rest(id, "", apiclient.OBJ_SERVICE, apiclient.OP_GET)
 				fmt.Printf("%s\n", resp)
+			case 'N':
+				resp := apiclient.Rest(id, "", apiclient.OBJ_NODE, apiclient.OP_GET)
+				fmt.Printf("%s\n", resp)
 			case 'R':
 				resp := apiclient.Rest(id, "", apiclient.OBJ_REPLICAS, apiclient.OP_GET)
 				fmt.Printf("%s\n", resp)
@@ -96,10 +99,11 @@ func getPods() {
 		fmt.Println("服务器返回信息无效: ", err)
 		return
 	}
+	fmt.Printf("\n=================================================\n")
 	fmt.Printf("=->%v Pods\n", len(kvs))
-	fmt.Printf("%v\t\t\t\t%v\t\t\t%v\t\t\t%v\n", "Key", "Name", "Uid", "OwnerReferences")
+	fmt.Printf("%v\t\t\t\t%v\t\t\t%v\t\t\t%v\t\t\t%v\n", "Key", "Name", "Uid", "Node", "OwnerReferences")
 	for _, kv := range kvs {
-		fmt.Printf("%v\t\t%v\t\t%v\t\t", kv.Key, kv.Pod.Name, kv.Pod.UID)
+		fmt.Printf("%v\t\t%v\t\t%v\t\t%v\t\t", kv.Key, kv.Pod.Name, kv.Pod.UID, kv.Pod.Spec.NodeName)
 		for _, owner := range kv.Pod.OwnerReferences {
 			fmt.Printf("%v: %v, ", owner.Kind, owner.UID)
 		}
@@ -116,10 +120,11 @@ func getNodes() {
 		fmt.Println("服务器返回信息无效: ", err)
 		return
 	}
+	fmt.Printf("\n=================================================\n")
 	fmt.Printf("=->%v Nodes\n", len(kvs))
-	fmt.Printf("%v\t\t\t\t%v\t\t\t%v\t\t\t%v\n", "Key", "Name", "Uid", "IP")
+	fmt.Printf("%v\t\t\t\t%v\t\t\t%v\t\t\t%v\n", "Key", "Name", "Uid", "Status")
 	for _, kv := range kvs {
-		fmt.Printf("%v\t\t%v\t\t%v\n", kv.Key, kv.Node.Name, kv.Node.UID)
+		fmt.Printf("%v\t\t%v\t\t%v\t\t%v\n", kv.Key, kv.Node.Name, kv.Node.UID, kv.Node.Status.Phase)
 	}
 	fmt.Printf("\n")
 }
@@ -132,6 +137,7 @@ func getServices() {
 		fmt.Println("服务器返回信息无效: ", err)
 		return
 	}
+	fmt.Printf("\n=================================================\n")
 	fmt.Printf("=->%v Services\n", len(kvs))
 	fmt.Printf("%v\t\t\t\t%v\t\t\t%v\t\t\t%v\n", "Key", "Name", "Uid", "Cluster IP")
 	for _, kv := range kvs {
@@ -147,6 +153,7 @@ func getDNSs() {
 		fmt.Println("服务器返回信息无效: ", err)
 		return
 	}
+	fmt.Printf("\n=================================================\n")
 	fmt.Printf("=->%v DNS Configs\n", len(kvs))
 	fmt.Printf("%v\t\t\t\t%v\t\t\t%v\t\t\t%v\n", "Key", "Name", "Uid", "Paths")
 	for _, kv := range kvs {
@@ -163,6 +170,7 @@ func getEndpoints() {
 		fmt.Println("服务器返回信息无效: ", err)
 		return
 	}
+	fmt.Printf("\n=================================================\n")
 	fmt.Printf("=->%v Endpoints\n", len(kvs))
 	fmt.Printf("%v\t\t\t\t\t%v\t\t\t%v\t\t\t%v\n", "Key", "Name", "Uid", "")
 	for _, kv := range kvs {
@@ -179,6 +187,7 @@ func getReplicaSet() {
 		fmt.Println("服务器返回信息无效: ", err)
 		return
 	}
+	fmt.Printf("\n=================================================\n")
 	fmt.Printf("=->%v ReplicaSets\n", len(kvs))
 	fmt.Printf("%v\t\t\t\t\t%v\t\t\t%v\t\t\t%v\n", "Key", "Name", "Uid", "")
 	for _, kv := range kvs {

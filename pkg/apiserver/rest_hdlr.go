@@ -14,7 +14,6 @@ import (
 	"k8s.io/klog"
 	"minik8s.com/minik8s/config"
 	v1 "minik8s.com/minik8s/pkg/api/v1"
-	"minik8s.com/minik8s/pkg/gpu"
 	"minik8s.com/minik8s/utils/random"
 	"net/http"
 	"strconv"
@@ -284,7 +283,7 @@ func handleGetPodsByNode(c *gin.Context) {
 	if !etcdTest("/node/" + nname) {
 		c.JSON(404, gin.H{"status": "ERR", "error": "No such node"})
 	} else {
-		pods, _ := etcdGetPrefix("/innode/" + nname + "/pod")
+		pods, _ := etcdGetPrefix("/innode/" + nname + "/pod/")
 		c.JSON(200, pods)
 	}
 }
@@ -360,7 +359,7 @@ func handleGetPodStatusesByNode(c *gin.Context) {
 	if !etcdTest("/node/" + nname) {
 		c.JSON(404, gin.H{"status": "ERR", "error": "No such node"})
 	} else {
-		pods, _ := etcdGetPrefix("/innode/" + nname + "/podstatus")
+		pods, _ := etcdGetPrefix("/innode/" + nname + "/podstatus/")
 		c.JSON(200, pods)
 	}
 }
@@ -859,7 +858,7 @@ func handleWatchEndpoint(c *gin.Context) {
 
 //------------ Endpoint Rest API -----------
 func handleGetGPUs(c *gin.Context) {
-	replicas, _ := etcdGetPrefix("/gpu")
+	replicas, _ := etcdGetPrefix("/gpu/")
 	c.JSON(200, replicas)
 }
 
@@ -870,29 +869,7 @@ func handleGetGPU(c *gin.Context) {
 	} else if kv.Type == config.AS_OP_ERROR_String {
 		c.JSON(404, gin.H{"status": "ERR", "error": "No such gpu"})
 	} else {
-		var gj v1.GPUJob
-		err = json.Unmarshal(kv.Value, &gj)
-		if err != nil {
-			c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
-		} else {
-			if len(gj.Output) == 0 && len(gj.Error) == 0 {
-				sshClient := gpu.NewSshClient(config.AS_GPU_LOGIN_ADDR)
-				gj.Output = string(sshClient.RunCmd("cat " + config.AS_GPU_HOMEPATH + gj.JobNum + ".out"))
-				gj.Error = string(sshClient.RunCmd("cat " + config.AS_GPU_HOMEPATH + gj.JobNum + ".err"))
-				klog.Infof("get result: \nOutput: %s\n Error: %s", gj.Output, gj.Error)
-				buf, err := json.Marshal(gj)
-				if err != nil {
-					klog.Error(err)
-				}
-				err = etcdPut("/gpu/"+gj.UID, string(buf))
-				if err != nil {
-					c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
-					return
-				}
-				kv.Value = buf
-			}
-			c.JSON(200, kv)
-		}
+		c.JSON(200, kv)
 	}
 }
 

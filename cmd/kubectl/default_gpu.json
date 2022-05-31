@@ -2,7 +2,7 @@
     "kind": "GPUJob",
     "apiversion": "v1",
     "metadata": {
-        "name": "myFirstGPU",
+        "name": "gpu-test-5",
         "namespace": "default",
         "uid": ""
     },
