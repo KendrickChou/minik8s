@@ -44,7 +44,7 @@ const (
 )
 
 const (
-	CacheFilePath string = "./cache/cache.txt"
+	CacheFilePath string = "./cache.txt"
 	NodeCacheID   string = "node"
 
 	NetworkIDPrefix          string = "container:"

@@ -102,7 +102,7 @@ func main() {
 		f, err := os.Create(constants.CacheFilePath)
 
 		if err != nil {
-			klog.Error("Create Cache File %s Error: %s", err.Error())
+			klog.Errorf("Create Cache File %s Error: %s",  constants.CacheFilePath,err.Error())
 			os.Exit(0)
 		}
 
