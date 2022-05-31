@@ -51,6 +51,11 @@ type HPAObject struct {
 	HPA v1.HorizontalPodAutoscaler `json:"value"`
 }
 
+type JobObject struct {
+	DeltaPart
+	Job v1.GPUJob `json:"value"`
+}
+
 func (dp DeltaPart) GetType() string {
 	return dp.Type
 }
@@ -81,4 +86,8 @@ func (ps PodStatusObject) GetValue() any {
 
 func (h HPAObject) GetValue() any {
 	return h.HPA
+}
+
+func (j JobObject) GetValue() any {
+	return j.Job
 }

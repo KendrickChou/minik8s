@@ -120,13 +120,11 @@ func (inf *Informer) DeleteItem(key string) {
 	var flag bool
 	switch inf.Kind {
 	case "Endpoint":
-		{
-			flag = apiclient.DeleteEndpoint(key)
-		}
+		flag = apiclient.DeleteEndpoint(key)
 	case "Pod":
-		{
-			flag = apiclient.DeletePod(key)
-		}
+		flag = apiclient.DeletePod(key)
+	case "GPUJob":
+		flag = apiclient.DeleteGPUJob(key)
 	default:
 		klog.Warningf("Delete %s not handled", inf.Kind)
 	}

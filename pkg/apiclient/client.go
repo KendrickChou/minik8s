@@ -141,6 +141,8 @@ func GetAll(objType ObjType) []byte {
 		url += config.AC_RestEndpoints_Path
 	case OBJ_ALL_HPAS:
 		url += config.AC_RestHPAs_Path
+	case OBJ_ALL_GPUS:
+		url += config.AC_RestGpus_Path
 	case OBJ_POD:
 		url += config.AC_RestPod_Path
 	case OBJ_SERVICE:
@@ -151,6 +153,8 @@ func GetAll(objType ObjType) []byte {
 		url += config.AC_RestEndpoint_Path
 	case OBJ_HPA:
 		url += config.AC_RestHPA_Path
+	case OBJ_GPU:
+		url += config.AC_RestGpu_Path
 	default:
 		klog.Error("Invalid arguments!\n")
 		return nil
@@ -437,6 +441,23 @@ func DeleteEndpoint(epID string) bool {
 
 func DeletePod(podID string) bool {
 	responseBytes := Rest(podID, "", OBJ_POD, OP_DELETE)
+
+	var responseBody HttpResponse
+	err := json.Unmarshal(responseBytes, &responseBody)
+	if err != nil {
+		klog.Error("Json unmarshal error\n")
+		return false
+	}
+
+	if responseBody.Status == "OK" {
+		return true
+	} else {
+		return false
+	}
+}
+
+func DeleteGPUJob(jobID string) bool {
+	responseBytes := Rest(jobID, "", OBJ_GPU, OP_DELETE)
 
 	var responseBody HttpResponse
 	err := json.Unmarshal(responseBytes, &responseBody)

@@ -35,6 +35,8 @@ func (r *Reflector) list() {
 		objType = apiclient.OBJ_ALL_ENDPOINTS
 	case "HorizontalPodAutoscaler":
 		objType = apiclient.OBJ_ALL_HPAS
+	case "GPUJob":
+		objType = apiclient.OBJ_ALL_GPUS
 	}
 
 	objects := apiclient.GetAll(objType)
@@ -104,6 +106,19 @@ func (r *Reflector) list() {
 			hpaObj.StripKey()
 			r.transportQueue.Push(hpaObj)
 		}
+	case "GPUJob":
+		var fmtObjs []JobObject
+
+		err := json.Unmarshal(objects, &fmtObjs)
+		if err != nil {
+			klog.Error("Reflector parse error\n")
+		}
+
+		for _, jobObj := range fmtObjs {
+			jobObj.Type = "PUT"
+			jobObj.StripKey()
+			r.transportQueue.Push(jobObj)
+		}
 	}
 }
 
@@ -121,6 +136,8 @@ func (r *Reflector) watch(stopChan chan bool) {
 		objType = apiclient.OBJ_ALL_ENDPOINTS
 	case "HorizontalPodAutoscaler":
 		objType = apiclient.OBJ_ALL_HPAS
+	case "GPUJob":
+		objType = apiclient.OBJ_ALL_GPUS
 	}
 
 	ctx, cl := context.WithCancel(context.Background())
@@ -177,6 +194,15 @@ func (r *Reflector) parseJsonAndNotify(jsonObj []byte) {
 		r.transportQueue.Push(*obj)
 	case "HorizontalPodAutoscaler":
 		obj := &HPAObject{}
+		err := json.Unmarshal(jsonObj, obj)
+		if err != nil {
+			klog.Error("Reflector parse error\n")
+		}
+
+		obj.StripKey()
+		r.transportQueue.Push(*obj)
+	case "GPUJob":
+		obj := &JobObject{}
 		err := json.Unmarshal(jsonObj, obj)
 		if err != nil {
 			klog.Error("Reflector parse error\n")

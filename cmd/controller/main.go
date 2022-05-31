@@ -3,6 +3,7 @@ package main
 import (
 	"minik8s.com/minik8s/pkg/controller/component"
 	"minik8s.com/minik8s/pkg/controller/endpoint"
+	"minik8s.com/minik8s/pkg/controller/job"
 	"minik8s.com/minik8s/pkg/controller/podautoscaling"
 	rs "minik8s.com/minik8s/pkg/controller/replicaset"
 	"minik8s.com/minik8s/utils/random"
@@ -32,8 +33,12 @@ func main() {
 	hpStopChan := make(chan bool)
 	go hpInformer.Run(hpStopChan)
 
+	jobInformer := component.NewInformer("GPUJob")
+	jobStopChan := make(chan bool)
+	go jobInformer.Run(jobStopChan)
+
 	for !(podInformer.HasSynced() && rsInformer.HasSynced() && serviceInformer.HasSynced() &&
-		endpointInformer.HasSynced() && hpInformer.HasSynced()) {
+		endpointInformer.HasSynced() && hpInformer.HasSynced() && jobInformer.HasSynced()) {
 
 	}
 
@@ -45,6 +50,9 @@ func main() {
 
 	hpaController := podautoscaling.NewHorizontalController(hpInformer, podInformer, rsInformer)
 	go hpaController.Run()
+
+	jobController := job.NewJobController(podInformer, jobInformer)
+	go jobController.Run()
 
 	for {
 		time.Sleep(time.Second * 100)

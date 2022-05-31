@@ -60,9 +60,6 @@ func NewHorizontalController(hpaInf *component.Informer, podInf *component.Infor
 func (hpaC *HorizontalController) Run() {
 	hpaC.queue.Init()
 
-	for !(hpaC.rsInformer.HasSynced() && hpaC.podInformer.HasSynced() && hpaC.hpaInformer.HasSynced()) {
-	}
-
 	hpaC.hpaInformer.AddEventHandler(component.EventHandler{
 		OnAdd:    hpaC.addHPA,
 		OnUpdate: hpaC.updateHPA,

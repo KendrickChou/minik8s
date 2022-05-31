@@ -12,13 +12,9 @@ require (
 	github.com/gin-gonic/gin v1.7.7
 	github.com/inhies/go-bytesize v0.0.0-20220417184213-4913239db9cf
 	github.com/pkg/sftp v1.13.4
-	github.com/sbinet/go-python v0.1.0
 	github.com/spf13/cobra v1.4.0
-	github.com/vishvananda/netlink v1.1.1-0.20210330154013-f5de75959ad5
 	k8s.io/klog/v2 v2.30.0
 )
-
-require github.com/vishvananda/netns v0.0.0-20210104183010-2eb08e3e575f // indirect
 
 require (
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
