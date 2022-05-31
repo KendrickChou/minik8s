@@ -98,6 +98,16 @@ func (kl *Kubelet) DeletePod(UID string) error {
 	return kl.podManager.DeletePod(UID)
 }
 
+func (kl *Kubelet) AddPodsWithoutCreate(pod v1.Pod) error {
+	err := kl.podManager.AddPodWithoutCreate(&pod)
+
+	if err != nil {
+		klog.Errorf("Add Pod %s Without Create Error: %s", pod.Name, err.Error())
+	}
+
+	return err
+}
+
 func installInitialContainers(pod *v1.Pod) error {
 	pod.Spec.InitialContainers = make(map[string]v1.Container)
 

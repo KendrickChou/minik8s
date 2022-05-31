@@ -4,14 +4,17 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"encoding/gob"
 	"encoding/json"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/patrickmn/go-cache"
 	"k8s.io/klog/v2"
 	"minik8s.com/minik8s/pkg/kubelet"
 	"minik8s.com/minik8s/pkg/kubelet/apis/config"
@@ -24,31 +27,98 @@ const JsonContentType string = "application/json"
 
 func main() {
 
-	resp, err := http.Post(config.ApiServerAddress+constants.RegistNodeRequest(), JsonContentType, bytes.NewBuffer([]byte{}))
+	// read from cache if exist
+	_, err := os.Stat(constants.CacheFilePath)
 
-	// regist to apiserver
-	if err != nil || resp.StatusCode != 200 {
-		klog.Fatalf("Node failed register to apiserver %s", config.ApiServerAddress)
-		if resp != nil {
-			resp.Body.Close()
-		}
-		os.Exit(0)
-	}
+	var nodeUID string
+	var restart bool = false
 
-	registResp := &httpresponse.RegistResponse{}
-
-	buf, _ := io.ReadAll(resp.Body)
-	err = json.Unmarshal(buf, registResp)
-
-	resp.Body.Close()
-
+	// get node info in cache or send request to api server
 	if err != nil {
-		klog.Fatal("Json parse RegistResponse failed")
-		os.Exit(0)
+		klog.Info("Read node info from cache.")
+
+		f, err := os.Open(constants.CacheFilePath)
+		if err != nil {
+			klog.Errorf("Open Cache File %s Error: %s", constants.CacheFilePath, err.Error())
+			os.Exit(0)
+		}
+
+		dec := gob.NewDecoder(f)
+		var items map[string]cache.Item
+		err = dec.Decode(&items)
+
+		f.Close()
+
+		if err != nil {
+			klog.Errorf("Decode cache file Error: %s", err.Error())
+			os.Exit(0)
+		}
+
+		nodeCache := cache.NewFrom(cache.NoExpiration, 0, items)
+		value, ok := nodeCache.Get(constants.NodeCacheID)
+
+		if !ok {
+			klog.Errorf("No node cache in cache file")
+			os.Exit(0)
+		}
+
+		nodeUID = value.(string)
+		restart = true
+	} else {
+		klog.Info("Send request to register a node.")
+
+		resp, err := http.Post(config.ApiServerAddress+constants.RegistNodeRequest(), JsonContentType, bytes.NewBuffer([]byte{}))
+
+		// regist to apiserver
+		if err != nil || resp.StatusCode != 200 {
+			klog.Fatalf("Node failed register to apiserver %s", config.ApiServerAddress)
+			if resp != nil {
+				resp.Body.Close()
+			}
+			os.Exit(0)
+		}
+
+		registResp := &httpresponse.RegistResponse{}
+
+		buf, _ := io.ReadAll(resp.Body)
+		err = json.Unmarshal(buf, registResp)
+
+		resp.Body.Close()
+
+		if err != nil {
+			klog.Fatal("Json parse RegistResponse failed")
+			os.Exit(0)
+		}
+
+		nodeUID = registResp.UID
+
+		// write it to cache & store to cache file
+		nodeCache := cache.New(cache.NoExpiration, 0)
+
+		nodeCache.Add(constants.NodeCacheID, nodeUID, cache.NoExpiration)
+
+		items := nodeCache.Items()
+		f, err := os.Create(constants.CacheFilePath)
+
+		if err != nil {
+			klog.Error("Create Cache File %s Error: %s", err.Error())
+			os.Exit(0)
+		}
+
+		enc := gob.NewEncoder(f)
+		err = enc.Encode(items)
+		f.Close()
+
+		if err != nil {
+			klog.Error("Encode cache items %s Error: %s", err.Error())
+			os.Exit(0)
+		}
+
+		klog.Info("Register node & cache finished")
 	}
 
 	// create kubelet
-	kl, err := kubelet.NewKubelet(config.NodeName, registResp.UID)
+	kl, err := kubelet.NewKubelet(config.NodeName, nodeUID)
 
 	if err != nil {
 		klog.Fatalf("Create Kubelet Failed: %s", err.Error())
@@ -63,25 +133,60 @@ func main() {
 		os.Exit(0)
 	}
 
+	// get the already exist pod when restart.
+	if restart {
+		klog.Info("Try to recover pods...")
+
+		resp, err := http.Get(config.ApiServerAddress + constants.GetAllPodsRequest(nodeUID))
+
+		if err != nil {
+			klog.Errorf("Get All Existed Pods Error: %s", err.Error())
+			os.Exit(0)
+		}
+
+		buf, _ := ioutil.ReadAll(resp.Body)
+		resp.Body.Close()
+
+		var podArray []httpresponse.PodChangeRequest
+		err = json.Unmarshal(buf, &podArray)
+
+		if err != nil {
+			klog.Errorf("Unmarshal All Pods Error: %s", err.Error())
+			os.Exit(0)
+		}
+
+		for _, pod := range podArray {
+			kl.AddPodsWithoutCreate(pod.Pod)
+		}
+
+		klog.Info("Recover pods complete.")
+	}
+
 	ctx, cancel := context.WithCancel(context.TODO())
 	defer cancel()
 
 	// may some parallel bugs. maybe should not share kl
 
 	// watch pod
+	klog.Info("Begin watching pods")
 	podErr := make(chan string)
 	go watchingPods(ctx, &kl, podErr)
 
 	// start heartbeat
+	klog.Info("Begin send heartbeat")
 	heartbeatErr := make(chan string)
 	go sendHeartBeat(ctx, kl.UID, heartbeatErr)
 
 	// start refreshPodStatus periodically
+	klog.Info("Begin refresh pod status")
 	go refreshAllPodStatus(ctx, &kl)
 
 	// watch endpoints
+	klog.Info("Begin watching endpoints")
 	endpointsErr := make(chan string)
 	go watchingEndpoints(ctx, kp, endpointsErr)
+
+	klog.Info("Kubelet is ready to go.")
 
 	for {
 		select {
@@ -109,7 +214,7 @@ func watchingPods(ctx context.Context, kl *kubelet.Kubelet, errChan chan string)
 		klog.Errorf("Node %s Watch Pods Failed: %s", kl.UID, err.Error())
 		// sleep some time before retry
 		time.Sleep(time.Second * time.Duration(constants.ReconnectInterval))
-		errChan <-err.Error()
+		errChan <- err.Error()
 		return
 	}
 
@@ -127,7 +232,7 @@ func watchingPods(ctx context.Context, kl *kubelet.Kubelet, errChan chan string)
 				return
 			}
 
-			buf[len(buf) - 1] = '\n'
+			buf[len(buf)-1] = '\n'
 			req := &httpresponse.PodChangeRequest{}
 			err = json.Unmarshal(buf, req)
 
@@ -142,8 +247,8 @@ func watchingPods(ctx context.Context, kl *kubelet.Kubelet, errChan chan string)
 
 func handlePodChangeRequest(kl *kubelet.Kubelet, req *httpresponse.PodChangeRequest) {
 	parsedPath := strings.Split(req.Key, "/")
-	req.Pod.UID = parsedPath[len(parsedPath) - 1]
-	
+	req.Pod.UID = parsedPath[len(parsedPath)-1]
+
 	switch req.Type {
 	case "PUT":
 		kl.CreatePod(req.Pod)
@@ -234,7 +339,7 @@ func watchingEndpoints(ctx context.Context, kp kubeproxy.KubeProxy, errChan chan
 		klog.Errorf("Node Watch Endpoints Failed: %s", err.Error())
 		// sleep some time before retry
 		time.Sleep(time.Second * time.Duration(constants.ReconnectInterval))
-		errChan <-err.Error()
+		errChan <- err.Error()
 		return
 	}
 
@@ -248,11 +353,11 @@ func watchingEndpoints(ctx context.Context, kp kubeproxy.KubeProxy, errChan chan
 
 			if err != nil {
 				klog.Errorf("Watch Endpoints Error: %s", err)
-				errChan <-err.Error()
+				errChan <- err.Error()
 				return
 			}
 
-			buf[len(buf) - 1] = '\n'
+			buf[len(buf)-1] = '\n'
 			req := &httpresponse.EndpointChangeRequest{}
 			err = json.Unmarshal(buf, req)
 
@@ -268,7 +373,7 @@ func watchingEndpoints(ctx context.Context, kp kubeproxy.KubeProxy, errChan chan
 func handleEndpointChangeRequest(kp kubeproxy.KubeProxy, req *httpresponse.EndpointChangeRequest) {
 	klog.Infof("Receive %s Endpoint %s, Key %s", req.Type, req.Endpoint.Name, req.Key)
 	parsedPath := strings.Split(req.Key, "/")
-	uid := parsedPath[len(parsedPath) - 1]
+	uid := parsedPath[len(parsedPath)-1]
 	switch req.Type {
 	case "PUT":
 		kp.AddEndpoint(context.TODO(), uid, req.Endpoint)

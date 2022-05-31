@@ -25,6 +25,8 @@ type PodManager interface {
 
 	AddPod(pod *v1.Pod) error
 
+	AddPodWithoutCreate(pod *v1.Pod) error
+
 	UpdatePod(pod *v1.Pod) error
 
 	DeletePod(UID string) error
@@ -208,6 +210,36 @@ func (pm *podManager) AddPod(pod *v1.Pod) error {
 			klog.Errorln(err)
 		}
 	}
+
+	return nil
+}
+
+func (pm *podManager) AddPodWithoutCreate(pod *v1.Pod) error {
+	klog.Infof("Add Pod %s without create", pod.Name)
+
+	if pod.UID == "" {
+		err := "pod UID is empty"
+
+		klog.Errorln(err)
+		return errors.New(err)
+	}
+
+	if _, ok := pm.podByUID[pod.UID]; ok {
+		err := "duplicated pod UID: " + string(pod.UID)
+
+		klog.Errorln(err)
+		return errors.New(err)
+	}
+
+	if dupPod, ok := pm.podByName[pod.Name]; ok && dupPod.Namespace == pod.Namespace {
+		err := "duplicated pod name: " + pod.Name + " in namespace: " + pod.Namespace
+
+		klog.Errorln(err)
+		return errors.New(err)
+	}
+
+	pm.podByUID[pod.UID] = pod
+	pm.podByName[pod.Name] = pod
 
 	return nil
 }

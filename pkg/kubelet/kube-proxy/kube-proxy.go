@@ -2,15 +2,20 @@ package kubeproxy
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"net/http"
 	"os/exec"
 	"regexp"
 	"strings"
 
 	"k8s.io/klog"
 	v1 "minik8s.com/minik8s/pkg/api/v1"
+	"minik8s.com/minik8s/pkg/kubelet/apis/config"
 	"minik8s.com/minik8s/pkg/kubelet/apis/constants"
+	"minik8s.com/minik8s/pkg/kubelet/apis/httpresponse"
 
 	"github.com/coreos/go-iptables/iptables"
 	"github.com/dchest/uniuri"
@@ -49,7 +54,43 @@ func NewKubeProxy() (KubeProxy, error) {
 	kp.ipt = ipt
 
 	err = initIPtables(ipt)
+	if err != nil {
+		klog.Error("Init IP tables Error: %s", err.Error())
+		return nil, err
+	}
 	klog.Info("Init IP Tables successfully!")
+
+	// get all existed endpoints
+	resp, err := http.Get(config.ApiServerAddress + constants.GetAllEndpointsRequest())
+
+	if err != nil {
+		klog.Errorf("Get All Existed Endpoints Error: %s", err.Error())
+		return nil, err
+	}
+
+	buf, err := io.ReadAll(resp.Body)
+
+	resp.Body.Close()
+
+	if err != nil {
+		klog.Errorf("Get All Existed Endpoints Error: %s", err.Error())
+		return nil, err
+	}
+
+	var epArray []httpresponse.EndpointChangeRequest
+	json.Unmarshal(buf, &epArray)
+
+	for _, ep := range epArray {
+		klog.Infof("Add Endpoint %s, key: %s ", ep.Endpoint.Name, ep.Key)
+
+		parsedPath := strings.Split(ep.Key, "/")
+		uid := parsedPath[len(parsedPath) - 1]
+
+		kp.AddEndpoint(context.TODO(), uid, ep.Endpoint)
+	}
+
+	klog.Infof("All existed endpoints are added!")
+	klog.Infof("Kube-proxy is ready to go")
 
 	return kp, err
 }

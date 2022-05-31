@@ -28,6 +28,14 @@ func WatchEndpointsRequest() string {
 	return "/watch/endpoints"
 }
 
+func GetAllEndpointsRequest() string {
+	return "/endpoints"
+}
+
+func GetAllPodsRequest(nodeID string) string {
+	return "/innode/" + nodeID + "/pods"
+}
+
 const (
 	HeartBeatInterval        uint64 = 1  //second
 	MaxErrorHeartBeat        int    = 10 // if successively failed over 10 times, close node
@@ -36,6 +44,9 @@ const (
 )
 
 const (
+	CacheFilePath string = "./cache/cache.txt"
+	NodeCacheID   string = "node"
+
 	NetworkIDPrefix          string = "container:"
 	InitialPauseContainerKey string = "pause"
 	WeaveNetworkName         string = "weave"
