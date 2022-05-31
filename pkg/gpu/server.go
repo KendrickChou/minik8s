@@ -118,5 +118,6 @@ func getResult() {
 func isJobRunning() bool {
 	sshClient := NewSshClient(config.AS_GPU_LOGIN_ADDR)
 	res := sshClient.RunCmd("squeue | grep " + job.JobNum)
+	sshClient.Close()
 	return len(res) > 5
 }

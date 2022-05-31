@@ -79,14 +79,14 @@ func handleDNSChanRequest(req *DNSRequest) {
 		}
 
 	case "DELETE":
-		delete(dnsMap, req.Key)
 		klog.Infof("Dns Deleted: Key[%v]", req.Key)
 		klog.Infof("Current dns num: %v", len(dnsMap))
+		removeDNS(dnsMap[req.Key])
+		delete(dnsMap, req.Key)
 	}
 }
 
 func installDNS(dns v1.DNS) {
-
 	services_raw := apiclient.Rest("", "", apiclient.OBJ_ALL_SERVICES, apiclient.OP_GET)
 	var svcs []ServiceRequest
 	err := json.Unmarshal(services_raw, &svcs)
@@ -100,6 +100,39 @@ func installDNS(dns v1.DNS) {
 				if svcReq.Service.Name == path.ServiceName {
 					cmd := exec.Command("weave",
 						"dns-add",
+						svcReq.Service.Spec.ClusterIP,
+						"-h",
+						dns.Host+path.Path+".weave.local")
+					if err := cmd.Start(); err != nil {
+						klog.Error("Error:The command is err,", err)
+						return
+					}
+					exist = true
+					break
+				}
+			}
+			if !exist {
+				klog.Error("Cannot Find ServiceName[%v]", path.ServiceName)
+			}
+		}
+	}
+
+}
+
+func removeDNS(dns v1.DNS) {
+	services_raw := apiclient.Rest("", "", apiclient.OBJ_ALL_SERVICES, apiclient.OP_GET)
+	var svcs []ServiceRequest
+	err := json.Unmarshal(services_raw, &svcs)
+	if err != nil {
+		klog.Error("Unmarshal Service Failed: %v", err)
+	} else {
+		for _, path := range dns.Paths {
+			klog.Infof("Removing DNS Rule Path[%v] ServiceName[%v]", path.Path, path.ServiceName)
+			exist := false
+			for _, svcReq := range svcs {
+				if svcReq.Service.Name == path.ServiceName {
+					cmd := exec.Command("weave",
+						"dns-remove",
 						svcReq.Service.Spec.ClusterIP,
 						"-h",
 						dns.Host+path.Path+".weave.local")

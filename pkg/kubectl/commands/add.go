@@ -4,16 +4,17 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/spf13/cobra"
 	"io"
 	"io/ioutil"
 	"mime/multipart"
-	"minik8s.com/minik8s/config"
-	v1 "minik8s.com/minik8s/pkg/api/v1"
-	"minik8s.com/minik8s/pkg/apiclient"
 	"net/http"
 	"os"
 	"strconv"
+
+	"github.com/spf13/cobra"
+	"minik8s.com/minik8s/config"
+	v1 "minik8s.com/minik8s/pkg/api/v1"
+	"minik8s.com/minik8s/pkg/apiclient"
 )
 
 var addCmd = &cobra.Command{
@@ -49,6 +50,17 @@ var addCmd = &cobra.Command{
 		case "pod":
 			resp = apiclient.Rest("", string(buf), apiclient.OBJ_POD, apiclient.OP_POST)
 		case "service":
+			resp = apiclient.Rest("", "", apiclient.OBJ_ALL_SERVICES, apiclient.OP_GET)
+			var svcs []GetServiceResponse
+			var service v1.Service
+			json.Unmarshal(resp, &svcs)
+			json.Unmarshal(buf, &service)
+			for _, svc := range svcs{
+				if svc.Service.Spec.ClusterIP == service.Spec.ClusterIP{
+					fmt.Errorf("error: Duplicated Cluster IP!\n")
+					return
+				}
+			}
 			resp = apiclient.Rest("", string(buf), apiclient.OBJ_SERVICE, apiclient.OP_POST)
 		case "dns":
 			resp = apiclient.Rest("", string(buf), apiclient.OBJ_DNS, apiclient.OP_POST)

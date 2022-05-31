@@ -4,7 +4,6 @@
     "metadata": {
         "name": "myGPUJob1",
         "namespace": "default",
-        "uid": "",
         "labels": {
             "app" : "gpu"
         }
@@ -15,22 +14,14 @@
                 "Name": "GPUJobTest",
                 "Namespace": "example",
                 "ID": "4a2e3b94e5b5d184001b4a3475e958619bddbe89702b6249336f952adc9c33e4",
-                "Image": "minik8s_gpu_demo:v1.2",
+                "Image": "xayahhh/minik8s_gpu_server:v1.0",
                 "ImagePullPolicy": "IfNotPresent",
                 "Entrypoint": [
                     "/bin/bash",
                     "-c",
-                    "/apps/main 59.78.8.125:8080 G1001-Andbr6w7"
-                ],
-                "Mounts": [
+                    "/apps/main http://10.119.11.209 G1019-jzwUxfE9"
                 ]
             }
-        ]
-    },
-    "Status": {
-        "Phase": "Succeeded",
-        "ContainerStatuses": [
-
         ]
     }
 }
