@@ -55,9 +55,9 @@ var addCmd = &cobra.Command{
 			var service v1.Service
 			json.Unmarshal(resp, &svcs)
 			json.Unmarshal(buf, &service)
-			for _, svc := range svcs{
-				if svc.Service.Spec.ClusterIP == service.Spec.ClusterIP{
-					fmt.Errorf("error: Duplicated Cluster IP!\n")
+			for _, svc := range svcs {
+				if svc.Service.Spec.ClusterIP == service.Spec.ClusterIP {
+					fmt.Println("error: Duplicated Cluster IP!")
 					return
 				}
 			}
