@@ -119,7 +119,7 @@ func getNodes() {
 	fmt.Printf("=->%v Nodes\n", len(kvs))
 	fmt.Printf("%v\t\t\t\t%v\t\t\t%v\t\t\t%v\n", "Key", "Name", "Uid", "IP")
 	for _, kv := range kvs {
-		fmt.Printf("%v\t\t%v\t\t%v\t\t%v\n", kv.Key, kv.Node.Name, kv.Node.UID, kv.Node.Spec.IP)
+		fmt.Printf("%v\t\t%v\t\t%v\n", kv.Key, kv.Node.Name, kv.Node.UID)
 	}
 	fmt.Printf("\n")
 }
