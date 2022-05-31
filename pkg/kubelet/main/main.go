@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/gob"
 	"encoding/json"
+	"errors"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -34,7 +35,7 @@ func main() {
 	var restart bool = false
 
 	// get node info in cache or send request to api server
-	if err != nil {
+	if errors.Is(err, os.ErrNotExist) {
 		klog.Info("Read node info from cache.")
 
 		f, err := os.Open(constants.CacheFilePath)
@@ -64,7 +65,7 @@ func main() {
 
 		nodeUID = value.(string)
 		restart = true
-	} else {
+	} else if err == nil {
 		klog.Info("Send request to register a node.")
 
 		resp, err := http.Post(config.ApiServerAddress+constants.RegistNodeRequest(), JsonContentType, bytes.NewBuffer([]byte{}))
@@ -115,6 +116,8 @@ func main() {
 		}
 
 		klog.Info("Register node & cache finished")
+	} else {
+		klog.Errorf("Check File %s Error: %s", constants.CacheFilePath, err.Error())
 	}
 
 	// create kubelet
