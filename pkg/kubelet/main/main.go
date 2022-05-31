@@ -35,7 +35,7 @@ func main() {
 	var restart bool = false
 
 	// get node info in cache or send request to api server
-	if errors.Is(err, os.ErrNotExist) {
+	if err == nil {
 		klog.Info("Read node info from cache.")
 
 		f, err := os.Open(constants.CacheFilePath)
@@ -65,7 +65,7 @@ func main() {
 
 		nodeUID = value.(string)
 		restart = true
-	} else if err == nil {
+	} else if errors.Is(err, os.ErrNotExist) {
 		klog.Info("Send request to register a node.")
 
 		resp, err := http.Post(config.ApiServerAddress+constants.RegistNodeRequest(), JsonContentType, bytes.NewBuffer([]byte{}))
