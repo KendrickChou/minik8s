@@ -55,7 +55,7 @@ func NewKubeProxy() (KubeProxy, error) {
 
 	err = initIPtables(ipt)
 	if err != nil {
-		klog.Error("Init IP tables Error: %s", err.Error())
+		klog.Errorf("Init IP tables Error: %s", err.Error())
 		return nil, err
 	}
 	klog.Info("Init IP Tables successfully!")
