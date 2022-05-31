@@ -141,6 +141,8 @@ func GetAll(objType ObjType) []byte {
 		url += config.AC_RestEndpoints_Path
 	case OBJ_ALL_HPAS:
 		url += config.AC_RestHPAs_Path
+	case OBJ_ALL_GPUS:
+		url += config.AC_RestGpus_Path
 	case OBJ_POD:
 		url += config.AC_RestPod_Path
 	case OBJ_SERVICE:
@@ -151,6 +153,8 @@ func GetAll(objType ObjType) []byte {
 		url += config.AC_RestEndpoint_Path
 	case OBJ_HPA:
 		url += config.AC_RestHPA_Path
+	case OBJ_GPU:
+		url += config.AC_RestGpu_Path
 	default:
 		klog.Error("Invalid arguments!\n")
 		return nil
