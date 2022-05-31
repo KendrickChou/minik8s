@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 )
 
 type ObjType int8
@@ -114,7 +115,8 @@ func Watch(ctx context.Context, ch chan []byte, ty ObjType) {
 			//}
 			if err != nil {
 				klog.Errorf("error: %v", err)
-				klog.Errorf("Rewatch...\n")
+				klog.Errorf("Rewatch after three seconds...\n")
+				time.Sleep(time.Second * 3)
 				go Watch(ctx, ch, ty)
 				return
 			}

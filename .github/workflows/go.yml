@@ -2,7 +2,7 @@ name: Go
 
 on:
   push:
-    branches: [ feature/jobController ]
+    branches: [ develop ]
 
 jobs:
 
