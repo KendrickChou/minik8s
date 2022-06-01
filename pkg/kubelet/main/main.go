@@ -162,7 +162,7 @@ func main() {
 		err = json.Unmarshal(buf, &podArray)
 
 		if err != nil {
-			klog.Errorf("Unmarshal All Pods Error: %s", err.Error())
+			klog.Errorf("Unmarshal All Pods Error: %s, received string: %s", err.Error(), string(buf))
 			os.Exit(0)
 		}
 

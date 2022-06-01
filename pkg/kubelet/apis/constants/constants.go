@@ -41,7 +41,7 @@ func GetAllPodsRequest(nodeID string) string {
 }
 
 const (
-	RefreshNodeInterval        uint64 = 5  //second
+	RefreshNodeInterval      uint64 = 5 //second
 	RefreshPodStatusInterval uint64 = 10
 	ReconnectInterval        uint64 = 20
 )
@@ -71,6 +71,10 @@ var InitialPauseContainer v1.Container = v1.Container{
 	ImagePullPolicy: "IfNotPresent",
 	DNS:             DNS,
 	DNSSearch:       DNSSearch,
+	Resources: map[string]string{
+		"cpu":    "2",
+		"memory": "256MB",
+	},
 }
 
 var Node v1.Node = v1.Node{
