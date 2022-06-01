@@ -93,6 +93,10 @@ func (manager *containerManager) CreateContainer(ctx context.Context, container 
 					return "", err
 				}
 
+				if out == nil {
+					return "", errors.New("pull Image Error")
+				}
+
 				defer out.Close()
 
 				io.Copy(os.Stdout, out)
@@ -113,7 +117,7 @@ func (manager *containerManager) CreateContainer(ctx context.Context, container 
 		hostConfig.DNSSearch = []string{container.DNSSearch}
 	}
 	if len(container.Command) != 0 {
-		containerConfig.Cmd = append(containerConfig.Cmd, container.Command...)
+		containerConfig.Cmd = container.Command
 	}
 	if len(container.Entrypoint) != 0 {
 		containerConfig.Entrypoint = append(containerConfig.Entrypoint, container.Entrypoint...)

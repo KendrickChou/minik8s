@@ -133,13 +133,6 @@ func (pm *podManager) AddPod(pod *v1.Pod) error {
 		return errors.New(err)
 	}
 
-	// if dupPod, ok := pm.podByName[pod.Name]; ok && dupPod.Namespace == pod.Namespace {
-	// 	err := "duplicated pod name: " + pod.Name + " in namespace: " + pod.Namespace
-
-	// 	klog.Errorln(err)
-	// 	return errors.New(err)
-	// }
-
 	pm.podByUID[pod.UID] = pod
 	pm.podByName[pod.Name] = pod
 
@@ -191,6 +184,7 @@ func (pm *podManager) AddPod(pod *v1.Pod) error {
 
 	// start user spec pods
 	for _, container := range pod.Spec.Containers {
+		klog.Info(container.Command)
 		container.Name = pod.Name + "-" + container.Name
 		container.NetworkMode = constants.NetworkIDPrefix + pod.Spec.InitialContainers[constants.InitialPauseContainerKey].Name
 
@@ -397,14 +391,29 @@ func (pm *podManager) PodStatus(UID string) (v1.PodStatus, error) {
 			continue
 		}
 
+		var cpuPerc, memPerc string
+		if cpu, ok := cntr.Resources["cpu"]; ok {
+			cpuPerc = dynamicStats[0] + "/" + cpu
+		} else {
+			klog.Infof("Container %s doesn't specify cpu limit", cntr.Name)
+			cpuPerc = dynamicStats[0] + "/"
+		}
+
+		if mem, ok := cntr.Resources["memory"]; ok {
+			memPerc = dynamicStats[1] + "/" + mem
+		} else {
+			klog.Infof("Container %s doesn't specify mem limit", cntr.Name)
+			memPerc = dynamicStats[1] + "/"
+		}
+
 		var containerState v1.ContainerState = v1.ContainerState{
 			Status:     stats.State.Status,
 			ExitCode:   stats.State.ExitCode,
 			Error:      stats.State.Error,
 			StartedAt:  stats.State.StartedAt,
 			FinishedAt: stats.State.FinishedAt,
-			CPUPerc:    dynamicStats[0],
-			MemPerc:    dynamicStats[1],
+			CPUPerc:    cpuPerc,
+			MemPerc:    memPerc,
 		}
 
 		pod.Status.ContainerStatuses = append(pod.Status.ContainerStatuses,
@@ -435,14 +444,29 @@ func (pm *podManager) PodStatus(UID string) (v1.PodStatus, error) {
 			continue
 		}
 
+		var cpuPerc, memPerc string
+		if cpu, ok := cntr.Resources["cpu"]; ok {
+			cpuPerc = dynamicStats[0] + "/" + cpu
+		} else {
+			klog.Infof("Container %s doesn't specify cpu limit", cntr.Name)
+			cpuPerc = dynamicStats[0] + "/"
+		}
+
+		if mem, ok := cntr.Resources["memory"]; ok {
+			memPerc = dynamicStats[1] + "/" + mem
+		} else {
+			klog.Infof("Container %s doesn't specify mem limit", cntr.Name)
+			memPerc = dynamicStats[1] + "/"
+		}
+
 		var containerState v1.ContainerState = v1.ContainerState{
 			Status:     stats.State.Status,
 			ExitCode:   stats.State.ExitCode,
 			Error:      stats.State.Error,
 			StartedAt:  stats.State.StartedAt,
 			FinishedAt: stats.State.FinishedAt,
-			CPUPerc:    dynamicStats[0],
-			MemPerc:    dynamicStats[1],
+			CPUPerc:    cpuPerc,
+			MemPerc:    memPerc,
 		}
 
 		pod.Status.ContainerStatuses = append(pod.Status.ContainerStatuses,
