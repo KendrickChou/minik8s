@@ -140,6 +140,44 @@ func SetUpRouter() *gin.Engine {
 		}
 	})
 
+	router.POST("/actionchain/:id", func(ctx *gin.Context){
+		acId := ctx.Params.ByName("id")
+		bytes, err := couchdb.GetDoc(context.TODO(), constants.ActionDBId, acId)
+
+		if err != nil {
+			ctx.JSON(http.StatusOK, gin.H{"error": err.Error()})
+			return
+		}
+
+		var ac couchobject.ActionChain
+		json.Unmarshal(bytes, &ac)
+
+		err = couchdb.DelDoc(context.TODO(), constants.ActionDBId, ac.ID, ac.Reversion)
+
+		if err != nil {
+			ctx.JSON(http.StatusOK, gin.H{"error": err.Error()})
+		} else {
+			ctx.JSON(http.StatusOK, gin.H{"ok": true})
+		}
+
+		buf, err := ioutil.ReadAll(ctx.Request.Body)
+
+		// without check, maybe I should add some error check
+
+		if err != nil {
+			ctx.JSON(http.StatusOK, gin.H{"error": err.Error()})
+			return
+		}
+
+		_, err = couchdb.PutDoc(context.TODO(), constants.ActionDBId, acId, buf)
+
+		if err != nil {
+			ctx.JSON(http.StatusOK, gin.H{"error": err.Error()})
+		} else {
+			ctx.JSON(http.StatusOK, gin.H{"ok": true})
+		}
+	})
+
 	router.GET("/trigger/:id", func(ctx *gin.Context) {
 		buf, _ := ioutil.ReadAll(ctx.Request.Body)
 		acId := ctx.Params.ByName("id")
