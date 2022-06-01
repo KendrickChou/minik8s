@@ -1,0 +1,50 @@
+{
+  "kind": "HorizontalPodAutoscaler",
+  "apiversion": "v1",
+  "metadata": {
+    "name": "test-HPA-1",
+    "namespace": "test"
+  },
+  "spec": {
+    "scaleTargetRef": {
+      "apiVersion": "v1",
+      "kind": "ReplicaSet",
+      "name": "hpa-replica"
+    },
+    "minReplicas": 3,
+    "maxReplicas": 20,
+    "metrics": [
+      {
+        "type": "Resource",
+        "resource": {
+          "name": "cpu",
+          "target": {
+            "type": "Utilization",
+            "averageUtilization": 20
+          }
+        }
+      },
+      {
+        "type": "Resource",
+        "resource": {
+          "name": "memory",
+          "target": {
+            "type": "AverageValue",
+            "averageValue": "50MB"
+          }
+        }
+      }
+    ],
+    "behavior":{
+      "scaleUp":{
+        "policies":[
+          {
+          "type":"Pods",
+          "value":1,
+          "periodSeconds":10
+          }
+        ]
+      }
+    }
+  }
+}

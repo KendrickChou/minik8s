@@ -1,0 +1,70 @@
+{
+    "kind": "pod",
+    "apiversion": "v1",
+    "metadata": {
+        "name": "example-pod",
+        "namespace": "example",
+        "labels": {
+            "app" : "echo"
+        }
+    },
+    "spec": {
+        "containers": [
+            {
+                "name": "example-container-1",
+                "namespace": "example",
+                "image": "cilium/echoserver:latest",
+                "imagepullpolicy": "IfNotPresent",
+                "resources":{
+                    "cpu": "2",
+                    "memory": "1024MB"
+                },
+                "exposedports": [
+                    "80/tcp"
+                ],
+                "bindports": {
+                    "80/tcp": "0.0.0.0:9095"
+                }
+            },
+            {
+                "name": "example-container-2",
+                "namespace": "example",
+                "image": "alpine:latest",
+                "imagepullpolicy": "IfNotPresent",
+                "mounts":[
+                    {
+						"type": "volume",
+						"source": "volume1",
+						"target": "/root/mountdir"
+					}
+                ],
+                "command":[
+                    "/bin/sh",
+                    "-c",
+                    "while true;do echo hello;sleep 1;done"
+                ]
+            },
+            {
+                "name": "example-container-3",
+                "namespace": "example",
+                "image": "alpine:latest",
+                "imagepullpolicy": "IfNotPresent",
+                "mounts":[
+                    {
+						"type": "volume",
+						"source": "volume1",
+						"target": "/home/wget"
+					}
+                ],
+                "command":[
+                    "/bin/sh",
+                    "-c",
+                    "wget localhost:80 -O /home/wget/wget.out"
+                ]
+            }
+        ],
+        "volumes": [
+            "volume1"
+        ]
+    }
+}

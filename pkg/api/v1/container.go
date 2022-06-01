@@ -77,10 +77,10 @@ type ContainerStatus struct {
 }
 
 type Mount struct {
-	Type        string `json:"MountType,omitempty"`
-	Source      string `json:"MountSource,omitempty"`
-	Target      string `json:"MountTarget,omitempty"`
-	Consistency string `json:"MountConsistency,omitempty"`
+	Type        string `json:"type,omitempty"`
+	Source      string `json:"source,omitempty"`
+	Target      string `json:"target,omitempty"`
+	Consistency string `json:"consistency,omitempty"`
 }
 
 const (
