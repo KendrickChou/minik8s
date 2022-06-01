@@ -65,6 +65,7 @@ func (manager *containerManager) CreateContainer(ctx context.Context, container 
 			out, err := manager.dockerClient.ImagePull(ctx, containerConfig.Image, types.ImagePullOptions{})
 
 			if err != nil {
+				klog.Errorf("Pull Image Error %s", err.Error())
 				return "", err
 			}
 

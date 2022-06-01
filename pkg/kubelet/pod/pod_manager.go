@@ -184,7 +184,6 @@ func (pm *podManager) AddPod(pod *v1.Pod) error {
 
 	// start user spec pods
 	for _, container := range pod.Spec.Containers {
-		klog.Info(container.Command)
 		container.Name = pod.Name + "-" + container.Name
 		container.NetworkMode = constants.NetworkIDPrefix + pod.Spec.InitialContainers[constants.InitialPauseContainerKey].Name
 
