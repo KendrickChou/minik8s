@@ -474,3 +474,12 @@ func DeleteGPUJob(jobID string) bool {
 		return false
 	}
 }
+
+func DetectAPIServer() bool {
+	_, err := http.Get(config.AC_ServerAddr + ":" + strconv.Itoa(config.AC_ServerPort) + "/test")
+	if err != nil {
+		return false
+	} else {
+		return true
+	}
+}

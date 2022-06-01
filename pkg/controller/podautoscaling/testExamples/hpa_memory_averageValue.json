@@ -17,10 +17,10 @@
       {
         "type": "Resource",
         "resource": {
-          "name": "cpu",
+          "name": "memory",
           "target": {
-            "type": "Utilization",
-            "averageUtilization": 40
+            "type": "AverageValue",
+            "averageValue": "50MB"
           }
         }
       }
