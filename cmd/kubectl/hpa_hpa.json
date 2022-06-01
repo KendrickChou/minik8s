@@ -11,8 +11,8 @@
       "kind": "ReplicaSet",
       "name": "hpa-test-replica-1"
     },
-    "minReplicas": 2,
-    "maxReplicas": 10,
+    "minReplicas": 3,
+    "maxReplicas": 20,
     "metrics": [
       {
         "type": "Resource",
@@ -20,7 +20,7 @@
           "name": "cpu",
           "target": {
             "type": "Utilization",
-            "averageUtilization": 50
+            "averageUtilization": 20
           }
         }
       },
@@ -29,12 +29,22 @@
         "resource": {
           "name": "memory",
           "target": {
-            "type": "Utilization",
-            "averageUtilization": 50
+            "type": "AverageValue",
+            "averageValue": "50MB"
           }
         }
       }
-    ]
+    ],
+    "behavior":{
+      "scaleUp":{
+        "policies":[
+          {
+          "type":"Pods",
+          "value":1,
+          "periodSeconds":30
+          }
+        ]
+      }
+    }
   }
-
 }

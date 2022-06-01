@@ -17,7 +17,7 @@
         },
         "template":{
             "metadata": {
-                "name": "hpa-test-pod",
+                "name": "hpa-pod",
                 "namespace": "test",
                 "uid": "",
                 "labels": {
@@ -29,16 +29,18 @@
                     {
                         "name": "hpa-test-container-1",
                         "namespace": "test",
-                        "image": "polinux/stress:latest",
+                        "image": "containerstack/cpustress:latest",
                         "imagepullpolicy": "IfNotPresent",
                         "resources":{
                             "cpu" : "4",
                             "memory" : "128MB"
                         },
                         "command" : [
-                            "/bin/sh",
-                            "-c",
-                            "stress --cpu 1 --io 1 --vm 1 --vm-bytes 128M --timeout 60s --verbose"
+                            "--cpu",
+                            "4",
+                            "--timeout",
+                            "300",
+                            "--metrics-brief"
                         ]
                     }
                 ]
