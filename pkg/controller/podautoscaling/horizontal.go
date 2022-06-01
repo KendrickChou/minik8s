@@ -208,7 +208,8 @@ func (hpaC *HorizontalController) autoScaleReplicaSet(hpa *v1.HorizontalPodAutos
 				}
 
 				avgUsage := totalUsage / float64(len(pods))
-				bytesTarget, err := bytesize.Parse(*metric.Resource.Target.AverageValue)
+				klog.Info(metric.Resource.Target)
+				bytesTarget, err := bytesize.Parse(metric.Resource.Target.AverageValue)
 				if err != nil {
 					klog.Error("parse byteSize error")
 				}

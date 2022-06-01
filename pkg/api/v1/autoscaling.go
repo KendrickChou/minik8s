@@ -43,7 +43,7 @@ type ResourceMetricSource struct {
 // MetricTarget type can only be "Utilization" in miniK8s
 type MetricTarget struct {
 	Type               MetricTargetType `json:"type"`
-	AverageValue       *string          `json:"averageValue,omitempty"`
+	AverageValue       string           `json:"averageValue,omitempty"`
 	AverageUtilization int              `json:"averageUtilization,omitempty"`
 }
 
