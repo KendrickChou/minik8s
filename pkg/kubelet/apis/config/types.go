@@ -1,6 +1,7 @@
 package config
 
 import (
+	"minik8s.com/minik8s/config"
 	v1 "minik8s.com/minik8s/pkg/api/v1"
 )
 
@@ -15,10 +16,10 @@ type KubeletConfiguration struct {
 
 var	InternalPodBridgeNetworkName string = "kubelet"
 
-var ApiServerIP string = "10.119.11.209"
+var ApiServerIP string = config.AC_ServerAddr
 
 var WeaveServerIP string = "10.119.11.209"
 
-var ApiServerAddress string = "http://" + ApiServerIP + ":8080"
+var ApiServerAddress string = config.AC_ServerAddr + ":8080"
 
 var GatewayAddress string = "addr"
