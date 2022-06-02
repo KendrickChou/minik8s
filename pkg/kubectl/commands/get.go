@@ -39,6 +39,8 @@ var getCmd = &cobra.Command{
 				getEndpoints()
 			case "dns":
 				getDNSs()
+			case "hpa":
+				getHPAs()
 			case "all":
 				getPods()
 				getNodes()
@@ -46,6 +48,7 @@ var getCmd = &cobra.Command{
 				getDNSs()
 				getEndpoints()
 				getReplicaSet()
+				getHPAs()
 			default:
 				fmt.Println("未知的对象类型！")
 			}
@@ -99,11 +102,12 @@ func getPods() {
 		fmt.Println("服务器返回信息无效: ", err)
 		return
 	}
-	fmt.Printf("\n=================================================\n")
-	fmt.Printf("=->%v Pods\n", len(kvs))
-	fmt.Printf("%v\t\t\t\t%v\t\t\t%v\t\t\t%v\t\t\t%v\n", "Key", "Name", "Uid", "Node", "OwnerReferences")
+	fmt.Printf("\n============\n")
+	fmt.Printf("=->%v Pods<-=", len(kvs))
+	fmt.Printf("\n============\n")
+	fmt.Printf("%v\t\t\t\t%v\t\t\t%v\t\t\t%v\t\t\t%v\t%v\t\t%v\n", "Key", "Name", "Uid", "Node", "PodStatus", "podIP", "OwnerReferences")
 	for _, kv := range kvs {
-		fmt.Printf("%v\t\t%v\t\t%v\t\t%v\t\t", kv.Key, kv.Pod.Name, kv.Pod.UID, kv.Pod.Spec.NodeName)
+		fmt.Printf("%v\t\t%v\t\t%v\t\t%v\t\t%v\t\t%v\t\t", kv.Key, kv.Pod.Name, kv.Pod.UID, kv.Pod.Spec.NodeName, kv.Pod.Status.Phase, kv.Pod.Status.PodIP)
 		for _, owner := range kv.Pod.OwnerReferences {
 			fmt.Printf("%v: %v, ", owner.Kind, owner.UID)
 		}
@@ -120,8 +124,9 @@ func getNodes() {
 		fmt.Println("服务器返回信息无效: ", err)
 		return
 	}
-	fmt.Printf("\n=================================================\n")
-	fmt.Printf("=->%v Nodes\n", len(kvs))
+	fmt.Printf("\n=============\n")
+	fmt.Printf("=->%v Nodes<-=", len(kvs))
+	fmt.Printf("\n=============\n")
 	fmt.Printf("%v\t\t\t\t%v\t\t\t%v\t\t\t%v\n", "Key", "Name", "Uid", "Status")
 	for _, kv := range kvs {
 		fmt.Printf("%v\t\t%v\t\t%v\t\t%v\n", kv.Key, kv.Node.Name, kv.Node.UID, kv.Node.Status.Phase)
@@ -137,8 +142,9 @@ func getServices() {
 		fmt.Println("服务器返回信息无效: ", err)
 		return
 	}
-	fmt.Printf("\n=================================================\n")
-	fmt.Printf("=->%v Services\n", len(kvs))
+	fmt.Printf("\n================\n")
+	fmt.Printf("=->%v Services<-=", len(kvs))
+	fmt.Printf("\n================\n")
 	fmt.Printf("%v\t\t\t\t%v\t\t\t%v\t\t\t%v\n", "Key", "Name", "Uid", "Cluster IP")
 	for _, kv := range kvs {
 		fmt.Printf("%v\t\t%v\t\t%v\t\t%v\n", kv.Key, kv.Service.Name, kv.Service.UID, kv.Service.Spec.ClusterIP)
@@ -153,8 +159,9 @@ func getDNSs() {
 		fmt.Println("服务器返回信息无效: ", err)
 		return
 	}
-	fmt.Printf("\n=================================================\n")
-	fmt.Printf("=->%v DNS Configs\n", len(kvs))
+	fmt.Printf("\n===================\n")
+	fmt.Printf("=->%v DNS Configs<-=", len(kvs))
+	fmt.Printf("\n===================\n")
 	fmt.Printf("%v\t\t\t\t%v\t\t\t%v\t\t\t%v\n", "Key", "Name", "Uid", "Paths")
 	for _, kv := range kvs {
 		fmt.Printf("%v\t\t%v\t\t%v\t\t%v\n", kv.Key, kv.DNS.Name, kv.DNS.UID, kv.DNS.Paths)
@@ -170,11 +177,17 @@ func getEndpoints() {
 		fmt.Println("服务器返回信息无效: ", err)
 		return
 	}
-	fmt.Printf("\n=================================================\n")
-	fmt.Printf("=->%v Endpoints\n", len(kvs))
-	fmt.Printf("%v\t\t\t\t\t%v\t\t\t%v\t\t\t%v\n", "Key", "Name", "Uid", "")
+	fmt.Printf("\n=================\n")
+	fmt.Printf("=->%v Endpoints<-=", len(kvs))
+	fmt.Printf("\n=================\n")
+	fmt.Printf("%v\t\t\t\t\t%v\t\t\t%v\t\t\t%v\n", "Key", "Name", "Uid", "OwnerReferences")
 	for _, kv := range kvs {
-		fmt.Printf("%v\t\t%v\t\t%v\t\t%v\n", kv.Key, kv.Endpoint.Name, kv.Endpoint.UID, kv.Endpoint.OwnerReferences)
+		fmt.Printf("%v\t\t%v\t\t%v\t\t", kv.Key, kv.Endpoint.Name, kv.Endpoint.UID)
+		for _, owner := range kv.Endpoint.OwnerReferences {
+			fmt.Printf("%v: %v, ", owner.Kind, owner.UID)
+		}
+		fmt.Printf("\n")
+
 	}
 	fmt.Printf("\n")
 }
@@ -187,11 +200,30 @@ func getReplicaSet() {
 		fmt.Println("服务器返回信息无效: ", err)
 		return
 	}
-	fmt.Printf("\n=================================================\n")
-	fmt.Printf("=->%v ReplicaSets\n", len(kvs))
-	fmt.Printf("%v\t\t\t\t\t%v\t\t\t%v\t\t\t%v\n", "Key", "Name", "Uid", "")
+	fmt.Printf("\n===================\n")
+	fmt.Printf("=->%v ReplicaSets<-=", len(kvs))
+	fmt.Printf("\n===================\n")
+	fmt.Printf("%v\t\t\t\t\t%v\t\t\t%v\t\t\t%v\n", "Key", "Name", "Uid", "MatchedApp")
 	for _, kv := range kvs {
-		fmt.Printf("%v\t\t%v\t\t%v\t\t%v\n", kv.Key, kv.ReplicaSet.Name, kv.ReplicaSet.UID, "")
+		fmt.Printf("%v\t\t%v\t\t%v\t\t%v\n", kv.Key, kv.ReplicaSet.Name, kv.ReplicaSet.UID, kv.ReplicaSet.Spec.Selector.MatchLabels["app"])
+	}
+	fmt.Printf("\n")
+}
+
+func getHPAs() {
+	resp := apiclient.Rest("", "", apiclient.OBJ_ALL_HPAS, apiclient.OP_GET)
+	var kvs []GetHpaResponse
+	err := json.Unmarshal(resp, &kvs)
+	if err != nil {
+		fmt.Println("服务器返回信息无效: ", err)
+		return
+	}
+	fmt.Printf("\n============\n")
+	fmt.Printf("=->%v HPAs<-=", len(kvs))
+	fmt.Printf("\n============\n")
+	fmt.Printf("%v\t\t\t\t\t%v\t\t\t%v\t\t\t%v\n", "Key", "Name", "Uid", "TargetReplicaSet")
+	for _, kv := range kvs {
+		fmt.Printf("%v\t\t%v\t\t%v\t\t%v\n", kv.Key, kv.HPA.Name, kv.HPA.UID, kv.HPA.Spec.ScaleTargetRef.Name)
 	}
 	fmt.Printf("\n")
 }

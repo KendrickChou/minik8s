@@ -48,13 +48,46 @@ var addCmd = &cobra.Command{
 		var resp []byte
 		switch kind {
 		case "pod":
+			resp = apiclient.Rest("", "", apiclient.OBJ_ALL_SERVICES, apiclient.OP_GET)
+			var pods []GetPodResponse
+			var pod v1.Pod
+			json.Unmarshal(resp, &pods)
+			err := json.Unmarshal(buf, &pod)
+			if err != nil{
+				fmt.Println("error: ", err)
+				return
+			}
+			for _, p := range pods {
+				if pod.Name == p.Pod.Name {
+					fmt.Println("error: Duplicated Pod Name!")
+					return
+				}
+			}
+			for _, c := range pod.Spec.Containers{
+				if c.Resources == nil{
+					c.Resources = make(map[string]string)
+				}
+				if _, exist := c.Resources["cpu"]; !exist{
+					fmt.Println("automically set cpu: 4")
+					c.Resources["cpu"] = "4"
+				}
+				if _, exist := c.Resources["memory"]; !exist{
+					fmt.Println("automically set memory: 512MB")
+					c.Resources["memory"] = "512MB"
+				}
+			}
+			buf, _ := json.Marshal(pod)
 			resp = apiclient.Rest("", string(buf), apiclient.OBJ_POD, apiclient.OP_POST)
 		case "service":
 			resp = apiclient.Rest("", "", apiclient.OBJ_ALL_SERVICES, apiclient.OP_GET)
 			var svcs []GetServiceResponse
 			var service v1.Service
 			json.Unmarshal(resp, &svcs)
-			json.Unmarshal(buf, &service)
+			err := json.Unmarshal(buf, &service)
+			if err != nil{
+				fmt.Println("error: ", err)
+				return
+			}
 			for _, svc := range svcs {
 				if svc.Service.Spec.ClusterIP == service.Spec.ClusterIP {
 					fmt.Println("error: Duplicated Cluster IP!")

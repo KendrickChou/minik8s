@@ -41,6 +41,11 @@ type GetReplicaResponse struct {
 	ReplicaSet v1.ReplicaSet `json:"value"`
 	Type       string        `json:"type"`
 }
+type GetHpaResponse struct {
+	Key        string        `json:"key"`
+	HPA v1.HorizontalPodAutoscaler `json:"value"`
+	Type       string        `json:"type"`
+}
 
 var rootCmd = &cobra.Command{
 	Use:   "newApp",

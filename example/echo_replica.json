@@ -1,0 +1,51 @@
+{
+    "kind": "ReplicaSet",
+    "apiversion": "v1",
+    "metadata": {
+        "name": "example-replica",
+        "namespace": "test",
+        "labels": {
+            "app": "echo"
+        }
+    },
+    "spec": {
+        "replicas": 3,
+        "selector":{
+            "matchLabels": {
+                "app": "echo"
+            }
+        },
+        "template":{
+            "metadata": {
+                "name": "example-pod",
+                "namespace": "example",
+                "uid": "",
+                "labels": {
+                    "app" : "echo"
+                }
+            },
+            "spec": {
+                "containers": [
+                    {
+                        "name": "example-container-1",
+                        "namespace": "example",
+                        "image": "cilium/echoserver:latest",
+                        "imagepullpolicy": "IfNotPresent"
+                    },
+                    {
+                        "name": "example-container-2",
+                        "namespace": "example",
+                        "image": "alpine:latest",
+                        "imagepullpolicy": "IfNotPresent",
+                        "command":[
+                            "/bin/sh",
+                            "-c",
+                            "while true;do echo hello;sleep 1;done"
+                        ]
+                    }
+                ]
+            }
+        }
+    }
+
+}
