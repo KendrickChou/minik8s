@@ -99,6 +99,9 @@ func (kp *kubeProxy) AddEndpoint(ctx context.Context, uid string, endpoint v1.En
 	klog.Infof("Add Endpoint %s", endpoint.Name)
 	_, ok := kp.endpoints[uid]
 
+	// buf, _ := json.Marshal(endpoint)
+	// klog.Info(string(buf))
+
 	if ok {
 		klog.Infof("Add endpoint %s already exists, try to update it", endpoint.Name)
 		kp.UpdateEndpoint(ctx, uid, endpoint)
@@ -116,6 +119,7 @@ func (kp *kubeProxy) AddEndpoint(ctx context.Context, uid string, endpoint v1.En
 	svcChains := []string{}
 	serviceChainMap := make(map[string]string) // map port/protocol -> svcID.
 	servicePortNum := make(map[int32]int)
+	writtenSVC := make(map[int32]int)
 
 	for _, subset := range endpoint.Subset {
 		for _, port := range subset.Ports {
@@ -147,6 +151,7 @@ func (kp *kubeProxy) AddEndpoint(ctx context.Context, uid string, endpoint v1.En
 				servicePortNum[port.ServicePort] = value + len(subset.Addresses)
 			} else {
 				servicePortNum[port.ServicePort] = len(subset.Addresses)
+				writtenSVC[port.ServicePort] = 0
 			}
 
 		}
@@ -157,7 +162,7 @@ func (kp *kubeProxy) AddEndpoint(ctx context.Context, uid string, endpoint v1.En
 			svcID := serviceChainMap[fmt.Sprintf("%d/%s", port.ServicePort, port.Protocol)]
 
 			sepChains := []string{}
-			for i, addr := range subset.Addresses {
+			for _, addr := range subset.Addresses {
 				// create sep chain
 				sepID := createASEPChainID()
 				err := kp.ipt.NewChain(constants.NATTableName, sepID)
@@ -170,7 +175,8 @@ func (kp *kubeProxy) AddEndpoint(ctx context.Context, uid string, endpoint v1.En
 				// append to K8S-SVC-xxx chain
 				p := 1 / float32(servicePortNum[port.ServicePort])
 				var rule string
-				if i != len(subset.Addresses)-1 {
+				writtenSVC[port.ServicePort]++
+				if writtenSVC[port.ServicePort] < servicePortNum[port.ServicePort] {
 					rule = fmt.Sprintf("-m statistic --mode random --probability %f -j %s", p, sepID)
 				} else {
 					rule = fmt.Sprintf("-j %s", sepID)

@@ -40,5 +40,5 @@ func main() {
 	}
 
 	kp.AddEndpoint(context.TODO(), "TEST", ep)
-	kp.RemoveEndpoint(context.TODO(), "TEST")
+	// kp.RemoveEndpoint(context.TODO(), "TEST")
 }
