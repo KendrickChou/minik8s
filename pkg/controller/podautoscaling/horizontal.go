@@ -208,7 +208,6 @@ func (hpaC *HorizontalController) autoScaleReplicaSet(hpa *v1.HorizontalPodAutos
 				}
 
 				avgUsage := totalUsage / float64(len(pods))
-				klog.Info(metric.Resource.Target)
 				bytesTarget, err := bytesize.Parse(metric.Resource.Target.AverageValue)
 				if err != nil {
 					klog.Error("parse byteSize error")
@@ -419,14 +418,20 @@ func (hpaC *HorizontalController) masterCurrentPods(max int, policy *v1.HPAScali
 
 func (hpaC *HorizontalController) createPods(max int, policy *v1.HPAScalingPolicy, hpa *v1.HorizontalPodAutoscaler, rs *v1.ReplicaSet) {
 	podTemplate := v1.Pod{
-		ObjectMeta: rs.Spec.Template.ObjectMeta,
-		Spec:       rs.Spec.Template.Spec,
+		TypeMeta: v1.TypeMeta{
+			Kind:       "Pod",
+			APIVersion: rs.APIVersion,
+		},
+		ObjectMeta: v1.ObjectMeta{
+			Name:            rs.Spec.Template.Name + "-",
+			Namespace:       rs.Spec.Template.Namespace,
+			UID:             "",
+			Labels:          rs.Spec.Template.Labels,
+			OwnerReferences: []v1.OwnerReference{},
+		},
+		Spec: rs.Spec.Template.Spec,
 	}
-	podTemplate.Kind = "Pod"
-	podTemplate.APIVersion = rs.APIVersion
-	podTemplate.ObjectMeta = rs.Spec.Template.ObjectMeta
 	podTemplate.UID = ""
-	podTemplate.Name = podTemplate.Name + "-"
 
 	ref := v1.OwnerReference{
 		Name:       rs.Name,
@@ -468,7 +473,6 @@ func (hpaC *HorizontalController) calcPodCpuUtilization(pod *v1.Pod) float64 {
 	for _, cs := range pod.Status.ContainerStatuses {
 		utilStr := cs.State.CPUPerc
 		if utilStr == "" {
-			klog.Warningf("cpuperc of Pod %v is empty", pod)
 			continue
 		}
 		klog.Infof("Pod %s cpuperc %s", pod.UID, utilStr)
@@ -588,6 +592,10 @@ func (hpaC *HorizontalController) addHPA(obj any) {
 func (hpaC *HorizontalController) deleteHPA(obj any) {
 	hpa := obj.(v1.HorizontalPodAutoscaler)
 	rs := hpaC.getTargetReplicaSet(&hpa)
+
+	if rs == nil {
+		return
+	}
 
 	rs.Status.Replicas = hpa.Status.CurrentReplicas
 	index := v1.CheckOwner(rs.OwnerReferences, hpa.UID)
