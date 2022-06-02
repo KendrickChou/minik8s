@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
-	"time"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
@@ -141,9 +140,8 @@ func (pm *podManager) AddPod(pod *v1.Pod) error {
 		container := pod.Spec.InitialContainers[k]
 
 		container.Name = pod.Name + "-" + container.Name
-
+		container.NetworkMode = "weave"
 		container.ExposedPorts = pod.Spec.ExposedPorts
-
 		container.BindPorts = pod.Spec.BindPorts
 
 		id, err := pm.containerManager.CreateContainer(context.TODO(), &container)
@@ -165,14 +163,14 @@ func (pm *podManager) AddPod(pod *v1.Pod) error {
 
 		pod.Spec.InitialContainers[k] = container
 
-		timeoutctx, cancel := context.WithTimeout(context.TODO(), time.Second*5)
-		err = pm.containerManager.ConnectNetwork(timeoutctx, pm.weaveNetwork.ID, container.ID)
-		cancel()
+		// timeoutctx, cancel := context.WithTimeout(context.TODO(), time.Second*5)
+		// err = pm.containerManager.ConnectNetwork(timeoutctx, pm.weaveNetwork.ID, container.ID)
+		// cancel()
 
-		if err != nil {
-			klog.Errorf("Pod %s Connect to Weave Network Failed", pod.Name)
-			return err
-		}
+		// if err != nil {
+		// 	klog.Errorf("Pod %s Connect to Weave Network Failed", pod.Name)
+		// 	return err
+		// }
 	}
 
 	// create related volumes
