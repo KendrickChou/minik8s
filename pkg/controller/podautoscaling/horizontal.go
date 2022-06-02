@@ -2,12 +2,14 @@ package podautoscaling
 
 import (
 	"errors"
+	"github.com/inhies/go-bytesize"
 	"k8s.io/klog"
 	"math"
 	v1 "minik8s.com/minik8s/pkg/api/v1"
 	"minik8s.com/minik8s/pkg/controller/component"
 	"minik8s.com/minik8s/utils/random"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -173,30 +175,55 @@ func (hpaC *HorizontalController) autoScaleReplicaSet(hpa *v1.HorizontalPodAutos
 			return errors.New("unsupported metric type")
 		}
 
-		totalUtilization := 0.0
-		avgUtil := 0.0
-		if metric.Resource.Name == "cpu" {
-			for _, pod := range pods {
-				totalUtilization = totalUtilization + hpaC.calcPodCpuUtilization(&pod)
-			}
-			avgUtil = totalUtilization
-		} else if metric.Resource.Name == "memory" {
-			for _, pod := range pods {
-				totalUtilization = totalUtilization + hpaC.calcPodMemoryUtilization(&pod)
+		expectation := 0
+		if metric.Resource.Target.Type == v1.UtilizationMetricType {
+			totalUtilization := 0.0
+			avgUtil := 0.0
+			if metric.Resource.Name == "cpu" {
+				for _, pod := range pods {
+					totalUtilization = totalUtilization + hpaC.calcPodCpuUtilization(&pod)
+				}
+			} else if metric.Resource.Name == "memory" {
+				for _, pod := range pods {
+					totalUtilization = totalUtilization + hpaC.calcPodMemoryUtilization(&pod)
+				}
+			} else {
+				klog.Info("unsupported resource type")
+				continue
 			}
 			avgUtil = totalUtilization / float64(len(pods))
+
+			if metric.Resource.Target.AverageUtilization == 0 {
+				klog.Warning("resource utilization cannot be 0")
+				continue
+			}
+
+			proportion := avgUtil / float64(metric.Resource.Target.AverageUtilization)
+			expectation = int(math.Ceil(float64(hpa.Status.CurrentReplicas) * proportion))
+		} else if metric.Resource.Target.Type == v1.AverageValueMetricType {
+			if metric.Resource.Name == "memory" {
+				totalUsage := 0.0
+				for _, pod := range pods {
+					totalUsage += hpaC.calcPodMemoryAverageUsage(&pod)
+				}
+
+				avgUsage := totalUsage / float64(len(pods))
+				bytesTarget, err := bytesize.Parse(metric.Resource.Target.AverageValue)
+				if err != nil {
+					klog.Error("parse byteSize error")
+				}
+
+				proportion := avgUsage / float64(bytesTarget)
+				expectation = int(math.Ceil(float64(hpa.Status.CurrentReplicas) * proportion))
+			} else {
+				klog.Warningf("unsupported resource type %v", metric.Resource.Name)
+				continue
+			}
 		} else {
-			klog.Info("unsupported resource type")
+			klog.Warningf("unsupported metric target type %v", metric.Resource.Target.Type)
 			continue
 		}
 
-		if metric.Resource.Target.AverageUtilization == 0 {
-			klog.Warning("resource utilization cannot be 0")
-			continue
-		}
-
-		proportion := avgUtil / float64(metric.Resource.Target.AverageUtilization)
-		expectation := int(math.Ceil(float64(hpa.Status.CurrentReplicas) * proportion))
 		if expectation > expectReplica {
 			expectReplica = expectation
 		}
@@ -391,14 +418,20 @@ func (hpaC *HorizontalController) masterCurrentPods(max int, policy *v1.HPAScali
 
 func (hpaC *HorizontalController) createPods(max int, policy *v1.HPAScalingPolicy, hpa *v1.HorizontalPodAutoscaler, rs *v1.ReplicaSet) {
 	podTemplate := v1.Pod{
-		ObjectMeta: rs.Spec.Template.ObjectMeta,
-		Spec:       rs.Spec.Template.Spec,
+		TypeMeta: v1.TypeMeta{
+			Kind:       "Pod",
+			APIVersion: rs.APIVersion,
+		},
+		ObjectMeta: v1.ObjectMeta{
+			Name:            rs.Spec.Template.Name + "-",
+			Namespace:       rs.Spec.Template.Namespace,
+			UID:             "",
+			Labels:          rs.Spec.Template.Labels,
+			OwnerReferences: []v1.OwnerReference{},
+		},
+		Spec: rs.Spec.Template.Spec,
 	}
-	podTemplate.Kind = "Pod"
-	podTemplate.APIVersion = rs.APIVersion
-	podTemplate.ObjectMeta = rs.Spec.Template.ObjectMeta
 	podTemplate.UID = ""
-	podTemplate.Name = podTemplate.Name + "-"
 
 	ref := v1.OwnerReference{
 		Name:       rs.Name,
@@ -435,45 +468,100 @@ func (hpaC *HorizontalController) createPods(max int, policy *v1.HPAScalingPolic
 }
 
 func (hpaC *HorizontalController) calcPodCpuUtilization(pod *v1.Pod) float64 {
-	var utilization float64 = 0
+	utilization := 0.0
+	coreNum := 0
 	for _, cs := range pod.Status.ContainerStatuses {
 		utilStr := cs.State.CPUPerc
-		klog.Infof("Pod %s cpuperc %s", pod.UID, utilStr)
 		if utilStr == "" {
-			klog.Infof("cpuperc of Pod %v is empty", pod)
 			continue
 		}
-		utilStr = utilStr[0 : len(utilStr)-1]
-		cpuUtil, err := strconv.ParseFloat(utilStr, 64)
+		klog.Infof("Pod %s cpuperc %s", pod.UID, utilStr)
+
+		strs := strings.Split(utilStr, "/")
+		percentageStr := strs[0]
+		num, err := strconv.Atoi(strs[1])
+		if err != nil {
+			continue
+		}
+
+		percentageStr = percentageStr[0 : len(percentageStr)-1]
+		cpuUtil, err := strconv.ParseFloat(percentageStr, 64)
 		if err != nil {
 			klog.Warningf("convert string error %s", utilStr)
 		}
 
-		utilization = utilization + cpuUtil
+		utilization += cpuUtil
+		coreNum += num
 	}
 
-	return utilization
+	return utilization / float64(coreNum)
+}
+
+func (hpaC *HorizontalController) calcPodMemoryAverageUsage(pod *v1.Pod) float64 {
+	usedMemory := 0.0
+	for _, cs := range pod.Status.ContainerStatuses {
+		utilStr := cs.State.MemPerc
+		if utilStr == "" {
+			klog.Warningf("memperc of Pod %v is empty", pod.UID)
+			continue
+		}
+		klog.Infof("Pod %s memperc %s", pod.UID, utilStr)
+
+		strs := strings.Split(utilStr, "/")
+		percentageStr := strs[0]
+
+		limit, err := bytesize.Parse(strs[1])
+		if err != nil {
+			continue
+		}
+
+		percentageStr = percentageStr[0 : len(percentageStr)-1]
+		memoryUtil, err := strconv.ParseFloat(percentageStr, 64)
+		if err != nil {
+			klog.Warningf("convert string error %s", utilStr)
+		}
+
+		usedMemory += float64(limit) * (memoryUtil / 100)
+	}
+
+	return usedMemory
 }
 
 func (hpaC *HorizontalController) calcPodMemoryUtilization(pod *v1.Pod) float64 {
-	var utilization float64 = 0
+	usedMemory := 0.0
+	totalMemory := 0.0
 	for _, cs := range pod.Status.ContainerStatuses {
 		utilStr := cs.State.MemPerc
-		klog.Infof("Pod %s memperc %s", pod.UID, utilStr)
 		if utilStr == "" {
-			klog.Infof("memperc of Pod %v is empty", pod)
+			klog.Warningf("memperc of Pod %v is empty", pod.UID)
 			continue
 		}
-		utilStr = utilStr[0 : len(utilStr)-1]
-		memoryUtil, err := strconv.ParseFloat(utilStr, 64)
+		klog.Infof("Pod %s memperc %s", pod.UID, utilStr)
+
+		strs := strings.Split(utilStr, "/")
+		percentageStr := strs[0]
+
+		limit, err := bytesize.Parse(strs[1])
+		if err != nil {
+			continue
+		}
+
+		percentageStr = percentageStr[0 : len(percentageStr)-1]
+		memoryUtil, err := strconv.ParseFloat(percentageStr, 64)
 		if err != nil {
 			klog.Warningf("convert string error %s", utilStr)
 		}
 
-		utilization = utilization + memoryUtil
+		usedMemory += float64(limit) * (memoryUtil / 100)
+		totalMemory += float64(limit)
 	}
 
-	return utilization / float64(len(pod.Status.ContainerStatuses))
+	klog.Infof("usedMemory %v, totalMemory %v, percentage: %v", usedMemory, totalMemory, usedMemory/totalMemory)
+	if totalMemory == 0 {
+		return 0
+	} else {
+		return usedMemory / totalMemory
+	}
 }
 
 func (hpaC *HorizontalController) enqueueHPA(hpa *v1.HorizontalPodAutoscaler) {
@@ -504,6 +592,10 @@ func (hpaC *HorizontalController) addHPA(obj any) {
 func (hpaC *HorizontalController) deleteHPA(obj any) {
 	hpa := obj.(v1.HorizontalPodAutoscaler)
 	rs := hpaC.getTargetReplicaSet(&hpa)
+
+	if rs == nil {
+		return
+	}
 
 	rs.Status.Replicas = hpa.Status.CurrentReplicas
 	index := v1.CheckOwner(rs.OwnerReferences, hpa.UID)

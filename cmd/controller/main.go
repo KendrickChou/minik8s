@@ -1,6 +1,8 @@
 package main
 
 import (
+	"k8s.io/klog"
+	"minik8s.com/minik8s/pkg/apiclient"
 	"minik8s.com/minik8s/pkg/controller/component"
 	"minik8s.com/minik8s/pkg/controller/endpoint"
 	"minik8s.com/minik8s/pkg/controller/job"
@@ -12,6 +14,11 @@ import (
 
 func main() {
 	random.Init()
+
+	for !apiclient.DetectAPIServer() {
+		klog.Info("wait apiserver to start")
+		time.Sleep(time.Second * 3)
+	}
 
 	podInformer := component.NewInformer("Pod")
 	podStopChan := make(chan bool)
