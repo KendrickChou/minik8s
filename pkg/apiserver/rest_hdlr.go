@@ -11,6 +11,7 @@ package apiserver
 import (
 	"encoding/json"
 	"github.com/gin-gonic/gin"
+	"io"
 	"k8s.io/klog"
 	"minik8s.com/minik8s/config"
 	v1 "minik8s.com/minik8s/pkg/api/v1"
@@ -37,11 +38,15 @@ func handleGetService(c *gin.Context) {
 }
 
 func handlePostService(c *gin.Context) {
-	buf := make([]byte, c.Request.ContentLength)
-	_, _ = c.Request.Body.Read(buf)
+	buf, err := io.ReadAll(c.Request.Body)
+	if err != nil {
+		klog.Errorf("error: %v", err)
+		c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
+		return
+	}
 	name := "S" + strconv.Itoa(nextObjNum()) + "-" + random.String(8)
 	var service v1.Service
-	err := json.Unmarshal(buf, &service)
+	err = json.Unmarshal(buf, &service)
 	if err != nil {
 		c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
 		return
@@ -57,8 +62,12 @@ func handlePostService(c *gin.Context) {
 }
 
 func handlePutService(c *gin.Context) {
-	buf := make([]byte, c.Request.ContentLength)
-	_, _ = c.Request.Body.Read(buf)
+	buf, err := io.ReadAll(c.Request.Body)
+	if err != nil {
+		klog.Errorf("error: %v", err)
+		c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
+		return
+	}
 	name := c.Param("name")
 
 	if !etcdTest("/service/" + name) {
@@ -168,11 +177,15 @@ func handleGetPod(c *gin.Context) {
 }
 
 func handlePostPod(c *gin.Context) {
-	buf := make([]byte, c.Request.ContentLength)
-	_, _ = c.Request.Body.Read(buf)
+	buf, err := io.ReadAll(c.Request.Body)
+	if err != nil {
+		klog.Errorf("error: %v", err)
+		c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
+		return
+	}
 	name := "P" + strconv.Itoa(nextObjNum()) + "-" + random.String(8)
 	var pod v1.Pod
-	err := json.Unmarshal(buf, &pod)
+	err = json.Unmarshal(buf, &pod)
 	if err != nil {
 		c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
 		return
@@ -188,8 +201,12 @@ func handlePostPod(c *gin.Context) {
 }
 
 func handlePutPod(c *gin.Context) {
-	buf := make([]byte, c.Request.ContentLength)
-	_, _ = c.Request.Body.Read(buf)
+	buf, err := io.ReadAll(c.Request.Body)
+	if err != nil {
+		klog.Errorf("error: %v", err)
+		c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
+		return
+	}
 	name := c.Param("name")
 	if !etcdTest("/pod/" + name) {
 		c.JSON(404, gin.H{"status": "ERR", "error": "No such pod"})
@@ -306,8 +323,12 @@ func handleGetPodByNode(c *gin.Context) {
 }
 
 func handlePostPodByNode(c *gin.Context) {
-	buf := make([]byte, c.Request.ContentLength)
-	_, _ = c.Request.Body.Read(buf)
+	buf, err := io.ReadAll(c.Request.Body)
+	if err != nil {
+		klog.Errorf("error: %v", err)
+		c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
+		return
+	}
 	nname := c.Param("nname")
 	pname := "P" + strconv.Itoa(nextObjNum()) + "-" + random.String(8)
 	if !etcdTest("/node/" + nname) {
@@ -323,8 +344,12 @@ func handlePostPodByNode(c *gin.Context) {
 }
 
 func handlePutPodByNode(c *gin.Context) {
-	buf := make([]byte, c.Request.ContentLength)
-	_, _ = c.Request.Body.Read(buf)
+	buf, err := io.ReadAll(c.Request.Body)
+	if err != nil {
+		klog.Errorf("error: %v", err)
+		c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
+		return
+	}
 	nname := c.Param("nname")
 	pname := c.Param("pname")
 	if !etcdTest("/node/"+nname) || !etcdTest("/pod/"+pname) {
@@ -382,8 +407,12 @@ func handleGetPodStatusByNode(c *gin.Context) {
 }
 
 func handlePutPodStatusByNode(c *gin.Context) {
-	buf := make([]byte, c.Request.ContentLength)
-	_, _ = c.Request.Body.Read(buf)
+	buf, err := io.ReadAll(c.Request.Body)
+	if err != nil {
+		klog.Errorf("error: %v", err)
+		c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
+		return
+	}
 	nname := c.Param("nname")
 	pname := c.Param("pname")
 	if !etcdTest("/node/"+nname) || !etcdTest("/pod/"+pname) {
@@ -490,11 +519,15 @@ func handleGetReplica(c *gin.Context) {
 }
 
 func handlePostReplica(c *gin.Context) {
-	buf := make([]byte, c.Request.ContentLength)
-	_, _ = c.Request.Body.Read(buf)
+	buf, err := io.ReadAll(c.Request.Body)
+	if err != nil {
+		klog.Errorf("error: %v", err)
+		c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
+		return
+	}
 	name := "R" + strconv.Itoa(nextObjNum()) + "-" + random.String(8)
 	var rep v1.ReplicaSet
-	err := json.Unmarshal(buf, &rep)
+	err = json.Unmarshal(buf, &rep)
 	if err != nil {
 		c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
 		return
@@ -510,8 +543,12 @@ func handlePostReplica(c *gin.Context) {
 }
 
 func handlePutReplica(c *gin.Context) {
-	buf := make([]byte, c.Request.ContentLength)
-	_, _ = c.Request.Body.Read(buf)
+	buf, err := io.ReadAll(c.Request.Body)
+	if err != nil {
+		klog.Errorf("error: %v", err)
+		c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
+		return
+	}
 	name := c.Param("name")
 	if !etcdTest("/replica/" + name) {
 		c.JSON(404, gin.H{"status": "ERR", "error": "No such replica"})
@@ -618,11 +655,15 @@ func handleGetHPA(c *gin.Context) {
 }
 
 func handlePostHPA(c *gin.Context) {
-	buf := make([]byte, c.Request.ContentLength)
-	_, _ = c.Request.Body.Read(buf)
+	buf, err := io.ReadAll(c.Request.Body)
+	if err != nil {
+		klog.Errorf("error: %v", err)
+		c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
+		return
+	}
 	name := "H" + strconv.Itoa(nextObjNum()) + "-" + random.String(8)
 	var hpa v1.HorizontalPodAutoscaler
-	err := json.Unmarshal(buf, &hpa)
+	err = json.Unmarshal(buf, &hpa)
 	if err != nil {
 		c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
 		return
@@ -638,8 +679,12 @@ func handlePostHPA(c *gin.Context) {
 }
 
 func handlePutHPA(c *gin.Context) {
-	buf := make([]byte, c.Request.ContentLength)
-	_, _ = c.Request.Body.Read(buf)
+	buf, err := io.ReadAll(c.Request.Body)
+	if err != nil {
+		klog.Errorf("error: %v", err)
+		c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
+		return
+	}
 	name := c.Param("name")
 	if !etcdTest("/hpa/" + name) {
 		c.JSON(404, gin.H{"status": "ERR", "error": "No such hpa"})
@@ -746,11 +791,15 @@ func handleGetEndpoint(c *gin.Context) {
 }
 
 func handlePostEndpoint(c *gin.Context) {
-	buf := make([]byte, c.Request.ContentLength)
-	_, _ = c.Request.Body.Read(buf)
+	buf, err := io.ReadAll(c.Request.Body)
+	if err != nil {
+		klog.Errorf("error: %v", err)
+		c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
+		return
+	}
 	name := "E" + strconv.Itoa(nextObjNum()) + "-" + random.String(8)
 	var ep v1.Endpoint
-	err := json.Unmarshal(buf, &ep)
+	err = json.Unmarshal(buf, &ep)
 	if err != nil {
 		c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
 		return
@@ -766,8 +815,12 @@ func handlePostEndpoint(c *gin.Context) {
 }
 
 func handlePutEndpoint(c *gin.Context) {
-	buf := make([]byte, c.Request.ContentLength)
-	_, _ = c.Request.Body.Read(buf)
+	buf, err := io.ReadAll(c.Request.Body)
+	if err != nil {
+		klog.Errorf("error: %v", err)
+		c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
+		return
+	}
 	name := c.Param("name")
 	if !etcdTest("/endpoint/" + name) {
 		c.JSON(404, gin.H{"status": "ERR", "error": "No such endpoint"})
@@ -874,11 +927,15 @@ func handleGetGPU(c *gin.Context) {
 }
 
 func handlePostGPU(c *gin.Context) {
-	buf := make([]byte, c.Request.ContentLength)
-	_, _ = c.Request.Body.Read(buf)
+	buf, err := io.ReadAll(c.Request.Body)
+	if err != nil {
+		klog.Errorf("error: %v", err)
+		c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
+		return
+	}
 	name := "G" + strconv.Itoa(nextObjNum()) + "-" + random.String(8)
 	var gj v1.GPUJob
-	err := json.Unmarshal(buf, &gj)
+	err = json.Unmarshal(buf, &gj)
 	if err != nil {
 		c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
 		return
@@ -894,8 +951,12 @@ func handlePostGPU(c *gin.Context) {
 }
 
 func handlePutGPU(c *gin.Context) {
-	buf := make([]byte, c.Request.ContentLength)
-	_, _ = c.Request.Body.Read(buf)
+	buf, err := io.ReadAll(c.Request.Body)
+	if err != nil {
+		klog.Errorf("error: %v", err)
+		c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
+		return
+	}
 	name := c.Param("name")
 	if !etcdTest("/gpu/" + name) {
 		c.JSON(404, gin.H{"status": "ERR", "error": "No such gpu job"})
@@ -969,11 +1030,15 @@ func handleGetDNS(c *gin.Context) {
 }
 
 func handlePostDNS(c *gin.Context) {
-	buf := make([]byte, c.Request.ContentLength)
-	_, _ = c.Request.Body.Read(buf)
+	buf, err := io.ReadAll(c.Request.Body)
+	if err != nil {
+		klog.Errorf("error: %v", err)
+		c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
+		return
+	}
 	name := "E" + strconv.Itoa(nextObjNum()) + "-" + random.String(8)
 	var dns v1.DNS
-	err := json.Unmarshal(buf, &dns)
+	err = json.Unmarshal(buf, &dns)
 	if err != nil {
 		c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
 		return
@@ -989,8 +1054,12 @@ func handlePostDNS(c *gin.Context) {
 }
 
 func handlePutDNS(c *gin.Context) {
-	buf := make([]byte, c.Request.ContentLength)
-	_, _ = c.Request.Body.Read(buf)
+	buf, err := io.ReadAll(c.Request.Body)
+	if err != nil {
+		klog.Errorf("error: %v", err)
+		c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
+		return
+	}
 	name := c.Param("name")
 	if etcdTest("/dns/" + name) {
 		c.JSON(404, gin.H{"status": "ERR", "error": "No such dns"})
@@ -1064,8 +1133,12 @@ func handleGetNode(c *gin.Context) {
 }
 
 func handlePostNode(c *gin.Context) {
-	buf := make([]byte, c.Request.ContentLength)
-	_, _ = c.Request.Body.Read(buf)
+	buf, err := io.ReadAll(c.Request.Body)
+	if err != nil {
+		klog.Errorf("error: %v", err)
+		c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
+		return
+	}
 	name := "N" + strconv.Itoa(nextObjNum()) + "-" + random.String(8)
 	node := v1.Node{}
 	//err = json.Unmarshal(buf, &node)
@@ -1076,7 +1149,7 @@ func handlePostNode(c *gin.Context) {
 	node.UID = name
 	node.Name = name
 	buf, _ = json.Marshal(node)
-	err := etcdPut("/node/"+name, string(buf))
+	err = etcdPut("/node/"+name, string(buf))
 	if err != nil {
 		c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
 	} else {
@@ -1085,8 +1158,12 @@ func handlePostNode(c *gin.Context) {
 }
 
 func handlePutNode(c *gin.Context) {
-	buf := make([]byte, c.Request.ContentLength)
-	_, _ = c.Request.Body.Read(buf)
+	buf, err := io.ReadAll(c.Request.Body)
+	if err != nil {
+		klog.Errorf("error: %v", err)
+		c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
+		return
+	}
 	name := c.Param("name")
 	kv, err := etcdGet("/node/" + name)
 	if err != nil {
