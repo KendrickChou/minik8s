@@ -498,10 +498,6 @@ func (pm *podManager) PodStatus(UID string) (v1.PodStatus, error) {
 	}
 
 	switch {
-	case pendingNum+runningNum+succeedNum+failedNum < len(pod.Spec.Containers):
-		pod.Status.Phase = v1.PodUnknown
-	case pendingNum != 0:
-		pod.Status.Phase = v1.PodPending
 	case runningNum != 0:
 		pod.Status.Phase = v1.PodRunning
 	case failedNum != 0:
