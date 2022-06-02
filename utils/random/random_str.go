@@ -6,7 +6,7 @@ import (
 )
 
 func Init() {
-	rand.Seed(time.Now().Unix())
+	rand.Seed(time.Now().UnixMicro())
 }
 
 // String : generate random string with a-zA-Z0-9

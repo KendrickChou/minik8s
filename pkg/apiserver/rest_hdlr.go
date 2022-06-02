@@ -1036,7 +1036,7 @@ func handlePostDNS(c *gin.Context) {
 		c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
 		return
 	}
-	name := "E" + strconv.Itoa(nextObjNum()) + "-" + random.String(8)
+	name := "D" + strconv.Itoa(nextObjNum()) + "-" + random.String(8)
 	var dns v1.DNS
 	err = json.Unmarshal(buf, &dns)
 	if err != nil {

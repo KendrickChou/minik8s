@@ -42,6 +42,9 @@ const (
 	OBJ_DNS      ObjType = 11
 	OBJ_GPU      ObjType = 13
 	OBJ_HPA      ObjType = 14
+	OBJ_FUNCTION      ObjType = 16
+	OBJ_ACTCHAIN      ObjType = 17
+	OBJ_TRIGGER      ObjType = 18
 
 	OP_GET    OpType = 60
 	OP_POST   OpType = 70
@@ -213,13 +216,21 @@ func Rest(id string, value string, objTy ObjType, opTy OpType) []byte {
 		url += config.AC_RestDns_Path
 	case OBJ_GPU:
 		url += config.AC_RestGpu_Path
+	case OBJ_FUNCTION:
+		url = config.AC_ServerlessAddr + ":" + strconv.Itoa(config.AC_ServerlessPort) + config.AC_RestFunction_Path
+	case OBJ_ACTCHAIN:
+		url = config.AC_ServerlessAddr + ":" + strconv.Itoa(config.AC_ServerlessPort) + config.AC_RestActChain_Path
+	case OBJ_TRIGGER:
+		url = config.AC_ServerlessAddr + ":" + strconv.Itoa(config.AC_ServerlessPort) + config.AC_RestTrigger_Path
 	default:
 		klog.Error("Invalid arguments!\n")
 		return nil
 	}
 	switch opTy {
 	case OP_GET:
-		resp, err = http.Get(url + "/" + id)
+		cli := http.Client{}
+		req, _ := http.NewRequest(http.MethodGet, url+"/"+id, strings.NewReader(value))
+		resp, err = cli.Do(req)
 	case OP_PUT:
 		cli := http.Client{}
 		req, _ := http.NewRequest(http.MethodPut, url+"/"+id, strings.NewReader(value))

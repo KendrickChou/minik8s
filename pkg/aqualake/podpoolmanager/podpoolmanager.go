@@ -79,7 +79,7 @@ func (ppm *PodPoolManager) provider(ctx context.Context, env string) {
 func (ppm *PodPoolManager) scaler(env string) {
 	for {
 		select {
-		case <-time.After(time.Minute * 2):
+		case <-time.After(time.Minute * 1):
 			ppm.bigLock.Lock()
 			s := (ppm.scale[env] + 1) / 2
 			if s > 0 {
@@ -155,6 +155,7 @@ func newGenericPodEntry(env string) (*PodEntry, error) {
 	}
 
 	errInfo := fmt.Sprintf("Pod %s has no response for a long time", pod.ObjectMeta.Name)
+	deregisterPod(&PodEntry{PodIP: pod.Status.PodIP, NeedInstall: true, mtx: sync.Mutex{}, uid: pod.UID, cancel: func() {}})
 	klog.Error(errInfo)
 	return nil, errors.New(errInfo)
 }

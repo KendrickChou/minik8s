@@ -20,8 +20,11 @@ const (
 )
 
 const (
-	AC_ServerAddr = "http://59.78.8.125"
+	AC_ServerAddr = "http://10.119.11.209"
 	AC_ServerPort = 8080
+
+	AC_ServerlessAddr = "http://10.119.11.209"
+	AC_ServerlessPort = 8699
 
 	AC_WatchServices_Path  = "/watch/services"
 	AC_WatchPods_Path      = "/watch/pods"
@@ -53,6 +56,9 @@ const (
 	AC_RestEndpoint_Path  = "/endpoint"
 	AC_RestDns_Path       = "/dns"
 	AC_RestGpu_Path       = "/gpu"
+	AC_RestFunction_Path  = "/function"
+	AC_RestActChain_Path  = "/actionchain"
+	AC_RestTrigger_Path  = "/trigger"
 
 	AC_Root_Path = "/"
 )

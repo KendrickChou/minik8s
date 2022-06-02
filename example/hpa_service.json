@@ -7,7 +7,7 @@
     },
     "spec": {
         "type": "ClusterIP",
-        "clusterIP": "10.1.1.1",
+        "clusterIP": "10.1.1.101",
         "selector":{
             "app": "hpa"
         },

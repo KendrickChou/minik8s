@@ -8,3 +8,5 @@ COPY ./main /apps/main
 ENV LANG C.UTF-8
 
 CMD ["/bin/bash"]
+
+EXPOSE 80

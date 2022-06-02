@@ -107,7 +107,7 @@ func getPods() {
 	fmt.Printf("\n============\n")
 	fmt.Printf("%v\t\t\t\t%v\t\t\t%v\t\t\t%v\t\t\t%v\t%v\t\t%v\n", "Key", "Name", "Uid", "Node", "PodStatus", "podIP", "OwnerReferences")
 	for _, kv := range kvs {
-		fmt.Printf("%v\t\t%v\t\t%v\t\t%v\t\t%v\t\t%v\t\t", kv.Key, kv.Pod.Name, kv.Pod.UID, kv.Pod.Spec.NodeName, kv.Pod.Status.Phase, kv.Pod.Status.PodIP)
+		fmt.Printf("%v\t\t%v\t%v\t\t%v\t\t%v\t\t%v\t\t", kv.Key, kv.Pod.Name, kv.Pod.UID, kv.Pod.Spec.NodeName, kv.Pod.Status.Phase, kv.Pod.Status.PodIP)
 		for _, owner := range kv.Pod.OwnerReferences {
 			fmt.Printf("%v: %v, ", owner.Kind, owner.UID)
 		}
