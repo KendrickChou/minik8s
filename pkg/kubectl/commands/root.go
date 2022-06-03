@@ -50,6 +50,11 @@ type GetFunctionResponse struct {
 	Funcitons []string `json:"functions"`
 	Error       string        `json:"error"`
 }
+type GetActionChainResponse struct {
+	Funcitons []string `json:"functions"`
+	Error       string        `json:"error"`
+}
+
 
 var rootCmd = &cobra.Command{
 	Use:   "newApp",

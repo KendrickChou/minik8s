@@ -233,7 +233,25 @@ func getHPAs() {
 }
 
 func getFuntions() {
-	resp := apiclient.Rest("", "", apiclient.OBJ_ALL_HPAS, apiclient.OP_GET)
+	resp := apiclient.Rest("", "", apiclient.OBJ_ALL_FUNCTIONS, apiclient.OP_GET)
+	var kvs GetFunctionResponse
+	err := json.Unmarshal(resp, &kvs)
+	if err != nil {
+		fmt.Println("服务器返回信息无效: ", err)
+		return
+	}
+	fmt.Printf("\n=================\n")
+	fmt.Printf("=->%v Funcitons<-=", len(kvs.Funcitons))
+	fmt.Printf("\n=================\n")
+	fmt.Printf("%v\n", "Name")
+	for _, kv := range kvs.Funcitons {
+		fmt.Printf("%v\n", kv)
+	}
+	fmt.Printf("\n")
+}
+
+func getACs() {
+	resp := apiclient.Rest("", "", apiclient.OBJ_ALL_ACTCHAINS, apiclient.OP_GET)
 	var kvs GetFunctionResponse
 	err := json.Unmarshal(resp, &kvs)
 	if err != nil {
