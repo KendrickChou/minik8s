@@ -4,10 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"io/ioutil"
-	"minik8s.com/minik8s/pkg/aqualake/invoker"
 	"net/http"
 
+	"minik8s.com/minik8s/pkg/aqualake/invoker"
+
 	"github.com/gin-gonic/gin"
+	"minik8s.com/minik8s/pkg/aqualake/apis/actionchain"
 	"minik8s.com/minik8s/pkg/aqualake/apis/constants"
 	"minik8s.com/minik8s/pkg/aqualake/apis/couchobject"
 	"minik8s.com/minik8s/pkg/aqualake/couchdb"
@@ -30,6 +32,34 @@ func SetUpRouter() *gin.Engine {
 			ctx.JSON(http.StatusOK, gin.H{"error": err.Error()})
 		} else {
 			ctx.JSON(http.StatusOK, gin.H{"function": file})
+		}
+	})
+
+	router.GET("/functions", func(ctx *gin.Context) {
+		docs, err := couchdb.GetAllDoc(context.TODO(), constants.FunctionDBId)
+
+		if err != nil {
+			ctx.JSON(http.StatusOK, gin.H{"error": err.Error()})
+		} else {
+			var body map[string]interface{}
+			var res []string
+			json.Unmarshal(docs, &body)
+
+			if num, ok := body["total_rows"]; ok {
+				var rows []map[string]string
+				json.Unmarshal(body["rows"].([]byte), &rows)
+
+				if len(rows) != num.(int) {
+					ctx.JSON(http.StatusOK, gin.H{"error": "row num != total_rows"})
+					return
+				}
+				for _, function := range rows {
+					if value, ok := function["id"]; ok {
+						res = append(res, value)
+					}
+				}
+			}
+			ctx.JSON(http.StatusOK, gin.H{"functions": res})
 		}
 	})
 
@@ -126,6 +156,41 @@ func SetUpRouter() *gin.Engine {
 
 	})
 
+	router.GET("/actionchains", func(ctx *gin.Context) {
+		docs, err := couchdb.GetAllDoc(context.TODO(), constants.ActionDBId)
+
+		if err != nil {
+			ctx.JSON(http.StatusOK, gin.H{"error": err.Error()})
+		} else {
+			var body map[string]interface{}
+			var res map[string]actionchain.ActionChain
+			json.Unmarshal(docs, &body)
+
+			if num, ok := body["total_rows"]; ok {
+				var rows []map[string]interface{}
+				json.Unmarshal(body["rows"].([]byte), &rows)
+
+				if len(rows) != num.(int) {
+					ctx.JSON(http.StatusOK, gin.H{"error": "row num != total_rows"})
+					return
+				}
+				for _, row := range rows {
+					if id, ok := row["id"]; ok {
+						var actionChain actionchain.ActionChain
+						err = json.Unmarshal(row["value"].([]byte), &actionChain)
+						if err != nil {
+							ctx.JSON(http.StatusOK, gin.H{"error": err.Error()})
+							return
+						}
+
+						res[id.(string)] = actionChain
+					}
+				}
+			}
+			ctx.JSON(http.StatusOK, gin.H{"actionchains": res})
+		}
+	})
+
 	router.PUT("/actionchain/:id", func(ctx *gin.Context) {
 		acId := ctx.Params.ByName("id")
 
@@ -167,7 +232,7 @@ func SetUpRouter() *gin.Engine {
 		}
 	})
 
-	router.POST("/actionchain/:id", func(ctx *gin.Context){
+	router.POST("/actionchain/:id", func(ctx *gin.Context) {
 		acId := ctx.Params.ByName("id")
 		bytes, err := couchdb.GetDoc(context.TODO(), constants.ActionDBId, acId)
 
