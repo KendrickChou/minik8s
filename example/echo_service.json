@@ -2,17 +2,17 @@
     "kind": "Service",
     "apiversion": "v1",
     "metadata": {
-        "name": "example-service",
+        "name": "example-service-2",
         "namespace": "example"
     },
     "spec": {
         "type": "ClusterIP",
-        "clusterIP": "10.1.1.100",
+        "clusterIP": "10.1.1.101",
         "selector":{
-            "app": "echo"
+            "app": "echo-2"
         },
         "ports":[{
-            "name": "echo",
+            "name": "echo-2",
             "port": 50080,
             "targetPort": 80
         }

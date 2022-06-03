@@ -41,6 +41,10 @@ var getCmd = &cobra.Command{
 				getDNSs()
 			case "hpa":
 				getHPAs()
+			case "function":
+				getFuntions()
+			case "AC":
+				getACs()
 			case "all":
 				getPods()
 				getNodes()
@@ -224,6 +228,24 @@ func getHPAs() {
 	fmt.Printf("%v\t\t\t\t\t%v\t\t\t%v\t\t\t%v\n", "Key", "Name", "Uid", "TargetReplicaSet")
 	for _, kv := range kvs {
 		fmt.Printf("%v\t\t%v\t\t%v\t\t%v\n", kv.Key, kv.HPA.Name, kv.HPA.UID, kv.HPA.Spec.ScaleTargetRef.Name)
+	}
+	fmt.Printf("\n")
+}
+
+func getFuntions() {
+	resp := apiclient.Rest("", "", apiclient.OBJ_ALL_HPAS, apiclient.OP_GET)
+	var kvs GetFunctionResponse
+	err := json.Unmarshal(resp, &kvs)
+	if err != nil {
+		fmt.Println("服务器返回信息无效: ", err)
+		return
+	}
+	fmt.Printf("\n=================\n")
+	fmt.Printf("=->%v Funcitons<-=", len(kvs.Funcitons))
+	fmt.Printf("\n=================\n")
+	fmt.Printf("%v\n", "Name")
+	for _, kv := range kvs.Funcitons {
+		fmt.Printf("%v\n", kv)
 	}
 	fmt.Printf("\n")
 }

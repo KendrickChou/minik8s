@@ -44,6 +44,8 @@ const (
 	AC_RestEndpoints_Path = "/endpoints"
 	AC_RestDnss_Path      = "/dnss"
 	AC_RestGpus_Path      = "/gpus"
+	AC_RestFunctions_Path = "/functions"
+	AC_RestActchains_Path = "/actionchains"
 	AC_RestPods_Path      = "/pods"
 	AC_RestReplicas_Path  = "/replicas"
 	AC_RestHPAs_Path      = "/hpas"

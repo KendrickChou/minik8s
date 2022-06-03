@@ -2,7 +2,7 @@
     "kind": "Service",
     "apiversion": "v1",
     "metadata": {
-        "name": "test-service-1",
+        "name": "hpa-service",
         "namespace": "example"
     },
     "spec": {
@@ -12,11 +12,10 @@
             "app": "hpa"
         },
         "ports":[{
-            "name": "111",
+            "name": "hpa-echo",
             "port": 50080,
             "targetPort": 80
         }
         ]
     }
-
 }

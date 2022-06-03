@@ -2,7 +2,7 @@
     "kind": "pod",
     "apiversion": "v1",
     "metadata": {
-        "name": "example-pod",
+        "name": "example-pod-1",
         "namespace": "example",
         "labels": {
             "app" : "echo"

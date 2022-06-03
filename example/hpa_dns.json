@@ -14,7 +14,7 @@
         },
         {
             "path" : "-2",
-            "servicename" : "example-service-2",
+            "servicename" : "hpa-service",
             "port" : 50080
         }
     ]

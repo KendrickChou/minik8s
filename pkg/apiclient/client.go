@@ -33,6 +33,8 @@ const (
 	OBJ_ALL_DNSS      ObjType = 10
 	OBJ_ALL_GPUS      ObjType = 12
 	OBJ_ALL_HPAS      ObjType = 15
+	OBJ_ALL_FUNCTIONS      ObjType = 19
+	OBJ_ALL_ACTCHAINS      ObjType = 20
 
 	OBJ_POD      ObjType = 5
 	OBJ_SERVICE  ObjType = 6
@@ -200,6 +202,10 @@ func Rest(id string, value string, objTy ObjType, opTy OpType) []byte {
 		url += config.AC_RestDnss_Path
 	case OBJ_ALL_GPUS:
 		url += config.AC_RestGpus_Path
+	case OBJ_ALL_FUNCTIONS:
+		url += config.AC_RestFunctions_Path
+	case OBJ_ALL_ACTCHAINS:
+		url += config.AC_RestActchains_Path
 	case OBJ_POD:
 		url += config.AC_RestPod_Path
 	case OBJ_NODE:

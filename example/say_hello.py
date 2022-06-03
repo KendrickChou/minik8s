@@ -1,2 +1,2 @@
-def helloxx(xx):
+def say_hello(xx):
     return "hello, "+ xx + "!"

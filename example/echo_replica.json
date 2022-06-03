@@ -2,25 +2,25 @@
     "kind": "ReplicaSet",
     "apiversion": "v1",
     "metadata": {
-        "name": "example-replica",
+        "name": "example-replica-2",
         "namespace": "test",
         "labels": {
-            "app": "echo"
+            "app": "echo-2"
         }
     },
     "spec": {
         "replicas": 3,
         "selector":{
             "matchLabels": {
-                "app": "echo"
+                "app": "echo-2"
             }
         },
         "template":{
             "metadata": {
-                "name": "example-pod",
+                "name": "example-pod-2",
                 "namespace": "example",
                 "labels": {
-                    "app" : "echo"
+                    "app" : "echo-2"
                 }
             },
             "spec": {
