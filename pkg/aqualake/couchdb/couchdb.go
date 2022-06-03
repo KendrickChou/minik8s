@@ -89,6 +89,42 @@ func GetDoc(ctx context.Context, db, id string) ([]byte, error) {
 	return body, nil
 }
 
+func GetAllDoc(ctx context.Context, db string) ([]byte, error) {
+	req, err := http.NewRequest("GET", constants.CouchGetAllDocsRequest(db), nil)
+
+	if err != nil {
+		klog.Errorf("Get Doc Failed: %s", err.Error())
+		return nil, err
+	}
+
+	req.SetBasicAuth(config.CouchDBUser, config.CouchDBPasswd)
+
+	resp, err := http.DefaultClient.Do(req)
+
+	if err != nil {
+		klog.Errorf("Get Doc Failed: %s", err.Error())
+		return nil, err
+	}
+
+	body, err := ioutil.ReadAll(resp.Body)
+
+	if err != nil {
+		klog.Errorf("Get Doc Failed: %s", err.Error())
+		return nil, err
+	}
+
+	var res map[string]interface{}
+	json.Unmarshal(body, &res)
+
+	if _, ok := res["error"]; ok {
+		errInfo := fmt.Sprintf("Get Doc Failed: %s", string(body))
+		klog.Error(errInfo)
+		return nil, errors.New(errInfo)
+	}
+
+	return body, nil
+}
+
 // return reversion, error
 func PutDoc(ctx context.Context, db, id string, doc []byte) (string, error) {
 	// var reader io.Reader

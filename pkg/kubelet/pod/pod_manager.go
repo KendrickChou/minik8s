@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
-	"time"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
@@ -141,9 +140,8 @@ func (pm *podManager) AddPod(pod *v1.Pod) error {
 		container := pod.Spec.InitialContainers[k]
 
 		container.Name = pod.Name + "-" + container.Name
-
+		container.NetworkMode = "weave"
 		container.ExposedPorts = pod.Spec.ExposedPorts
-
 		container.BindPorts = pod.Spec.BindPorts
 
 		id, err := pm.containerManager.CreateContainer(context.TODO(), &container)
@@ -165,14 +163,14 @@ func (pm *podManager) AddPod(pod *v1.Pod) error {
 
 		pod.Spec.InitialContainers[k] = container
 
-		timeoutctx, cancel := context.WithTimeout(context.TODO(), time.Second*5)
-		err = pm.containerManager.ConnectNetwork(timeoutctx, pm.weaveNetwork.ID, container.ID)
-		cancel()
+		// timeoutctx, cancel := context.WithTimeout(context.TODO(), time.Second*5)
+		// err = pm.containerManager.ConnectNetwork(timeoutctx, pm.weaveNetwork.ID, container.ID)
+		// cancel()
 
-		if err != nil {
-			klog.Errorf("Pod %s Connect to Weave Network Failed", pod.Name)
-			return err
-		}
+		// if err != nil {
+		// 	klog.Errorf("Pod %s Connect to Weave Network Failed", pod.Name)
+		// 	return err
+		// }
 	}
 
 	// create related volumes
@@ -429,7 +427,7 @@ func (pm *podManager) PodStatus(UID string) (v1.PodStatus, error) {
 	// get pod running statuses
 	pod.Status.Phase = v1.PodRunning
 
-	var pendingNum, runningNum, succeedNum, failedNum int = 0, 0, 0, 0
+	// var pendingNum, runningNum, succeedNum, failedNum int = 0, 0, 0, 0
 
 	for _, cntr := range pod.Spec.Containers {
 		stats, err := pm.containerManager.ContainerStatus(context.TODO(), cntr.ID)
@@ -474,44 +472,41 @@ func (pm *podManager) PodStatus(UID string) (v1.PodStatus, error) {
 				State: containerState,
 			})
 
-		switch containerState.Status {
-		case "created":
-			pendingNum++
-		case "running":
-		case "paused":
-		case "restarting":
-			runningNum++
-		case "exited":
-			if containerState.ExitCode == 0 {
-				succeedNum++
-			} else {
-				failedNum++
-			}
-		case "removing":
-			succeedNum++
-		case "dead":
-			failedNum++
-		default:
-			//do nothing
-			klog.Errorln("Unknown Container Status %s", containerState.Status)
-		}
+		// switch containerState.Status {
+		// case "created":
+		// 	pendingNum++
+		// case "running":
+		// case "paused":
+		// case "restarting":
+		// 	runningNum++
+		// case "exited":
+		// 	if containerState.ExitCode == 0 {
+		// 		succeedNum++
+		// 	} else {
+		// 		failedNum++
+		// 	}
+		// case "removing":
+		// 	succeedNum++
+		// case "dead":
+		// 	failedNum++
+		// default:
+		// 	//do nothing
+		// 	klog.Errorln("Unknown Container Status %s", containerState.Status)
+		// }
 	}
 
-	switch {
-	case pendingNum+runningNum+succeedNum+failedNum < len(pod.Spec.Containers):
-		pod.Status.Phase = v1.PodUnknown
-	case pendingNum != 0:
-		pod.Status.Phase = v1.PodPending
-	case runningNum != 0:
-		pod.Status.Phase = v1.PodRunning
-	case failedNum != 0:
-		pod.Status.Phase = v1.PodFailed
-	case succeedNum == len(pod.Spec.Containers):
-		pod.Status.Phase = v1.PodSucceeded
-	default:
-		pod.Status.Phase = v1.PodUnknown
-	}
+	// switch {
+	// case runningNum != 0:
+	// 	pod.Status.Phase = v1.PodRunning
+	// case failedNum != 0:
+	// 	pod.Status.Phase = v1.PodFailed
+	// case succeedNum == len(pod.Spec.Containers):
+	// 	pod.Status.Phase = v1.PodSucceeded
+	// default:
+	// 	pod.Status.Phase = v1.PodUnknown
+	// }
 
+	pod.Status.Phase = v1.PodRunning
 	// not need to update pm.podByName & pod.podByUID
 
 	return pod.Status, nil

@@ -18,6 +18,10 @@ func CouchGetDocRequest(db, id string) string {
 	return config.CouchDBAddr + "/" + db + "/" + id
 }
 
+func CouchGetAllDocsRequest(db string) string {
+	return config.CouchDBAddr + "/" + db + "/_all_docs"
+}
+
 func CouchPutDocRequest(db, id string) string {
 	return config.CouchDBAddr + "/" + db + "/" + id
 }

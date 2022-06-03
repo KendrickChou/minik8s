@@ -71,9 +71,9 @@ type Container struct {
 }
 
 type ContainerStatus struct {
-	Name string `json:"Name,omitempty"`
+	Name string `json:"name,omitempty"`
 
-	State ContainerState `json:"State,omitempty"`
+	State ContainerState `json:"state,omitempty"`
 }
 
 type Mount struct {
