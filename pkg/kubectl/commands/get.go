@@ -84,6 +84,11 @@ var getCmd = &cobra.Command{
 				resp := apiclient.Rest(id, "", apiclient.OBJ_GPU, apiclient.OP_GET)
 				fmt.Printf("%s\n", resp)
 			default:
+				if kind == "function"{
+					resp := apiclient.Rest(id, "", apiclient.OBJ_FUNCTION, apiclient.OP_GET)
+					fmt.Printf("服务器返回信息: %s\n", resp)
+					return
+				}
 				fmt.Println("找不到指定的对象！")
 			}
 		}
@@ -252,18 +257,18 @@ func getFuntions() {
 
 func getACs() {
 	resp := apiclient.Rest("", "", apiclient.OBJ_ALL_ACTCHAINS, apiclient.OP_GET)
-	var kvs GetFunctionResponse
+	var kvs GetActionChainResponse
 	err := json.Unmarshal(resp, &kvs)
 	if err != nil {
 		fmt.Println("服务器返回信息无效: ", err)
 		return
 	}
-	fmt.Printf("\n=================\n")
-	fmt.Printf("=->%v Funcitons<-=", len(kvs.Funcitons))
-	fmt.Printf("\n=================\n")
-	fmt.Printf("%v\n", "Name")
-	for _, kv := range kvs.Funcitons {
-		fmt.Printf("%v\n", kv)
+	fmt.Printf("\n====================\n")
+	fmt.Printf("=->%v ActionChains<-=", len(kvs.ACs))
+	fmt.Printf("\n====================\n")
+	fmt.Printf("%v\t\t%v\n", "Name", "ActionChain")
+	for k, v := range kvs.ACs {
+		fmt.Printf("%v\t\t%v\n", k, v)
 	}
 	fmt.Printf("\n")
 }

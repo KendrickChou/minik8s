@@ -79,7 +79,7 @@ func (ppm *PodPoolManager) provider(ctx context.Context, env string) {
 func (ppm *PodPoolManager) scaler(env string) {
 	for {
 		select {
-		case <-time.After(time.Second * 15):
+		case <-time.After(time.Second * 60):
 			ppm.bigLock.Lock()
 			s := (ppm.scale[env] + 1) / 2
 			if s > 0 {
@@ -208,7 +208,7 @@ func (ppm *PodPoolManager) DeletePodAfter5Minute(ctx context.Context, pe *PodEnt
 			case <-ctx.Done():
 				klog.Infof("ctx canceled, delete task..")
 				return
-			case <-time.After(time.Second * 30):
+			case <-time.After(time.Second * 40):
 				ppm.DeletePod(pe, action)
 			}
 		}

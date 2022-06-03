@@ -1133,7 +1133,7 @@ func handleGetNode(c *gin.Context) {
 }
 
 func handlePostNode(c *gin.Context) {
-	buf, err := io.ReadAll(c.Request.Body)
+	_, err := io.ReadAll(c.Request.Body)
 	if err != nil {
 		klog.Errorf("error: %v", err)
 		c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})
@@ -1148,7 +1148,7 @@ func handlePostNode(c *gin.Context) {
 	//}
 	node.UID = name
 	node.Name = name
-	buf, _ = json.Marshal(node)
+	buf, _ := json.Marshal(node)
 	err = etcdPut("/node/"+name, string(buf))
 	if err != nil {
 		c.JSON(500, gin.H{"status": "ERR", "error": err.Error()})

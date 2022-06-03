@@ -203,9 +203,9 @@ func Rest(id string, value string, objTy ObjType, opTy OpType) []byte {
 	case OBJ_ALL_GPUS:
 		url += config.AC_RestGpus_Path
 	case OBJ_ALL_FUNCTIONS:
-		url += config.AC_RestFunctions_Path
+		url = config.AC_ServerlessAddr + ":" + strconv.Itoa(config.AC_ServerlessPort) + config.AC_RestFunctions_Path
 	case OBJ_ALL_ACTCHAINS:
-		url += config.AC_RestActchains_Path
+		url = config.AC_ServerlessAddr + ":" + strconv.Itoa(config.AC_ServerlessPort) + config.AC_RestActchains_Path
 	case OBJ_POD:
 		url += config.AC_RestPod_Path
 	case OBJ_NODE:

@@ -2,8 +2,10 @@ package commands
 
 import (
 	"fmt"
+
 	"github.com/spf13/cobra"
 	v1 "minik8s.com/minik8s/pkg/api/v1"
+	"minik8s.com/minik8s/pkg/aqualake/apis/actionchain"
 )
 
 type StatusResponse struct {
@@ -51,7 +53,7 @@ type GetFunctionResponse struct {
 	Error       string        `json:"error"`
 }
 type GetActionChainResponse struct {
-	Funcitons []string `json:"functions"`
+	ACs map[string]actionchain.ActionChain `json:"actionchains"`
 	Error       string        `json:"error"`
 }
 

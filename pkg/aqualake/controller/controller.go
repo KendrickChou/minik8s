@@ -58,7 +58,7 @@ func SetUpRouter() *gin.Engine {
 		}
 	})
 
-	router.PUT("/function/:id", func(ctx *gin.Context) {
+	router.POST("/function/:id", func(ctx *gin.Context) {
 		funcId := ctx.Params.ByName("id")
 		rev, err := couchdb.PutDoc(context.TODO(), constants.FunctionDBId, funcId, []byte("{}"))
 
@@ -103,7 +103,7 @@ func SetUpRouter() *gin.Engine {
 		}
 	})
 
-	router.POST("/function/:id", func(ctx *gin.Context) {
+	router.PUT("/function/:id", func(ctx *gin.Context) {
 		funcId := ctx.Params.ByName("id")
 		bytes, err := couchdb.GetDoc(context.TODO(), constants.FunctionDBId, funcId)
 		if err != nil {
@@ -182,7 +182,7 @@ func SetUpRouter() *gin.Engine {
 		}
 	})
 
-	router.PUT("/actionchain/:id", func(ctx *gin.Context) {
+	router.POST("/actionchain/:id", func(ctx *gin.Context) {
 		acId := ctx.Params.ByName("id")
 
 		buf, err := ioutil.ReadAll(ctx.Request.Body)
@@ -223,7 +223,7 @@ func SetUpRouter() *gin.Engine {
 		}
 	})
 
-	router.POST("/actionchain/:id", func(ctx *gin.Context) {
+	router.PUT("/actionchain/:id", func(ctx *gin.Context) {
 		acId := ctx.Params.ByName("id")
 		bytes, err := couchdb.GetDoc(context.TODO(), constants.ActionDBId, acId)
 
