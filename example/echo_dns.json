@@ -3,14 +3,18 @@
     "apiversion": "v1",
     "metadata": {
         "name": "test-DNS",
-        "namespace": "default",
-        "uid": ""
+        "namespace": "default"
     },
-    "host" : "dns-test1-com",
+    "host" : "dns-test",
     "paths": [
         {
-            "path" : "/hello1",
-            "servicename" : "test-service-1",
+            "path" : "-1",
+            "servicename" : "example-service",
+            "port" : 50080
+        },
+        {
+            "path" : "-2",
+            "servicename" : "example-service-2",
             "port" : 50080
         }
     ]

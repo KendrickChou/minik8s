@@ -1,0 +1,15 @@
+{
+    "kind": "GPUJob",
+    "apiversion": "v1",
+    "metadata": {
+        "name": "gpu-test-5",
+        "namespace": "default",
+        "uid": ""
+    },
+    "script" : "cuda_multi.slurm",
+    "files": [
+        {
+            "filename" : "cuda_multi.cu"
+        }
+    ]
+}

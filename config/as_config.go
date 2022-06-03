@@ -23,6 +23,9 @@ const (
 	AC_ServerAddr = "http://10.119.11.209"
 	AC_ServerPort = 8080
 
+	AC_ServerlessAddr = "http://10.119.11.209"
+	AC_ServerlessPort = 8699
+
 	AC_WatchServices_Path  = "/watch/services"
 	AC_WatchPods_Path      = "/watch/pods"
 	AC_WatchNodes_Path     = "/watch/nodes"
@@ -41,6 +44,8 @@ const (
 	AC_RestEndpoints_Path = "/endpoints"
 	AC_RestDnss_Path      = "/dnss"
 	AC_RestGpus_Path      = "/gpus"
+	AC_RestFunctions_Path = "/functions"
+	AC_RestActchains_Path = "/actionchains"
 	AC_RestPods_Path      = "/pods"
 	AC_RestReplicas_Path  = "/replicas"
 	AC_RestHPAs_Path      = "/hpas"
@@ -53,6 +58,9 @@ const (
 	AC_RestEndpoint_Path  = "/endpoint"
 	AC_RestDns_Path       = "/dns"
 	AC_RestGpu_Path       = "/gpu"
+	AC_RestFunction_Path  = "/function"
+	AC_RestActChain_Path  = "/actionchain"
+	AC_RestTrigger_Path  = "/trigger"
 
 	AC_Root_Path = "/"
 )

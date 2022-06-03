@@ -77,6 +77,9 @@ func Run() {
 	} else {
 		for _, nodeReq := range nodes {
 			nodeMap[nodeReq.Key] = nodeReq.Node
+			newCtx, cancel := context.WithCancel(context.Background())
+			go deleteNodeAfter30s(newCtx, nodeReq.Key)
+			cancelMap[nodeReq.Key] = cancel
 		}
 		klog.Infof("Current node num: %v", len(nodeMap))
 	}
@@ -132,7 +135,7 @@ func handlePodChanRequest(req *PodRequest) {
 			klog.Infof("New Pod Added: Key[%v] Value[...]", req.Key)
 			klog.Infof("Current pod num: %v", len(podMap))
 			ok := shed(req.Pod)
-			if !ok{
+			if !ok {
 				pendingPod = append(pendingPod, req.Key)
 			}
 		}
@@ -155,8 +158,8 @@ func handlePodChanRequest(req *PodRequest) {
 
 		mtx.Lock()
 		delete(podMap, req.Key)
-		for i := 0; i < len(pendingPod); i++{
-			if pendingPod[i] == req.Key{
+		for i := 0; i < len(pendingPod); i++ {
+			if pendingPod[i] == req.Key {
 				pendingPod = append(pendingPod[:i], pendingPod[i+1:]...)
 				break
 			}
@@ -184,7 +187,7 @@ func handleNodeChanRequest(req *NodeRequest) {
 			newCtx, cancel := context.WithCancel(context.Background())
 			go deleteNodeAfter30s(newCtx, req.Key)
 			cancelMap[req.Key] = cancel
-			for _, podKey := range pendingPod{
+			for _, podKey := range pendingPod {
 				shed(podMap[podKey])
 			}
 		}
@@ -204,7 +207,7 @@ func shed_simple(pod v1.Pod) bool {
 	if pod.Spec.NodeName == "" {
 		min := -1
 		for _, node := range nodeMap {
-			if node.Status.Phase == "Unknown"{
+			if node.Status.Phase == "Unknown" {
 				continue
 			}
 			resp, _ := http.Get(config.AC_ServerAddr + ":" + strconv.Itoa(config.AC_ServerPort) + "/innode/" + node.UID + "/pods")
@@ -220,7 +223,7 @@ func shed_simple(pod v1.Pod) bool {
 		}
 		klog.Infof("Sched handle pod UID[%v]: set appointed Node[%v]", pod.UID, pod.Spec.NodeName)
 	}
-	if pod.Spec.NodeName == ""{
+	if pod.Spec.NodeName == "" {
 		klog.Errorf("Sched error: Cannot Assign Pod[%v]: no suitable node", pod.UID)
 		return false
 	}
@@ -261,7 +264,7 @@ func shed_rr(pod v1.Pod) bool {
 		}
 		klog.Infof("Sched handle pod UID[%v]: set appointed Node[%v]", pod.UID, pod.Spec.NodeName)
 	}
-	if pod.Spec.NodeName == ""{
+	if pod.Spec.NodeName == "" {
 		klog.Errorf("Sched error: Cannot Assign Pod[%v]: no suitable node", pod.UID)
 		return false
 	}
@@ -284,8 +287,7 @@ func shed_rr(pod v1.Pod) bool {
 	return true
 }
 
-
-func deleteNodeAfter30s(ctx context.Context, key string){
+func deleteNodeAfter30s(ctx context.Context, key string) {
 	select {
 	case <-ctx.Done():
 		klog.Infof("Node[%v] updated, reset cancel func", key)

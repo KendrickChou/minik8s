@@ -2,7 +2,7 @@
     "kind": "pod",
     "apiversion": "v1",
     "metadata": {
-        "name": "example-pod",
+        "name": "example-pod-1",
         "namespace": "example",
         "labels": {
             "app" : "echo"
@@ -13,7 +13,7 @@
             {
                 "name": "example-container-1",
                 "namespace": "example",
-                "image": "cilium/echoserver:latest",
+                "image": "xayahhh/echoserver:v1.4",
                 "imagepullpolicy": "IfNotPresent",
                 "resources":{
                     "cpu": "2",
@@ -59,7 +59,7 @@
                 "command":[
                     "/bin/sh",
                     "-c",
-                    "wget localhost:80 -O /home/wget/wget.out"
+                    "wget localhost:80/hello -O /home/wget/wget.out"
                 ]
             }
         ],

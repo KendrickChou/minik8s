@@ -27,6 +27,11 @@ var addCmd = &cobra.Command{
 			fmt.Println("getString err: ", err)
 			return
 		}
+		id, err := cmd.Flags().GetString("id")
+		if err != nil {
+			fmt.Println("getString err: ", err)
+			return
+		}
 		fmt.Println("正在打开配置文件: ", filePath)
 
 		file, err := os.OpenFile(filePath, os.O_RDONLY, 0666)
@@ -48,7 +53,7 @@ var addCmd = &cobra.Command{
 		var resp []byte
 		switch kind {
 		case "pod":
-			resp = apiclient.Rest("", "", apiclient.OBJ_ALL_SERVICES, apiclient.OP_GET)
+			resp = apiclient.Rest("", "", apiclient.OBJ_ALL_PODS, apiclient.OP_GET)
 			var pods []GetPodResponse
 			var pod v1.Pod
 			json.Unmarshal(resp, &pods)
@@ -123,6 +128,14 @@ var addCmd = &cobra.Command{
 			resp = apiclient.Rest("", string(buf), apiclient.OBJ_REPLICAS, apiclient.OP_POST)
 		case "hpa":
 			resp = apiclient.Rest("", string(buf), apiclient.OBJ_HPA, apiclient.OP_POST)
+		case "function":
+			resp = apiclient.Rest(id, string(buf), apiclient.OBJ_FUNCTION, apiclient.OP_POST)
+			fmt.Println("服务器返回: ", string(resp))
+			return
+		case "AC":
+			resp = apiclient.Rest(id, string(buf), apiclient.OBJ_ACTCHAIN, apiclient.OP_POST)
+			fmt.Println("服务器返回: ", string(resp))
+			return
 		}
 
 		var stat StatusResponse
@@ -141,6 +154,7 @@ var addCmd = &cobra.Command{
 func init() {
 	addCmd.Flags().StringP("file", "f", "nginx_pod.json", "指定json配置文件")
 	addCmd.Flags().StringP("kind", "k", "pod", "指定创建对象类型")
+	addCmd.Flags().StringP("id", "i", "xx", "指定创建对象的名字（仅对Serverless对象有效）")
 
 	rootCmd.AddCommand(addCmd)
 }

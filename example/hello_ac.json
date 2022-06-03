@@ -1,0 +1,12 @@
+{
+    "StartAt": "hello",
+    "Chain": {
+        "hello":{
+            "Type": 1,
+            "Env": "python",
+            "Function": "say_hello",
+            "Next": "",
+            "End": true
+        }
+    }
+}

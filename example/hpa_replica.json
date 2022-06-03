@@ -27,7 +27,7 @@
             "spec": {
                 "containers": [
                     {
-                        "name": "hpa-container-1",
+                        "name": "hpa-container",
                         "namespace": "test",
                         "image": "containerstack/cpustress:latest",
                         "imagepullpolicy": "IfNotPresent",
@@ -39,15 +39,25 @@
                             "--cpu",
                             "4",
                             "--timeout",
-                            "60",
+                            "120",
                             "--metrics-brief"
                         ]
                     },
                     {
-                        "name": "hpa-container-2",
+                        "name": "echo-container",
                         "namespace": "example",
-                        "image": "cilium/echoserver:latest",
-                        "imagepullpolicy": "IfNotPresent"
+                        "image": "xayahhh/echoserver:v1.4",
+                        "imagepullpolicy": "IfNotPresent",
+                        "resources":{
+                            "cpu": "2",
+                            "memory": "1024MB"
+                        },
+                        "exposedports": [
+                            "80/tcp"
+                        ],
+                        "bindports": {
+                            "80/tcp": "0.0.0.0:9095"
+                        }
                     }
                 ]
             }

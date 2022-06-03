@@ -1,11 +1,13 @@
 package commands
 
 import (
+	"encoding/json"
 	"fmt"
-	"github.com/spf13/cobra"
 	"io"
-	"minik8s.com/minik8s/pkg/apiclient"
 	"os"
+
+	"github.com/spf13/cobra"
+	"minik8s.com/minik8s/pkg/apiclient"
 )
 
 var putCmd = &cobra.Command{
@@ -15,6 +17,11 @@ var putCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 
 		id, err := cmd.Flags().GetString("id")
+		if err != nil {
+			fmt.Println("getString err: ", err)
+			return
+		}
+		kind, err := cmd.Flags().GetString("kind")
 		if err != nil {
 			fmt.Println("getString err: ", err)
 			return
@@ -37,34 +44,53 @@ var putCmd = &cobra.Command{
 		}
 
 		fmt.Println("正在更新对象: ", id)
-
-		switch id[0] {
-		case 'P':
-			resp := apiclient.Rest(id, string(buf), apiclient.OBJ_POD, apiclient.OP_PUT)
+		var resp []byte
+		switch kind {
+		case "pod":
+			resp = apiclient.Rest(id, string(buf), apiclient.OBJ_POD, apiclient.OP_PUT)
 			fmt.Printf("%s\n", resp)
-		case 'N':
-			resp := apiclient.Rest(id, string(buf), apiclient.OBJ_NODE, apiclient.OP_PUT)
+		case "node":
+			resp = apiclient.Rest(id, string(buf), apiclient.OBJ_NODE, apiclient.OP_PUT)
 			fmt.Printf("%s\n", resp)
-		case 'S':
-			resp := apiclient.Rest(id, string(buf), apiclient.OBJ_SERVICE, apiclient.OP_PUT)
+		case "service":
+			resp = apiclient.Rest(id, string(buf), apiclient.OBJ_SERVICE, apiclient.OP_PUT)
 			fmt.Printf("%s\n", resp)
-		case 'R':
-			resp := apiclient.Rest(id, string(buf), apiclient.OBJ_REPLICAS, apiclient.OP_PUT)
+		case "replica":
+			resp = apiclient.Rest(id, string(buf), apiclient.OBJ_REPLICAS, apiclient.OP_PUT)
 			fmt.Printf("%s\n", resp)
-		case 'D':
-			resp := apiclient.Rest(id, string(buf), apiclient.OBJ_DNS, apiclient.OP_PUT)
+		case "dns":
+			resp = apiclient.Rest(id, string(buf), apiclient.OBJ_DNS, apiclient.OP_PUT)
 			fmt.Printf("%s\n", resp)
-		case 'H':
-			resp := apiclient.Rest(id, string(buf), apiclient.OBJ_HPA, apiclient.OP_PUT)
+		case "hpa":
+			resp = apiclient.Rest(id, string(buf), apiclient.OBJ_HPA, apiclient.OP_PUT)
 			fmt.Printf("%s\n", resp)
-		case 'E':
-			resp := apiclient.Rest(id, string(buf), apiclient.OBJ_ENDPOINT, apiclient.OP_PUT)
+		case "endpoint":
+			resp = apiclient.Rest(id, string(buf), apiclient.OBJ_ENDPOINT, apiclient.OP_PUT)
 			fmt.Printf("%s\n", resp)
-		case 'G':
-			resp := apiclient.Rest(id, string(buf), apiclient.OBJ_GPU, apiclient.OP_PUT)
+		case "gpu":
+			resp = apiclient.Rest(id, string(buf), apiclient.OBJ_GPU, apiclient.OP_PUT)
 			fmt.Printf("%s\n", resp)
+		case "function":
+			resp = apiclient.Rest(id, string(buf), apiclient.OBJ_FUNCTION, apiclient.OP_PUT)
+			fmt.Println("服务器返回: ", resp)
+			return
+		case "AC":
+			resp = apiclient.Rest(id, string(buf), apiclient.OBJ_ACTCHAIN, apiclient.OP_PUT)
+			fmt.Println("服务器返回: ", resp)
+			return
 		default:
 			fmt.Println("找不到指定的对象！")
+			return
+		}
+
+		var stat StatusResponse
+		err = json.Unmarshal(resp, &stat)
+		if err != nil {
+			fmt.Println("服务器返回信息无效: ", err)
+		} else if stat.Status != "OK" {
+			fmt.Println("更新对象失败：", stat.Error)
+		} else {
+			fmt.Println("成功更新对象，id：", id)
 		}
 	},
 }
@@ -72,6 +98,7 @@ var putCmd = &cobra.Command{
 func init() {
 	putCmd.Flags().StringP("file", "f", "nginx_pod.json", "指定json配置文件")
 	putCmd.Flags().StringP("id", "i", "X", "指定对象id")
+	putCmd.Flags().StringP("kind", "k", "X", "指定对象id")
 
 	rootCmd.AddCommand(putCmd)
 }

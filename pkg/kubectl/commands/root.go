@@ -46,6 +46,10 @@ type GetHpaResponse struct {
 	HPA v1.HorizontalPodAutoscaler `json:"value"`
 	Type       string        `json:"type"`
 }
+type GetFunctionResponse struct {
+	Funcitons []string `json:"functions"`
+	Error       string        `json:"error"`
+}
 
 var rootCmd = &cobra.Command{
 	Use:   "newApp",

@@ -1,0 +1,46 @@
+{
+    "StartAt": "random_num",
+    "Chain": {
+    "random_num": {
+      "Type": 1,
+      "Env": "python",
+      "Function": "gen_rand_int",
+      "Next": "",
+      "End": false,
+      "Choices": [
+        {
+          "Variable": "",
+          "Type": 0,
+          "NumericEqual": 4,
+          "Next": "foo"
+        },
+        {
+          "Variable": "",
+          "Type": 0,
+          "NumericEqual": 5,
+          "Next": "bar"
+        }
+      ]
+    },
+    "foo": {
+      "Type": 0,
+      "Env": "python",
+      "Function": "gen_string_foo",
+      "Next": "hello",
+      "End": false
+    },
+    "bar": {
+      "Type": 0,
+      "Env": "python",
+      "Function": "gen_string_bar",
+      "Next": "hello",
+      "End": false
+    },
+    "hello": {
+      "Type": 0,
+      "Env": "python",
+      "Function": "say_hello",
+      "End": true
+    }
+  }
+}

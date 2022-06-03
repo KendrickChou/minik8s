@@ -79,7 +79,7 @@ func (ppm *PodPoolManager) provider(ctx context.Context, env string) {
 func (ppm *PodPoolManager) scaler(env string) {
 	for {
 		select {
-		case <-time.After(time.Minute * 2):
+		case <-time.After(time.Second * 15):
 			ppm.bigLock.Lock()
 			s := (ppm.scale[env] + 1) / 2
 			if s > 0 {
@@ -135,7 +135,7 @@ func newGenericPodEntry(env string) (*PodEntry, error) {
 
 	// wait pod IP ready
 	for iter := 0; iter < 20; iter++ {
-		time.Sleep(3 * time.Second)
+		time.Sleep(6 * time.Second)
 
 		resp = apiclient.Rest(pod.UID, "", apiclient.OBJ_POD, apiclient.OP_GET)
 
@@ -155,6 +155,7 @@ func newGenericPodEntry(env string) (*PodEntry, error) {
 	}
 
 	errInfo := fmt.Sprintf("Pod %s has no response for a long time", pod.ObjectMeta.Name)
+	deregisterPod(&PodEntry{PodIP: pod.Status.PodIP, NeedInstall: true, mtx: sync.Mutex{}, uid: pod.UID, cancel: func() {}})
 	klog.Error(errInfo)
 	return nil, errors.New(errInfo)
 }
@@ -207,7 +208,7 @@ func (ppm *PodPoolManager) DeletePodAfter5Minute(ctx context.Context, pe *PodEnt
 			case <-ctx.Done():
 				klog.Infof("ctx canceled, delete task..")
 				return
-			case <-time.After(3 * time.Minute):
+			case <-time.After(time.Second * 30):
 				ppm.DeletePod(pe, action)
 			}
 		}
