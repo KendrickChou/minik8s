@@ -300,7 +300,13 @@ func (pm *podManager) DeletePod(UID string) error {
 		return errors.New(err)
 	}
 
-	pod := pm.podByUID[UID]
+	pod, ok := pm.podByUID[UID]
+
+	if !ok {
+		errInfo := fmt.Sprintf("Pod %s UID does not exist", UID)
+		klog.Error(errInfo)
+		return errors.New(errInfo)
+	}
 
 	klog.Infof("Delete Pod %s", pod.Name)
 
