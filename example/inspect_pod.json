@@ -1,0 +1,26 @@
+{
+    "kind": "pod",
+    "apiversion": "v1",
+    "metadata": {
+        "name": "inspect-pod",
+        "namespace": "example",
+        "labels": {
+            "app" : "inspect"
+        }
+    },
+    "spec": {
+        "containers": [
+            {
+                "name": "example-container-2",
+                "namespace": "example",
+                "image": "alpine:latest",
+                "imagepullpolicy": "IfNotPresent",
+                "command":[
+                    "/bin/sh",
+                    "-c",
+                    "while true;do echo hello;sleep 1;done"
+                ]
+            }
+        ]
+    }
+}

@@ -1,0 +1,15 @@
+{
+    "kind": "GPUJob",
+    "apiversion": "v1",
+    "metadata": {
+        "name": "gpu-test-5",
+        "namespace": "default",
+        "uid": ""
+    },
+    "script" : "omp_hello.slurm",
+    "files": [
+        {
+            "filename" : "omp_hello.c"
+        }
+    ]
+}

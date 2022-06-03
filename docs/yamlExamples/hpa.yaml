@@ -1,0 +1,36 @@
+apiVersion: autoscaling/v2beta2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: store-autoscale
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: store-autoscale
+  minReplicas: 1
+  maxReplicas: 10
+  metrics:
+    - type: Object
+      object:
+        describedObject:
+          kind: Service
+          name: store-autoscale
+        metric:
+          name: "autoscaling.googleapis.com|gclb-capacity-utilization"
+        target:
+          averageValue: 70
+          type: AverageValue
+#   periodSeconds 表示在过去的多长时间内要求策略值为真。 第一个策略（Pods）允许在一分钟内最多缩容 4 个副本。第二个策略（Percent） 允许在一分钟内最多缩容当前副本个数的百分之十。
+#   由于默认情况下会选择容许更大程度作出变更的策略，只有 Pod 副本数大于 40 时， 第二个策略才会被采用。如果副本数为 40 或者更少，则应用第一个策略。
+#   例如，如果有 80 个副本，并且目标必须缩小到 10 个副本，那么在第一步中将减少 8 个副本。
+#   在下一轮迭代中，当副本的数量为 72 时，10% 的 Pod 数为 7.2，但是这个数字向上取整为 8。 在 autoscaler 控制器的每个循环中，将根据当前副本的数量重新计算要更改的 Pod 数量。 当副本数量低于 40 时，应用第一个策略（Pods），一次减少 4 个副本。
+#   可以指定扩缩方向的 selectPolicy 字段来更改策略选择。 通过设置 Min 的值，它将选择副本数变化最小的策略。 将该值设置为 Disabled 将完全禁用该方向的扩缩。
+  behavior:
+    scaleDown:
+      policies:
+        - type: Pods
+          value: 4
+          periodSeconds: 60
+        - type: Percent
+          value: 10
+          periodSeconds: 60

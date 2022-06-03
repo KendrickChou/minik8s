@@ -1,0 +1,40 @@
+{
+    "kind": "ReplicaSet",
+    "apiversion": "v1",
+    "metadata": {
+        "name": "nginx-replica-test-1",
+        "namespace": "test",
+        "labels": {
+            "app": "nginx"
+        }
+    },
+    "spec": {
+        "replicas": 3,
+        "selector":{
+            "matchLabels": {
+                "app": "nginx2"
+            }
+        },
+        "template":{
+            "metadata": {
+                "name": "test-pod-2",
+                "namespace": "test",
+                "uid": "",
+                "labels": {
+                    "app" : "nginx2"
+                }
+            },
+            "spec": {
+                "containers": [
+                    {
+                        "name": "test-container-3",
+                        "namespace": "test",
+                        "image": "nginx:latest",
+                        "imagepullpolicy": "IfNotPresent"
+                    }
+                ]
+            }
+        }
+    }
+
+}

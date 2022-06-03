@@ -1,0 +1,23 @@
+{
+    "kind": "Service",
+    "apiversion": "v1",
+    "metadata": {
+        "name": "test-service-1",
+        "namespace": "test",
+        "uid": ""
+    },
+    "spec": {
+        "type": "ClusterIP",
+        "clusterIP": "10.1.1.1",
+        "selector":{
+            "app": "hpa"
+        },
+        "ports":[{
+            "name": "111",
+            "port": 50080,
+            "targetPort": 80
+        }
+        ]
+    }
+
+}

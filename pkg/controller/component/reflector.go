@@ -1,0 +1,235 @@
+package component
+
+import (
+	"context"
+	"encoding/json"
+	"k8s.io/klog"
+	v1 "minik8s.com/minik8s/pkg/api/v1"
+	"minik8s.com/minik8s/pkg/apiclient"
+)
+
+type Reflector struct {
+	// object type the reflector list/watch
+	Kind           string
+	transportQueue *WorkQueue
+}
+
+// Run list and watch
+func (r *Reflector) Run(stopChan chan bool, syncChan chan bool) {
+	r.list()
+	syncChan <- true
+	r.watch(stopChan)
+}
+
+func (r *Reflector) list() {
+	var objType apiclient.ObjType
+
+	switch r.Kind {
+	case "Pod":
+		objType = apiclient.OBJ_ALL_PODS
+	case "Service":
+		objType = apiclient.OBJ_ALL_SERVICES
+	case "ReplicaSet":
+		objType = apiclient.OBJ_ALL_REPLICAS
+	case "Endpoint":
+		objType = apiclient.OBJ_ALL_ENDPOINTS
+	case "HorizontalPodAutoscaler":
+		objType = apiclient.OBJ_ALL_HPAS
+	case "GPUJob":
+		objType = apiclient.OBJ_ALL_GPUS
+	}
+
+	objects := apiclient.GetAll(objType)
+	switch r.Kind {
+	case "Pod":
+		var fmtObjs []PodObject
+
+		err := json.Unmarshal(objects, &fmtObjs)
+		if err != nil {
+			klog.Error("Reflector parse error\n")
+		}
+
+		for _, podObj := range fmtObjs {
+			podObj.Type = "PUT"
+			podObj.StripKey()
+			r.transportQueue.Push(podObj)
+		}
+	case "ReplicaSet":
+		var fmtObjs []ReplicaSetObject
+
+		err := json.Unmarshal(objects, &fmtObjs)
+		if err != nil {
+			klog.Error("Reflector parse error\n")
+		}
+
+		for _, rsObj := range fmtObjs {
+			rsObj.Type = "PUT"
+			rsObj.StripKey()
+			r.transportQueue.Push(rsObj)
+		}
+	case "Service":
+		var fmtObjs []ServiceObject
+
+		err := json.Unmarshal(objects, &fmtObjs)
+		if err != nil {
+			klog.Error("Reflector parse error\n")
+		}
+
+		for _, serviceObj := range fmtObjs {
+			serviceObj.Type = "PUT"
+			serviceObj.StripKey()
+			r.transportQueue.Push(serviceObj)
+		}
+	case "Endpoint":
+		var fmtObjs []EndpointObject
+
+		err := json.Unmarshal(objects, &fmtObjs)
+		if err != nil {
+			klog.Error("Reflector parse error\n")
+		}
+
+		for _, epObj := range fmtObjs {
+			epObj.Type = "PUT"
+			epObj.StripKey()
+			r.transportQueue.Push(epObj)
+		}
+	case "HorizontalPodAutoscaler":
+		var fmtObjs []HPAObject
+
+		err := json.Unmarshal(objects, &fmtObjs)
+		if err != nil {
+			klog.Error("Reflector parse error\n")
+		}
+
+		for _, hpaObj := range fmtObjs {
+			hpaObj.Type = "PUT"
+			hpaObj.StripKey()
+			r.transportQueue.Push(hpaObj)
+		}
+	case "GPUJob":
+		var fmtObjs []JobObject
+
+		err := json.Unmarshal(objects, &fmtObjs)
+		if err != nil {
+			klog.Error("Reflector parse error\n")
+		}
+
+		for _, jobObj := range fmtObjs {
+			jobObj.Type = "PUT"
+			jobObj.StripKey()
+			r.transportQueue.Push(jobObj)
+		}
+	}
+}
+
+func (r *Reflector) watch(stopChan chan bool) {
+	var objType apiclient.ObjType
+
+	switch r.Kind {
+	case "Pod":
+		objType = apiclient.OBJ_ALL_PODS
+	case "Service":
+		objType = apiclient.OBJ_ALL_SERVICES
+	case "ReplicaSet":
+		objType = apiclient.OBJ_ALL_REPLICAS
+	case "Endpoint":
+		objType = apiclient.OBJ_ALL_ENDPOINTS
+	case "HorizontalPodAutoscaler":
+		objType = apiclient.OBJ_ALL_HPAS
+	case "GPUJob":
+		objType = apiclient.OBJ_ALL_GPUS
+	}
+
+	ctx, cl := context.WithCancel(context.Background())
+	watchChan := make(chan []byte)
+	go apiclient.Watch(ctx, watchChan, objType)
+	for {
+		select {
+		case <-stopChan:
+			cl()
+			return
+		case bytes := <-watchChan:
+			r.parseJsonAndNotify(bytes)
+		}
+	}
+}
+
+func (r *Reflector) parseJsonAndNotify(jsonObj []byte) {
+	switch r.Kind {
+	case "Pod":
+		obj := &PodObject{}
+		err := json.Unmarshal(jsonObj, obj)
+		if err != nil {
+			klog.Error("Reflector parse error\n")
+		}
+
+		obj.StripKey()
+		r.transportQueue.Push(*obj)
+	case "ReplicaSet":
+		obj := &ReplicaSetObject{}
+		err := json.Unmarshal(jsonObj, obj)
+		if err != nil {
+			klog.Error("Reflector parse error\n")
+		}
+
+		obj.StripKey()
+		r.transportQueue.Push(*obj)
+	case "Service":
+		obj := &ServiceObject{}
+		err := json.Unmarshal(jsonObj, obj)
+		if err != nil {
+			klog.Error("Reflector parse error\n")
+		}
+
+		obj.StripKey()
+		r.transportQueue.Push(*obj)
+	case "Endpoint":
+		obj := &EndpointObject{}
+		err := json.Unmarshal(jsonObj, obj)
+		if err != nil {
+			klog.Error("Reflector parse error\n")
+		}
+
+		obj.StripKey()
+		r.transportQueue.Push(*obj)
+	case "HorizontalPodAutoscaler":
+		obj := &HPAObject{}
+		err := json.Unmarshal(jsonObj, obj)
+		if err != nil {
+			klog.Error("Reflector parse error\n")
+		}
+
+		obj.StripKey()
+		r.transportQueue.Push(*obj)
+	case "GPUJob":
+		obj := &JobObject{}
+		err := json.Unmarshal(jsonObj, obj)
+		if err != nil {
+			klog.Error("Reflector parse error\n")
+		}
+
+		obj.StripKey()
+		r.transportQueue.Push(*obj)
+	}
+}
+
+// GetPodStatus deprecated
+func GetPodStatus(pod *v1.Pod) *v1.PodStatus {
+	buf := apiclient.GetPodStatusHttp(pod)
+	if buf == nil {
+		return nil
+	}
+
+	obj := PodStatusObject{}
+	jsonErr := json.Unmarshal(buf, &obj)
+	if jsonErr != nil {
+		klog.Error("parse json error\n")
+	}
+
+	if obj.GetValue() == nil {
+		return nil
+	}
+
+	podStatus := obj.GetValue().(v1.PodStatus)
+	return &podStatus
+}

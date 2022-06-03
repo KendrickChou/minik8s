@@ -1,0 +1,21 @@
+{
+    "kind": "dns",
+    "apiversion": "v1",
+    "metadata": {
+        "name": "test-DNS",
+        "namespace": "default"
+    },
+    "host" : "dns-test",
+    "paths": [
+        {
+            "path" : "-1",
+            "servicename" : "example-service",
+            "port" : 50080
+        },
+        {
+            "path" : "-2",
+            "servicename" : "hpa-service",
+            "port" : 50080
+        }
+    ]
+}

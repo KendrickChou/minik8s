@@ -1,0 +1,12 @@
+{
+    "StartAt": "rand_int",
+    "Chain": {
+        "rand_int":{
+            "Type": 1,
+            "Env": "python",
+            "Function": "gen_rand_int",
+            "Next": "",
+            "End": true
+        }
+    }
+}

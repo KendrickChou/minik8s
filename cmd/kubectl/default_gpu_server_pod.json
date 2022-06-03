@@ -1,0 +1,32 @@
+{
+    "kind": "pod",
+    "apiversion": "v1",
+    "metadata": {
+        "name": "myGPUJob1",
+        "namespace": "default",
+        "uid": ""
+    },
+    "spec": {
+        "Containers": [
+            {
+                "Name": "GPUJobTest",
+                "Namespace": "example",
+                "Image": "xayahhh/minik8s_gpu_demo:v1.0",
+                "ImagePullPolicy": "IfNotPresent",
+                "Entrypoint": [
+                    "/bin/bash",
+                    "-c",
+                    "/apps/main 59.78.8.125:8080 G1001-Andbr6w7"
+                ],
+                "Mounts": [
+                ]
+            }
+        ]
+    },
+    "Status": {
+        "Phase": "Succeeded",
+        "ContainerStatuses": [
+
+        ]
+    }
+}
