@@ -45,17 +45,12 @@ func SetUpRouter() *gin.Engine {
 			var res []string
 			json.Unmarshal(docs, &body)
 
-			if num, ok := body["total_rows"]; ok {
-				var rows []map[string]string
-				json.Unmarshal(body["rows"].([]byte), &rows)
+			if _, ok := body["total_rows"]; ok {
+				rows := body["rows"].([]interface{})
 
-				if len(rows) != num.(int) {
-					ctx.JSON(http.StatusOK, gin.H{"error": "row num != total_rows"})
-					return
-				}
 				for _, function := range rows {
-					if value, ok := function["id"]; ok {
-						res = append(res, value)
+					if value, ok := function.(map[string]interface{})["id"]; ok {
+						res = append(res, value.(string))
 					}
 				}
 			}
@@ -163,21 +158,17 @@ func SetUpRouter() *gin.Engine {
 			ctx.JSON(http.StatusOK, gin.H{"error": err.Error()})
 		} else {
 			var body map[string]interface{}
-			var res map[string]actionchain.ActionChain
+			res := make(map[string]actionchain.ActionChain)
 			json.Unmarshal(docs, &body)
 
-			if num, ok := body["total_rows"]; ok {
-				var rows []map[string]interface{}
-				json.Unmarshal(body["rows"].([]byte), &rows)
+			if _, ok := body["total_rows"]; ok {
+				rows := body["rows"].([]interface{})
 
-				if len(rows) != num.(int) {
-					ctx.JSON(http.StatusOK, gin.H{"error": "row num != total_rows"})
-					return
-				}
 				for _, row := range rows {
-					if id, ok := row["id"]; ok {
+					if id, ok := row.(map[string]interface{})["id"]; ok {
 						var actionChain actionchain.ActionChain
-						err = json.Unmarshal(row["value"].([]byte), &actionChain)
+						buf, _ := json.Marshal(row.(map[string]interface{})["value"].(map[string]interface {}))
+						err = json.Unmarshal(buf, &actionChain)
 						if err != nil {
 							ctx.JSON(http.StatusOK, gin.H{"error": err.Error()})
 							return
