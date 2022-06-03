@@ -130,7 +130,8 @@ func (inf *Informer) DeleteItem(key string) {
 	}
 
 	if flag {
-		inf.store.Delete(key)
+		//inf.store.Delete(key)
+		klog.Infof("Delete %v", key)
 	} else {
 		klog.Errorf("Delete %s failed", key)
 	}
@@ -163,9 +164,7 @@ func (inf *Informer) UpdateItem(key string, obj any) {
 		klog.Warningf("Update %s not handled", inf.Kind)
 	}
 
-	if flag {
-		inf.store.Update(key, obj)
-	} else {
+	if !flag {
 		klog.Errorf("Update %s failed", key)
 	}
 }
@@ -193,13 +192,15 @@ func (inf *Informer) AddItem(obj any) {
 			{
 				pod := obj.(v1.Pod)
 				pod.UID = uid
-				inf.store.Add(uid, pod)
+				// inf.store.Add(uid, pod)
+				klog.Infof("Add Pod %s", pod.UID)
 			}
 		case "Endpoint":
 			{
 				ep := obj.(v1.Endpoint)
 				ep.UID = uid
-				inf.store.Add(uid, ep)
+				// inf.store.Add(uid, ep)
+				klog.Infof("Add Endpoint %s", ep.UID)
 			}
 		default:
 			klog.Warningf("Add %s not handled", inf.Kind)

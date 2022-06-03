@@ -322,7 +322,7 @@ func (hpaC *HorizontalController) periodicallyScale(hpa *v1.HorizontalPodAutosca
 		max = policy.Value / 100 * hpa.Status.CurrentReplicas
 	}
 
-	klog.Infof("HPA %s, desired: %v, current: %v", hpa.UID, hpa.Status.DesiredReplicas, hpa.Status.CurrentReplicas)
+	klog.Infof("HPA %s, desired: %v, current: %v, maxInPeriod: %v, periodSeconds: %v", hpa.UID, hpa.Status.DesiredReplicas, hpa.Status.CurrentReplicas, max, policy.PeriodSeconds)
 	if hpa.Status.DesiredReplicas < hpa.Status.CurrentReplicas {
 		// delete pods
 		delta := hpa.Status.CurrentReplicas - hpa.Status.DesiredReplicas
@@ -331,7 +331,7 @@ func (hpaC *HorizontalController) periodicallyScale(hpa *v1.HorizontalPodAutosca
 		for i := 0; i < delta; {
 			numInPeriod := max
 			endFlag := false
-			if max > leftToDelete {
+			if max >= leftToDelete {
 				numInPeriod = leftToDelete
 				endFlag = true
 			}
@@ -351,6 +351,7 @@ func (hpaC *HorizontalController) periodicallyScale(hpa *v1.HorizontalPodAutosca
 
 			if !endFlag {
 				leftToDelete -= max
+				klog.Infof("leftToDelete: %v, max: %v, wait: %v", leftToDelete, max, time.Duration(policy.PeriodSeconds)*time.Second)
 				time.Sleep(time.Duration(policy.PeriodSeconds) * time.Second)
 			}
 		}
@@ -388,7 +389,7 @@ func (hpaC *HorizontalController) masterCurrentPods(max int, policy *v1.HPAScali
 	for i := 0; i < delta; {
 		numInPeriod := max
 		endFlag := false
-		if max > leftToAdd {
+		if max >= leftToAdd {
 			numInPeriod = leftToAdd
 			endFlag = true
 		}
@@ -423,37 +424,55 @@ func (hpaC *HorizontalController) createPods(max int, policy *v1.HPAScalingPolic
 			APIVersion: rs.APIVersion,
 		},
 		ObjectMeta: v1.ObjectMeta{
-			Name:            rs.Spec.Template.Name + "-",
-			Namespace:       rs.Spec.Template.Namespace,
-			UID:             "",
-			Labels:          rs.Spec.Template.Labels,
-			OwnerReferences: []v1.OwnerReference{},
+			Name:      rs.Spec.Template.Name + "-",
+			Namespace: rs.Spec.Template.Namespace,
+			UID:       "",
+			Labels:    rs.Spec.Template.Labels,
+			OwnerReferences: []v1.OwnerReference{
+				{
+					Name:       rs.Name,
+					APIVersion: rs.APIVersion,
+					UID:        rs.UID,
+					Kind:       rs.Kind,
+				},
+			},
 		},
 		Spec: rs.Spec.Template.Spec,
 	}
 	podTemplate.UID = ""
 
-	ref := v1.OwnerReference{
-		Name:       rs.Name,
-		APIVersion: rs.APIVersion,
-		UID:        rs.UID,
-		Kind:       rs.Kind,
+	for _, container := range podTemplate.Spec.Containers {
+		if container.Resources == nil {
+			container.Resources = map[string]string{
+				"cpu":    "4",
+				"memory": "512MB",
+			}
+			continue
+		}
+
+		if _, exist := container.Resources["cpu"]; !exist {
+			container.Resources["cpu"] = "4"
+		}
+
+		if _, exist := container.Resources["memory"]; !exist {
+			container.Resources["memory"] = "512MB"
+		}
 	}
-	podTemplate.OwnerReferences = append(podTemplate.OwnerReferences, ref)
 
 	delta := hpa.Status.DesiredReplicas - hpa.Status.CurrentReplicas
 	leftToAdd := delta
 
+	namePrefix := podTemplate.Name
 	for i := 0; i < delta; {
 		numInPeriod := max
 		endFlag := false
-		if max > leftToAdd {
+		if max >= leftToAdd {
 			numInPeriod = leftToAdd
 			endFlag = true
 		}
 
 		for j := 0; j < numInPeriod; j++ {
-			podTemplate.Name += random.String(5)
+			podTemplate.Name = namePrefix + random.String(5)
 			hpaC.podInformer.AddItem(podTemplate)
 			hpa.Status.CurrentReplicas++
 			hpa.Status.LastScaleTime = time.Now()
@@ -462,6 +481,7 @@ func (hpaC *HorizontalController) createPods(max int, policy *v1.HPAScalingPolic
 
 		if !endFlag {
 			leftToAdd -= max
+			klog.Infof("leftToAdd: %v, max: %v, wait: %v", leftToAdd, max, time.Duration(policy.PeriodSeconds)*time.Second)
 			time.Sleep(time.Duration(policy.PeriodSeconds) * time.Second)
 		}
 	}
