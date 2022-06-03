@@ -166,7 +166,6 @@ func (rsc *ReplicaSetController) increaseReplica(realReplicaNum int, rs *v1.Repl
 		}
 		pod.Kind = "Pod"
 		pod.APIVersion = rs.APIVersion
-		pod.ObjectMeta = rs.Spec.Template.ObjectMeta
 		pod.UID = ""
 		pod.Name = pod.Name + "-" + random.String(5)
 
@@ -177,6 +176,24 @@ func (rsc *ReplicaSetController) increaseReplica(realReplicaNum int, rs *v1.Repl
 			Kind:       rs.Kind,
 		}
 		pod.OwnerReferences = append(pod.OwnerReferences, ref)
+
+		for _, container := range pod.Spec.Containers {
+			if container.Resources == nil {
+				container.Resources = map[string]string{
+					"cpu":    "4",
+					"memory": "512MB",
+				}
+				continue
+			}
+
+			if _, exist := container.Resources["cpu"]; !exist {
+				container.Resources["cpu"] = "4"
+			}
+
+			if _, exist := container.Resources["memory"]; !exist {
+				container.Resources["memory"] = "512MB"
+			}
+		}
 
 		rsc.podInformer.AddItem(pod)
 

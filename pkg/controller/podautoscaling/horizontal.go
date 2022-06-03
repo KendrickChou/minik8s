@@ -423,23 +423,40 @@ func (hpaC *HorizontalController) createPods(max int, policy *v1.HPAScalingPolic
 			APIVersion: rs.APIVersion,
 		},
 		ObjectMeta: v1.ObjectMeta{
-			Name:            rs.Spec.Template.Name + "-",
-			Namespace:       rs.Spec.Template.Namespace,
-			UID:             "",
-			Labels:          rs.Spec.Template.Labels,
-			OwnerReferences: []v1.OwnerReference{},
+			Name:      rs.Spec.Template.Name + "-" + random.String(5),
+			Namespace: rs.Spec.Template.Namespace,
+			UID:       "",
+			Labels:    rs.Spec.Template.Labels,
+			OwnerReferences: []v1.OwnerReference{
+				{
+					Name:       rs.Name,
+					APIVersion: rs.APIVersion,
+					UID:        rs.UID,
+					Kind:       rs.Kind,
+				},
+			},
 		},
 		Spec: rs.Spec.Template.Spec,
 	}
 	podTemplate.UID = ""
 
-	ref := v1.OwnerReference{
-		Name:       rs.Name,
-		APIVersion: rs.APIVersion,
-		UID:        rs.UID,
-		Kind:       rs.Kind,
+	for _, container := range podTemplate.Spec.Containers {
+		if container.Resources == nil {
+			container.Resources = map[string]string{
+				"cpu":    "4",
+				"memory": "512MB",
+			}
+			continue
+		}
+
+		if _, exist := container.Resources["cpu"]; !exist {
+			container.Resources["cpu"] = "4"
+		}
+
+		if _, exist := container.Resources["memory"]; !exist {
+			container.Resources["memory"] = "512MB"
+		}
 	}
-	podTemplate.OwnerReferences = append(podTemplate.OwnerReferences, ref)
 
 	delta := hpa.Status.DesiredReplicas - hpa.Status.CurrentReplicas
 	leftToAdd := delta
